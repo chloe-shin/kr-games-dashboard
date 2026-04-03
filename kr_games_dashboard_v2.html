@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KR Games Performance Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0f0f11; --bg2: #161618; --bg3: #1e1e21;
+  --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.12);
+  --text: #f0f0f0; --text2: #888; --text3: #555;
+  --ptg: #4A9EF5; --csb: #2ECC9A; --gen: #E8A030; --l2m: #E06090; --rem: #9090A0;
+  --accent: #4A9EF5; --green: #2ECC9A; --amber: #E8A030; --red: #E05555;
+  --radius: 10px; --radius-lg: 14px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+
+.sidebar {
+  position: fixed; top: 0; left: 0; width: 220px; height: 100vh;
+  background: var(--bg2); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; z-index: 100;
+}
+.sidebar-logo { padding: 20px 20px 16px; border-bottom: 1px solid var(--border); }
+.sidebar-logo h1 { font-size: 13px; font-weight: 600; letter-spacing: .04em; }
+.sidebar-logo p { font-size: 11px; color: var(--text2); margin-top: 2px; }
+.sidebar-nav { padding: 12px 10px; flex: 1; overflow-y: auto; }
+.nav-label { font-size: 10px; font-weight: 600; color: var(--text3); letter-spacing: .08em; text-transform: uppercase; padding: 0 10px; margin: 16px 0 6px; }
+.nav-label:first-child { margin-top: 4px; }
+.nav-item {
+  display: flex; align-items: center; gap: 8px; padding: 7px 10px;
+  border-radius: 7px; cursor: pointer; color: var(--text2); font-size: 13px;
+  transition: all .15s; margin-bottom: 1px;
+}
+.nav-item:hover { background: var(--bg3); color: var(--text); }
+.nav-item.active { background: rgba(74,158,245,.12); color: var(--accent); }
+.nav-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.sidebar-footer { padding: 16px 20px; border-top: 1px solid var(--border); }
+.last-updated { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+
+.main { margin-left: 220px; min-height: 100vh; }
+.topbar {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(15,15,17,.9); backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 28px; height: 52px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.topbar-title { font-size: 14px; font-weight: 500; }
+.topbar-actions { display: flex; gap: 8px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: 7px; font-size: 12px; font-weight: 500;
+  cursor: pointer; border: 1px solid var(--border2); background: var(--bg3);
+  color: var(--text); transition: all .15s; font-family: inherit;
+}
+.btn:hover { border-color: rgba(255,255,255,.25); background: #2a2a2e; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-primary:hover { background: #3a8ee0; border-color: #3a8ee0; }
+.btn-danger { background: transparent; border-color: var(--red); color: var(--red); }
+.btn-danger:hover { background: rgba(224,85,85,.1); }
+.content { padding: 28px; }
+
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+.kpi-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px 20px; }
+.kpi-label { font-size: 11px; color: var(--text2); margin-bottom: 8px; text-transform: uppercase; letter-spacing: .06em; }
+.kpi-val { font-size: 26px; font-weight: 500; letter-spacing: -.02em; line-height: 1; }
+.kpi-sub { font-size: 12px; color: var(--text2); margin-top: 6px; }
+.up { color: var(--green); } .down { color: var(--red); }
+
+.section { margin-bottom: 24px; }
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.section-title { font-size: 12px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .07em; }
+.card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; }
+
+.tabs { display: flex; gap: 4px; margin-bottom: 18px; flex-wrap: wrap; }
+.tab {
+  font-size: 12px; padding: 5px 13px; border-radius: 20px;
+  border: 1px solid var(--border); cursor: pointer; color: var(--text2);
+  background: transparent; transition: all .15s; font-family: inherit;
+}
+.tab:hover { border-color: var(--border2); color: var(--text); }
+.tab.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+.chart-wrap { position: relative; width: 100%; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
+.leg-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text2); }
+.leg-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th { font-size: 11px; font-weight: 500; color: var(--text2); text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+td { padding: 9px 10px; border-bottom: 1px solid var(--border); color: var(--text); }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,.02); }
+.mono { font-family: 'DM Mono', monospace; font-size: 11px; }
+
+.badge { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 20px; font-weight: 500; }
+.badge-green { background: rgba(46,204,154,.15); color: var(--green); }
+.badge-amber { background: rgba(232,160,48,.15); color: var(--amber); }
+.badge-red { background: rgba(224,85,85,.15); color: var(--red); }
+.badge-gray { background: rgba(144,144,160,.15); color: var(--rem); }
+
+.bar-bg { background: rgba(255,255,255,.06); border-radius: 3px; height: 5px; margin-top: 4px; }
+.bar-fill { height: 5px; border-radius: 3px; transition: width .6s ease; }
+
+.game-kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
+.game-kpi { background: var(--bg3); border-radius: var(--radius); padding: 14px 16px; }
+.game-kpi-label { font-size: 10px; color: var(--text2); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .06em; }
+.game-kpi-val { font-size: 19px; font-weight: 500; }
+.game-kpi-sub { font-size: 11px; color: var(--text2); margin-top: 3px; }
+
+.insight { border-left: 2px solid var(--accent); padding: 10px 14px; background: rgba(74,158,245,.06); border-radius: 0 8px 8px 0; margin-bottom: 10px; }
+.insight p { font-size: 12px; color: var(--text2); line-height: 1.7; }
+.insight strong { color: var(--text); font-weight: 500; }
+
+.page { display: none; }
+.page.active { display: block; }
+.gdot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; flex-shrink: 0; }
+
+/* Modal */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.7); backdrop-filter: blur(4px);
+  z-index: 1000; align-items: center; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--bg2); border: 1px solid var(--border2);
+  border-radius: 16px; width: 580px; max-width: 95vw; max-height: 90vh; overflow-y: auto;
+}
+.modal-header {
+  padding: 20px 24px 16px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.modal-header h2 { font-size: 15px; font-weight: 600; }
+.modal-close { cursor: pointer; background: none; border: none; color: var(--text2); font-size: 20px; line-height: 1; }
+.modal-close:hover { color: var(--text); }
+.modal-body { padding: 20px 24px; }
+.modal-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-group.full { grid-column: 1 / -1; }
+label { font-size: 11px; font-weight: 500; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; }
+input, select, textarea {
+  background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: 7px; padding: 8px 12px; color: var(--text);
+  font-family: inherit; font-size: 13px; outline: none; transition: border-color .15s;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+input::placeholder, textarea::placeholder { color: var(--text3); }
+select option { background: var(--bg3); }
+textarea { resize: vertical; min-height: 70px; }
+.form-hint { font-size: 11px; color: var(--text3); }
+.form-error { color: var(--red); font-size: 12px; margin-top: 12px; display: none; }
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="loading-overlay" style="display:flex;position:fixed;inset:0;background:rgba(15,15,17,.95);z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:14px">
+  <div style="width:36px;height:36px;border:3px solid rgba(255,255,255,.1);border-top-color:#4A9EF5;border-radius:50%;animation:spin .7s linear infinite"></div>
+  <div style="font-size:13px;color:#888">Loading data...</div>
+</div>
+
+<!-- Sidebar -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <h1>KR Games</h1>
+    <p>Performance Dashboard</p>
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-label">Overview</div>
+    <div class="nav-item active" onclick="showPage('overview')">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      <span>Overview</span>
+    </div>
+    <div class="nav-label">Games</div>
+    <div class="nav-item" onclick="showPage('game','Play Together')"><span class="nav-dot" style="background:var(--ptg)"></span><span>Play Together</span></div>
+    <div class="nav-item" onclick="showPage('game','CSB M')"><span class="nav-dot" style="background:var(--csb)"></span><span>CSB M</span></div>
+    <div class="nav-item" onclick="showPage('game','Genesis')"><span class="nav-dot" style="background:var(--gen)"></span><span>Genesis</span></div>
+    <div class="nav-item" onclick="showPage('game','Lineage 2M')"><span class="nav-dot" style="background:var(--l2m)"></span><span>Lineage 2M</span></div>
+    <div class="nav-item" onclick="showPage('game','Rememento')"><span class="nav-dot" style="background:var(--rem)"></span><span>Rememento</span></div>
+    <div class="nav-label">Management</div>
+    <div class="nav-item" onclick="showPage('deals')">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <span>Deal Terms</span>
+    </div>
+    <div class="nav-item" onclick="showPage('data')">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      <span>Raw Data</span>
+    </div>
+  </div>
+  <div class="sidebar-footer">
+    <div class="last-updated" id="last-updated">Loading...</div>
+  </div>
+</nav>
+
+<!-- Main -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="topbar-title">Overview</div>
+    <div class="topbar-actions" id="topbar-actions">
+      <button class="btn btn-primary" onclick="openModal('monthly')">+ Add monthly data</button>
+    </div>
+  </div>
+  <div class="content">
+
+    <!-- OVERVIEW -->
+    <div class="page active" id="page-overview">
+      <div class="kpi-grid" id="kpi-grid"></div>
+      <div class="section">
+        <div class="card">
+          <div class="tabs" id="rev-tabs">
+            <button class="tab active" onclick="switchRevTab('stacked')">Stacked</button>
+            <button class="tab" onclick="switchRevTab('line')">By game</button>
+            <button class="tab" onclick="switchRevTab('mom')">MoM growth</button>
+          </div>
+          <div class="legend" id="rev-legend"></div>
+          <div class="chart-wrap" style="height:300px"><canvas id="revChart"></canvas></div>
+        </div>
+      </div>
+      <div class="two-col section">
+        <div class="card">
+          <div class="section-title" style="margin-bottom:16px">MG recoup status</div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:12px">누적매출 × RS / MG — 개발사의 선급금 상쇄율</div>
+          <div id="mg-bars"></div>
+        </div>
+        <div class="card">
+          <div class="section-title" style="margin-bottom:4px">Portfolio ROI by game</div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:12px">매출 × (1-RS) / (LF+MG)</div>
+          <div class="chart-wrap" style="height:200px"><canvas id="roiChart"></canvas></div>
+        </div>
+      </div>
+      <div class="section">
+        <div id="insights"></div>
+      </div>
+    </div>
+
+    <!-- GAME -->
+    <div class="page" id="page-game">
+      <div class="game-kpi-grid" id="game-kpis"></div>
+      <div class="card">
+        <div class="tabs" id="game-tabs">
+          <button class="tab active" onclick="switchGameTab('revenue')">Revenue</button>
+          <button class="tab" onclick="switchGameTab('cr_arppu')">CR &amp; ARPPU</button>
+          <button class="tab" onclick="switchGameTab('dau_mau')">DAU / MAU</button>
+          <button class="tab" onclick="switchGameTab('mkt')">Mkt cost</button>
+        </div>
+        <div id="game-chart-area"></div>
+      </div>
+    </div>
+
+    <!-- DEALS -->
+    <div class="page" id="page-deals">
+      <div class="card">
+        <table id="deals-table">
+          <thead>
+            <tr>
+              <th>Game</th><th>Developer</th><th>Region</th>
+              <th>LF</th><th>MG</th><th>RS</th>
+              <th>Start</th><th>End</th><th>Status</th><th style="min-width:200px">Special Condition</th><th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="deals-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- RAW DATA -->
+    <div class="page" id="page-data">
+      <div class="card">
+        <div class="tabs" id="data-game-tabs" style="margin-bottom:14px"></div>
+        <div class="table-wrap">
+          <table>
+            <thead id="data-thead"></thead>
+            <tbody id="data-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Monthly Data Modal -->
+<div class="modal-overlay" id="modal-monthly">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Add monthly data</h2>
+      <button class="modal-close" onclick="closeModal('monthly')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Game *</label>
+          <select id="f-game">
+            <option value="">Select game</option>
+            <option>Play Together</option><option>CSB M</option>
+            <option>Genesis</option><option>Lineage 2M</option><option>Rememento</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Month (YYYY-MM) *</label>
+          <input type="month" id="f-date">
+        </div>
+        <div class="form-group">
+          <label>Revenue (USD) *</label>
+          <input type="number" id="f-revenue" placeholder="e.g. 1500000">
+        </div>
+        <div class="form-group">
+          <label>Avg DAU</label>
+          <input type="number" id="f-dau" placeholder="e.g. 500000">
+        </div>
+        <div class="form-group">
+          <label>MAU</label>
+          <input type="number" id="f-mau" placeholder="e.g. 2000000">
+        </div>
+        <div class="form-group">
+          <label>NRU</label>
+          <input type="number" id="f-nru" placeholder="e.g. 300000">
+        </div>
+        <div class="form-group">
+          <label>MPU</label>
+          <input type="number" id="f-mpu" placeholder="e.g. 50000">
+        </div>
+        <div class="form-group">
+          <label>ARPPU (USD)</label>
+          <input type="number" id="f-arppu" placeholder="e.g. 25.5" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>CR (%)</label>
+          <input type="number" id="f-cr" placeholder="e.g. 2.5" step="0.01">
+          <span class="form-hint">퍼센트로 입력 (2.5 = 2.5%)</span>
+        </div>
+        <div class="form-group">
+          <label>Mkt Cost (USD)</label>
+          <input type="number" id="f-mkt" placeholder="e.g. 50000">
+        </div>
+      </div>
+      <div class="form-error" id="monthly-error"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('monthly')">Cancel</button>
+      <button class="btn btn-primary" id="monthly-submit-btn" onclick="submitMonthly()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Deal Terms Modal -->
+<div class="modal-overlay" id="modal-deal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="deal-modal-title">Add deal</h2>
+      <button class="modal-close" onclick="closeModal('deal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Game title *</label>
+          <input type="text" id="d-title" placeholder="e.g. Play Together">
+        </div>
+        <div class="form-group">
+          <label>Developer</label>
+          <input type="text" id="d-developer" placeholder="e.g. Haegin">
+        </div>
+        <div class="form-group">
+          <label>Region</label>
+          <input type="text" id="d-region" placeholder="e.g. VN, SEA, TWHKMC">
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="d-status">
+            <option value="Launched">Launched</option>
+            <option value="Not Launched">Not Launched</option>
+            <option value="Terminated">Terminated</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>LF (USD)</label>
+          <input type="number" id="d-lf" placeholder="e.g. 1500000">
+        </div>
+        <div class="form-group">
+          <label>MG (USD)</label>
+          <input type="number" id="d-mg" placeholder="e.g. 1500000">
+        </div>
+        <div class="form-group">
+          <label>RS (%)</label>
+          <input type="number" id="d-rs" placeholder="e.g. 42" step="0.1">
+          <span class="form-hint">퍼센트로 입력 (42 = 42%)</span>
+        </div>
+        <div class="form-group">
+          <label>Start date</label>
+          <input type="date" id="d-start">
+        </div>
+        <div class="form-group">
+          <label>End date</label>
+          <input type="date" id="d-end">
+        </div>
+        <div class="form-group full">
+          <label>Special conditions</label>
+          <textarea id="d-special" placeholder="특이 계약 조건 입력..."></textarea>
+        </div>
+      </div>
+      <div class="form-error" id="deal-error"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('deal')">Cancel</button>
+      <button class="btn btn-primary" id="deal-submit-btn" onclick="submitDeal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== CONFIG =====
+const SUPABASE_URL = 'https://wwdiuotloinnbpviuifn.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind3ZGl1b3Rsb2lubmJwdml1aWZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxOTQ0OTIsImV4cCI6MjA5MDc3MDQ5Mn0.3UHbrti33p0ybJCoNdQcBn9OMZ2sBhJANf2_v9Cu4Sg';
+const HDRS = {
+  'apikey': SUPABASE_KEY,
+  'Authorization': `Bearer ${SUPABASE_KEY}`,
+  'Content-Type': 'application/json',
+  'Prefer': 'return=representation'
+};
+
+const GAMES = ['Play Together','CSB M','Genesis','Lineage 2M','Rememento'];
+const COLORS = {'Play Together':'#4A9EF5','CSB M':'#2ECC9A','Genesis':'#E8A030','Lineage 2M':'#E06090','Rememento':'#9090A0'};
+
+// ===== SEED DATA =====
+const SEED_MONTHLY = [
+  {game:'Play Together',ym:'2022-06',dau:872354,mau:872354,nru:872354,mpu:8942,arppu:null,cr:0.01025,revenue:54986,mkt_cost:12960},
+  {game:'Play Together',ym:'2022-07',dau:566759,mau:3946002,nru:3298635,mpu:27960,arppu:17.28,cr:0.007086,revenue:483243,mkt_cost:286901},
+  {game:'Play Together',ym:'2022-08',dau:537240,mau:3656578,nru:2483420,mpu:24072,arppu:18.79,cr:0.006583,revenue:452321,mkt_cost:619223},
+  {game:'Play Together',ym:'2022-09',dau:400693,mau:2333129,nru:1138886,mpu:18710,arppu:20.40,cr:0.008019,revenue:381758,mkt_cost:138463},
+  {game:'Play Together',ym:'2022-10',dau:333485,mau:1938865,nru:867719,mpu:15348,arppu:19.13,cr:0.007916,revenue:293590,mkt_cost:55039},
+  {game:'Play Together',ym:'2022-11',dau:324820,mau:1821269,nru:850399,mpu:16629,arppu:15.95,cr:0.009130,revenue:265258,mkt_cost:35446},
+  {game:'Play Together',ym:'2022-12',dau:308750,mau:1828538,nru:859221,mpu:11935,arppu:19.96,cr:0.006527,revenue:238236,mkt_cost:40028},
+  {game:'Play Together',ym:'2023-01',dau:374984,mau:2343377,nru:1229426,mpu:14231,arppu:19.50,cr:0.006073,revenue:277515,mkt_cost:34930},
+  {game:'Play Together',ym:'2023-02',dau:374526,mau:2003131,nru:976727,mpu:11566,arppu:17.41,cr:0.005774,revenue:201346,mkt_cost:45303},
+  {game:'Play Together',ym:'2023-03',dau:444509,mau:2186897,nru:990760,mpu:14858,arppu:19.41,cr:0.006794,revenue:288404,mkt_cost:19159},
+  {game:'Play Together',ym:'2023-04',dau:607894,mau:2740797,nru:1319206,mpu:18257,arppu:17.96,cr:0.006661,revenue:327896,mkt_cost:20694},
+  {game:'Play Together',ym:'2023-05',dau:851564,mau:3832410,nru:1960473,mpu:21017,arppu:15.65,cr:0.005484,revenue:328958,mkt_cost:21821},
+  {game:'Play Together',ym:'2023-06',dau:1430419,mau:6063399,nru:3232539,mpu:42973,arppu:14.83,cr:0.007087,revenue:637430,mkt_cost:47283},
+  {game:'Play Together',ym:'2023-07',dau:1646769,mau:6349702,nru:2990872,mpu:52647,arppu:14.71,cr:0.008291,revenue:774249,mkt_cost:30383},
+  {game:'Play Together',ym:'2023-08',dau:1568909,mau:5650370,nru:2297169,mpu:67872,arppu:13.44,cr:0.012012,revenue:912243,mkt_cost:21711},
+  {game:'Play Together',ym:'2023-09',dau:1249860,mau:4477826,nru:1402935,mpu:47854,arppu:14.93,cr:0.010687,revenue:714487,mkt_cost:16921},
+  {game:'Play Together',ym:'2023-10',dau:987201,mau:3705788,nru:1051367,mpu:43616,arppu:15.03,cr:0.011770,revenue:655401,mkt_cost:11158},
+  {game:'Play Together',ym:'2023-11',dau:798760,mau:3138445,nru:816881,mpu:37758,arppu:14.99,cr:0.012031,revenue:565962,mkt_cost:15043},
+  {game:'Play Together',ym:'2023-12',dau:756604,mau:2918294,nru:750968,mpu:28616,arppu:16.83,cr:0.009806,revenue:481608,mkt_cost:19745},
+  {game:'Play Together',ym:'2024-01',dau:819664,mau:3280034,nru:1234327,mpu:27226,arppu:17.49,cr:0.008301,revenue:476110,mkt_cost:32015},
+  {game:'Play Together',ym:'2024-02',dau:951906,mau:3817437,nru:1197217,mpu:34812,arppu:18.34,cr:0.009119,revenue:638464,mkt_cost:27400},
+  {game:'Play Together',ym:'2024-03',dau:976692,mau:3915136,nru:1529924,mpu:25244,arppu:18.83,cr:0.006448,revenue:475365,mkt_cost:22156},
+  {game:'Play Together',ym:'2024-04',dau:1256343,mau:3886191,nru:936685,mpu:31372,arppu:16.99,cr:0.008073,revenue:533055,mkt_cost:14626},
+  {game:'Play Together',ym:'2024-05',dau:1081046,mau:4185400,nru:1460452,mpu:29650,arppu:16.51,cr:0.007084,revenue:489493,mkt_cost:16476},
+  {game:'Play Together',ym:'2024-06',dau:1378375,mau:5016173,nru:2302310,mpu:64201,arppu:12.15,cr:0.012799,revenue:779785,mkt_cost:58236},
+  {game:'Play Together',ym:'2024-07',dau:1450865,mau:5074734,nru:2189156,mpu:82855,arppu:10.44,cr:0.016327,revenue:865172,mkt_cost:38828},
+  {game:'Play Together',ym:'2024-08',dau:1425570,mau:5674253,nru:2026004,mpu:76266,arppu:13.40,cr:0.013441,revenue:1022086,mkt_cost:30556},
+  {game:'Play Together',ym:'2024-09',dau:1196201,mau:5113900,nru:1369979,mpu:70121,arppu:13.35,cr:0.013712,revenue:935871,mkt_cost:12585},
+  {game:'Play Together',ym:'2024-10',dau:1017305,mau:4244027,nru:1088565,mpu:59010,arppu:13.82,cr:0.013904,revenue:815237,mkt_cost:21822},
+  {game:'Play Together',ym:'2024-11',dau:792833,mau:3573880,nru:848793,mpu:67833,arppu:14.56,cr:0.018980,revenue:987932,mkt_cost:10152},
+  {game:'Play Together',ym:'2024-12',dau:1172053,mau:5770811,nru:2098080,mpu:58317,arppu:14.41,cr:0.010106,revenue:840589,mkt_cost:14986},
+  {game:'Play Together',ym:'2025-01',dau:650839,mau:3889026,nru:1559454,mpu:61175,arppu:12.34,cr:0.015730,revenue:754604,mkt_cost:31282},
+  {game:'Play Together',ym:'2025-02',dau:611186,mau:3632286,nru:1479342,mpu:67039,arppu:11.49,cr:0.018456,revenue:770287,mkt_cost:27964},
+  {game:'Play Together',ym:'2025-03',dau:777777,mau:4364696,nru:1726451,mpu:74599,arppu:13.29,cr:0.017091,revenue:991486,mkt_cost:22338},
+  {game:'Play Together',ym:'2025-04',dau:954096,mau:4075850,nru:1328468,mpu:101428,arppu:12.07,cr:0.024885,revenue:1224013,mkt_cost:18194},
+  {game:'Play Together',ym:'2025-05',dau:1069659,mau:4276000,nru:1145561,mpu:120146,arppu:10.52,cr:0.028098,revenue:1263490,mkt_cost:23728},
+  {game:'Play Together',ym:'2025-06',dau:1270651,mau:5075054,nru:1856411,mpu:194586,arppu:9.92,cr:0.038342,revenue:1929615,mkt_cost:24153},
+  {game:'Play Together',ym:'2025-07',dau:1235179,mau:5301672,nru:1952749,mpu:231893,arppu:10.75,cr:0.043740,revenue:2491833,mkt_cost:99602},
+  {game:'Play Together',ym:'2025-08',dau:1170978,mau:4649484,nru:1433501,mpu:235826,arppu:12.65,cr:0.050721,revenue:2984119,mkt_cost:50545},
+  {game:'Play Together',ym:'2025-09',dau:999307,mau:4098542,nru:1057931,mpu:245752,arppu:11.56,cr:0.059961,revenue:2841519,mkt_cost:31174},
+  {game:'Play Together',ym:'2025-10',dau:1027951,mau:3713548,nru:969744,mpu:245183,arppu:10.68,cr:0.066024,revenue:2618628,mkt_cost:62741},
+  {game:'Play Together',ym:'2025-11',dau:1057953,mau:3685369,nru:959431,mpu:274201,arppu:12.03,cr:0.074403,revenue:3299588,mkt_cost:68089},
+  {game:'Play Together',ym:'2025-12',dau:1182481,mau:4353221,nru:1143023,mpu:299258,arppu:8.80,cr:0.068744,revenue:2632385,mkt_cost:133036},
+  {game:'Play Together',ym:'2026-01',dau:1328182,mau:4937202,nru:1270341,mpu:310062,arppu:8.23,cr:0.062801,revenue:2551447,mkt_cost:73296},
+  {game:'Play Together',ym:'2026-02',dau:1018336,mau:4856341,nru:1248395,mpu:290739,arppu:9.07,cr:0.059868,revenue:2637531,mkt_cost:269138},
+  {game:'Play Together',ym:'2026-03',dau:1049020,mau:4148122,nru:1269917,mpu:264295,arppu:9.92,cr:0.063714,revenue:2620812,mkt_cost:0},
+  {game:'CSB M',ym:'2024-01',dau:37256,mau:123513,nru:123513,mpu:6112,arppu:114.98,cr:0.049485,revenue:702763,mkt_cost:846157},
+  {game:'CSB M',ym:'2024-02',dau:14621,mau:63030,nru:34112,mpu:4550,arppu:440.81,cr:0.072188,revenue:2005678,mkt_cost:97478},
+  {game:'CSB M',ym:'2024-03',dau:9114,mau:23272,nru:8163,mpu:2992,arppu:438.11,cr:0.128567,revenue:1310818,mkt_cost:77436},
+  {game:'CSB M',ym:'2024-04',dau:7217,mau:15831,nru:4498,mpu:2122,arppu:520.37,cr:0.134041,revenue:1104217,mkt_cost:50266},
+  {game:'CSB M',ym:'2024-05',dau:5919,mau:12514,nru:2141,mpu:1699,arppu:569.00,cr:0.135768,revenue:966739,mkt_cost:17054},
+  {game:'CSB M',ym:'2024-06',dau:5035,mau:8812,nru:1521,mpu:1382,arppu:522.88,cr:0.156832,revenue:722620,mkt_cost:12300},
+  {game:'CSB M',ym:'2024-07',dau:4481,mau:8449,nru:1738,mpu:1334,arppu:527.64,cr:0.157889,revenue:703867,mkt_cost:28487},
+  {game:'CSB M',ym:'2024-08',dau:4001,mau:7145,nru:1223,mpu:1024,arppu:528.28,cr:0.143317,revenue:540957,mkt_cost:89646},
+  {game:'CSB M',ym:'2024-09',dau:3525,mau:6054,nru:865,mpu:965,arppu:420.35,cr:0.159399,revenue:405635,mkt_cost:3955},
+  {game:'CSB M',ym:'2024-10',dau:3242,mau:5442,nru:528,mpu:883,arppu:452.94,cr:0.162257,revenue:399949,mkt_cost:1652},
+  {game:'CSB M',ym:'2024-11',dau:3290,mau:5165,nru:501,mpu:1378,arppu:254.58,cr:0.266796,revenue:350815,mkt_cost:4374},
+  {game:'CSB M',ym:'2024-12',dau:3220,mau:5235,nru:608,mpu:1350,arppu:227.72,cr:0.257880,revenue:307416,mkt_cost:6598},
+  {game:'CSB M',ym:'2025-01',dau:3252,mau:5567,nru:715,mpu:1338,arppu:306.94,cr:0.240345,revenue:410686,mkt_cost:13433},
+  {game:'CSB M',ym:'2025-02',dau:3037,mau:4727,nru:405,mpu:1196,arppu:278.87,cr:0.253015,revenue:333528,mkt_cost:5003},
+  {game:'CSB M',ym:'2025-03',dau:3034,mau:5111,nru:774,mpu:1075,arppu:335.84,cr:0.210331,revenue:361023,mkt_cost:13365},
+  {game:'CSB M',ym:'2025-04',dau:2924,mau:4279,nru:446,mpu:898,arppu:335.19,cr:0.209862,revenue:301005,mkt_cost:11012},
+  {game:'CSB M',ym:'2025-05',dau:2606,mau:4306,nru:385,mpu:981,arppu:332.76,cr:0.227822,revenue:326435,mkt_cost:5869},
+  {game:'CSB M',ym:'2025-06',dau:2400,mau:4282,nru:431,mpu:661,arppu:379.52,cr:0.154367,revenue:250864,mkt_cost:2404},
+  {game:'CSB M',ym:'2025-07',dau:2371,mau:4675,nru:945,mpu:685,arppu:353.58,cr:0.146524,revenue:242199,mkt_cost:2747},
+  {game:'CSB M',ym:'2025-08',dau:2173,mau:3814,nru:374,mpu:578,arppu:439.00,cr:0.151500,revenue:253550,mkt_cost:1800},
+  {game:'CSB M',ym:'2025-09',dau:1984,mau:3347,nru:281,mpu:531,arppu:362.00,cr:0.158600,revenue:192120,mkt_cost:1484},
+  {game:'CSB M',ym:'2025-10',dau:1933,mau:3280,nru:260,mpu:509,arppu:369.00,cr:0.155183,revenue:187592,mkt_cost:1619},
+  {game:'CSB M',ym:'2025-11',dau:1887,mau:3360,nru:437,mpu:562,arppu:319.88,cr:0.167262,revenue:179775,mkt_cost:2195},
+  {game:'CSB M',ym:'2025-12',dau:1954,mau:3433,nru:320,mpu:555,arppu:300.74,cr:0.161666,revenue:166910,mkt_cost:1584},
+  {game:'CSB M',ym:'2026-01',dau:1953,mau:3716,nru:443,mpu:528,arppu:332.30,cr:0.142088,revenue:175464,mkt_cost:8836},
+  {game:'CSB M',ym:'2026-02',dau:2006,mau:4282,nru:975,mpu:571,arppu:299.70,cr:0.133349,revenue:171131,mkt_cost:18451},
+  {game:'CSB M',ym:'2026-03',dau:1767,mau:3098,nru:273,mpu:464,arppu:299.70,cr:0.149774,revenue:131382,mkt_cost:1792},
+  {game:'Genesis',ym:'2025-02',dau:109682,mau:667995,nru:667995,mpu:4939,arppu:81.20,cr:0.007394,revenue:401026,mkt_cost:492700},
+  {game:'Genesis',ym:'2025-03',dau:71093,mau:385048,nru:254340,mpu:2970,arppu:141.92,cr:0.007713,revenue:421492,mkt_cost:54960},
+  {game:'Genesis',ym:'2025-04',dau:31659,mau:61663,nru:9999,mpu:1465,arppu:127.84,cr:0.023758,revenue:187292,mkt_cost:9503},
+  {game:'Genesis',ym:'2025-05',dau:3223,mau:23035,nru:2091,mpu:846,arppu:161.02,cr:0.036727,revenue:136222,mkt_cost:0},
+  {game:'Genesis',ym:'2025-06',dau:2879,mau:13529,nru:1032,mpu:1007,arppu:90.05,cr:0.074433,revenue:90683,mkt_cost:0},
+  {game:'Genesis',ym:'2025-07',dau:2184,mau:8582,nru:848,mpu:531,arppu:119.36,cr:0.061874,revenue:63378,mkt_cost:0},
+  {game:'Genesis',ym:'2025-08',dau:1688,mau:3369,nru:770,mpu:474,arppu:118.81,cr:0.140695,revenue:56317,mkt_cost:0},
+  {game:'Genesis',ym:'2025-09',dau:1423,mau:2839,nru:617,mpu:364,arppu:178.60,cr:0.128214,revenue:65010,mkt_cost:0},
+  {game:'Genesis',ym:'2025-10',dau:1463,mau:5630,nru:2654,mpu:480,arppu:191.36,cr:0.085258,revenue:91854,mkt_cost:18828},
+  {game:'Genesis',ym:'2025-11',dau:1055,mau:2974,nru:374,mpu:234,arppu:202.21,cr:0.078682,revenue:47316,mkt_cost:0},
+  {game:'Genesis',ym:'2025-12',dau:936,mau:1783,nru:365,mpu:208,arppu:146.15,cr:0.116657,revenue:30400,mkt_cost:0},
+  {game:'Genesis',ym:'2026-01',dau:880,mau:1880,nru:500,mpu:222,arppu:201.82,cr:0.118085,revenue:44802,mkt_cost:0},
+  {game:'Genesis',ym:'2026-02',dau:869,mau:1731,nru:381,mpu:307,arppu:349.80,cr:0.177354,revenue:107391,mkt_cost:0},
+  {game:'Genesis',ym:'2026-03',dau:826,mau:1607,nru:375,mpu:264,arppu:268.96,cr:0.164281,revenue:71005,mkt_cost:0},
+  {game:'Lineage 2M',ym:'2025-05',dau:305539,mau:2131391,nru:2128521,mpu:86113,arppu:37.40,cr:0.040402,revenue:3223828,mkt_cost:2537274},
+  {game:'Lineage 2M',ym:'2025-06',dau:203132,mau:2364947,nru:2103793,mpu:120404,arppu:46.93,cr:0.050912,revenue:5650678,mkt_cost:406159},
+  {game:'Lineage 2M',ym:'2025-07',dau:153758,mau:1094740,nru:806126,mpu:60085,arppu:82.80,cr:0.054885,revenue:4974893,mkt_cost:null},
+  {game:'Lineage 2M',ym:'2025-08',dau:130702,mau:405368,nru:175755,mpu:20806,arppu:186.94,cr:0.051326,revenue:3889374,mkt_cost:null},
+  {game:'Lineage 2M',ym:'2025-09',dau:137642,mau:507713,nru:277597,mpu:34204,arppu:98.03,cr:0.067369,revenue:3353140,mkt_cost:51817},
+  {game:'Lineage 2M',ym:'2025-10',dau:174152,mau:436078,nru:157378,mpu:24253,arppu:106.11,cr:0.055616,revenue:2573501,mkt_cost:60623},
+  {game:'Lineage 2M',ym:'2025-11',dau:161775,mau:346499,nru:82175,mpu:10456,arppu:206.48,cr:0.030176,revenue:2158995,mkt_cost:null},
+  {game:'Lineage 2M',ym:'2025-12',dau:208307,mau:376787,nru:112573,mpu:7020,arppu:308.87,cr:0.018631,revenue:2168288,mkt_cost:null},
+  {game:'Lineage 2M',ym:'2026-01',dau:236649,mau:388914,nru:98524,mpu:6119,arppu:326.49,cr:0.015734,revenue:1997789,mkt_cost:null},
+  {game:'Lineage 2M',ym:'2026-02',dau:235093,mau:345936,nru:31808,mpu:6160,arppu:279.03,cr:0.017807,revenue:1718841,mkt_cost:8434},
+  {game:'Lineage 2M',ym:'2026-03',dau:193056,mau:267597,nru:7755,mpu:5430,arppu:328.75,cr:0.020292,revenue:1785122,mkt_cost:8284},
+  {game:'Rememento',ym:'2025-07',dau:null,mau:210967,nru:210940,mpu:19637,arppu:10.00,cr:0.093081,revenue:196294,mkt_cost:274889},
+  {game:'Rememento',ym:'2025-08',dau:null,mau:46338,nru:23958,mpu:2634,arppu:13.65,cr:0.056843,revenue:35954,mkt_cost:69063},
+  {game:'Rememento',ym:'2025-09',dau:null,mau:13711,nru:6456,mpu:714,arppu:22.30,cr:0.052075,revenue:15942,mkt_cost:1985},
+  {game:'Rememento',ym:'2025-10',dau:null,mau:7186,nru:3323,mpu:306,arppu:11.19,cr:0.042583,revenue:3425,mkt_cost:null},
+  {game:'Rememento',ym:'2025-11',dau:null,mau:4110,nru:2206,mpu:88,arppu:5.20,cr:0.021411,revenue:457,mkt_cost:null},
+  {game:'Rememento',ym:'2025-12',dau:null,mau:2943,nru:1642,mpu:83,arppu:2.79,cr:0.028000,revenue:231,mkt_cost:null},
+  {game:'Rememento',ym:'2026-01',dau:null,mau:2634,nru:1546,mpu:59,arppu:1.95,cr:0.022399,revenue:115,mkt_cost:null},
+  {game:'Rememento',ym:'2026-02',dau:null,mau:1697,nru:1035,mpu:31,arppu:1.58,cr:0.018268,revenue:49,mkt_cost:null},
+];
+
+const SEED_DEALS = [
+  {title:'Play Together',developer:'Haegin',region:'VN',lf:1500000,mg:1500000,rs:0.42,status:'Launched',start_date:'2022-06-30',end_date:'2030-06-30',special_condition:'계약기간 5년 (2025년 7월~ 연장). 누적매출 $15M → RS 44%, $30M → RS 46%'},
+  {title:'CSB M',developer:'Sesisoft',region:'TWHKMC',lf:200000,mg:300000,rs:0.25,status:'Launched',start_date:'2024-01-18',end_date:'2027-01-18',special_condition:null},
+  {title:'Genesis: Asura Project',developer:'Linegames',region:'TWHKMC',lf:500000,mg:1000000,rs:0.25,status:'Launched',start_date:'2025-02-18',end_date:'2028-02-18',special_condition:null},
+  {title:'Lineage 2M',developer:'NC(V)',region:'SEA',lf:1000000,mg:7000000,rs:0.25,status:'Launched',start_date:'2025-05-20',end_date:'2028-05-20',special_condition:'MG 선입금 X. 로열티 미달시에만 지급. NC 25%, VNGSing 11%, VNGVN 약11%'},
+  {title:'Rememento White Shadow',developer:'Blackstorm',region:'SEA+TWHKMC',lf:1123000,mg:1123000,rs:0.22,status:'Terminated',start_date:'2025-07-09',end_date:'2028-07-09',special_condition:'실제 계약금액 $1.3M. TWHKMC 퍼블리싱 취소로 3차 LF/MG 각 $177K 미지급'},
+  {title:'Lineage W',developer:'NC(V)',region:'SEA',lf:1000000,mg:7000000,rs:0.25,status:'Not Launched',start_date:null,end_date:null,special_condition:'MG 선입금 X. 로열티 미달시에만 지급'},
+  {title:'Chosun2M',developer:'Smartnow',region:'TWHKMC',lf:200000,mg:200000,rs:0.23,status:'Not Launched',start_date:null,end_date:null,special_condition:null},
+  {title:'Cookierun: Oven Smash',developer:'Devsisters',region:'SEA+TWHKMC',lf:1600000,mg:4000000,rs:0.26,status:'Not Launched',start_date:null,end_date:null,special_condition:'대만 RS 30%. 누적 $35M 달성시 인센티브 $1.6M. 마케팅 개런티 $6M 또는 그로스 매출의 25%'},
+];
+
+// ===== SUPABASE API =====
+let RAW = [], DEALS = [], LATEST_INSIGHT = null;
+let editingDealId = null;
+
+async function api(table, method='GET', body=null, filter='', upsert=false) {
+  const url = `${SUPABASE_URL}/rest/v1/${table}${filter ? '?' + filter : ''}`;
+  const hdrs = {...HDRS};
+  if (upsert) hdrs['Prefer'] = 'resolution=merge-duplicates,return=representation';
+  const opts = { method, headers: hdrs };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(url, opts);
+  if (!res.ok) throw new Error(await res.text());
+  const text = await res.text();
+  return text ? JSON.parse(text) : [];
+}
+
+async function init() {
+  try {
+    const [monthly, deals, insightsRes] = await Promise.all([
+      api('monthly_data', 'GET', null, 'order=ym.asc'),
+      api('deal_terms', 'GET', null, 'order=created_at.asc'),
+      api('insights', 'GET', null, 'order=year_month.desc&limit=1')
+    ]);
+    LATEST_INSIGHT = insightsRes && insightsRes.length > 0 ? insightsRes[0] : null;
+
+    if (monthly.length === 0) {
+      const seeded = await api('monthly_data', 'POST', SEED_MONTHLY);
+      RAW = Array.isArray(seeded) ? seeded : SEED_MONTHLY;
+    } else { RAW = monthly; }
+
+    if (deals.length === 0) {
+      const seeded = await api('deal_terms', 'POST', SEED_DEALS);
+      DEALS = Array.isArray(seeded) ? seeded : SEED_DEALS;
+    } else { DEALS = deals; }
+
+  } catch(e) {
+    console.error('Init error:', e);
+    RAW = SEED_MONTHLY;
+    DEALS = SEED_DEALS;
+  }
+  document.getElementById('loading-overlay').style.display = 'none';
+  updateLastUpdated();
+  showPage('overview');
+}
+
+// ===== HELPERS =====
+function fmt(n) {
+  if (n == null || isNaN(n)) return '-';
+  if (Math.abs(n) >= 1000000) return '$' + (n/1000000).toFixed(1) + 'M';
+  if (Math.abs(n) >= 1000) return '$' + (n/1000).toFixed(0) + 'K';
+  return '$' + Math.round(n).toLocaleString();
+}
+function fmtN(n) {
+  if (n == null || isNaN(n)) return '-';
+  if (n >= 1000000) return (n/1000000).toFixed(1) + 'M';
+  if (n >= 1000) return (n/1000).toFixed(0) + 'K';
+  return Math.round(n).toLocaleString();
+}
+function pct(n) { if (n == null || isNaN(n)) return '-'; return (n*100).toFixed(1) + '%'; }
+function clr(g) { return COLORS[g] || '#888'; }
+function getYMs() { return [...new Set(RAW.map(r => r.ym))].sort(); }
+function getGameData(g) { return RAW.filter(r => r.game === g).sort((a,b) => a.ym.localeCompare(b.ym)); }
+
+// RS rate from DEALS (fallback hardcoded)
+const RS_FALLBACK = {'Play Together':0.42,'CSB M':0.25,'Genesis':0.25,'Lineage 2M':0.25,'Rememento':0.22};
+function getRs(game) {
+  const d = DEALS.find(d => d.title === game || d.title.startsWith(game));
+  return d ? d.rs : (RS_FALLBACK[game] || 0.25);
+}
+function getLf(game) {
+  const d = DEALS.find(d => d.title === game || d.title.startsWith(game));
+  return d ? (d.lf || 0) : 0;
+}
+function getMg(game) {
+  const d = DEALS.find(d => d.title === game || d.title.startsWith(game));
+  return d ? (d.mg || 0) : 0;
+}
+
+// Our profit = revenue × (1 - RS)
+function ourProfit(game, revenue) { return revenue * (1 - getRs(game)); }
+// MG recoup = revenue × RS / MG  (개발사 입장에서 MG 상쇄율)
+function mgRecoupPct(game) {
+  const rev = RAW.filter(r => r.game === game).reduce((s,r) => s+(r.revenue||0), 0);
+  const mg = getMg(game);
+  return mg > 0 ? rev * getRs(game) / mg * 100 : 0;
+}
+// Game ROI = Σ(revenue × (1-RS)) / (LF + MG)
+function gameRoi(game) {
+  const rev = RAW.filter(r => r.game === game).reduce((s,r) => s+(r.revenue||0), 0);
+  const invest = getLf(game) + getMg(game);
+  return invest > 0 ? ourProfit(game, rev) / invest : 0;
+}
+
+// ===== CHARTS STATE =====
+let revChart=null, roiChart=null, gameChart1=null, gameChart2=null;
+let currentRevTab='stacked', currentGame='Play Together', currentGameTab='revenue', currentDataGame='All';
+
+// ===== PAGE NAV =====
+function showPage(page, game) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const navItems = document.querySelectorAll('.nav-item');
+
+  const actions = document.getElementById('topbar-actions');
+
+  if (page === 'overview') {
+    document.getElementById('page-overview').classList.add('active');
+    document.getElementById('topbar-title').textContent = 'Overview';
+    navItems[0].classList.add('active');
+    actions.innerHTML = `<button class="btn btn-primary" onclick="openModal('monthly')">+ Add monthly data</button>`;
+    renderOverview();
+  } else if (page === 'game') {
+    currentGame = game;
+    document.getElementById('page-game').classList.add('active');
+    document.getElementById('topbar-title').textContent = game;
+    const idx = GAMES.indexOf(game);
+    if (idx >= 0) navItems[idx + 1].classList.add('active');
+    actions.innerHTML = `<button class="btn btn-primary" onclick="openModal('monthly')">+ Add monthly data</button>`;
+    renderGame(game);
+  } else if (page === 'deals') {
+    document.getElementById('page-deals').classList.add('active');
+    document.getElementById('topbar-title').textContent = 'Deal Terms';
+    navItems[6].classList.add('active');
+    actions.innerHTML = `<button class="btn btn-primary" onclick="openModal('deal')">+ Add deal</button>`;
+    renderDeals();
+  } else if (page === 'data') {
+    document.getElementById('page-data').classList.add('active');
+    document.getElementById('topbar-title').textContent = 'Raw Data';
+    navItems[7].classList.add('active');
+    actions.innerHTML = `<button class="btn btn-primary" onclick="openModal('monthly')">+ Add monthly data</button>`;
+    renderDataPage();
+  }
+}
+
+// ===== OVERVIEW =====
+function renderOverview() {
+  const allYMs = getYMs();
+  const totalRev = RAW.reduce((s,r) => s+(r.revenue||0), 0);
+  const totalOurProfit = GAMES.reduce((s,g) => {
+    const rev = RAW.filter(r=>r.game===g).reduce((a,r)=>a+(r.revenue||0),0);
+    return s + ourProfit(g, rev);
+  }, 0);
+  const totalInvest = GAMES.reduce((s,g) => s + getLf(g) + getMg(g), 0);
+  const portfolioRoi = totalInvest > 0 ? totalOurProfit / totalInvest : 0;
+
+  const latestYM = allYMs.slice(-1)[0];
+  const prevYM = allYMs.slice(-2,-1)[0];
+  const latestTotal = RAW.filter(r=>r.ym===latestYM).reduce((s,r)=>s+(r.revenue||0),0);
+  const prevTotal = RAW.filter(r=>r.ym===prevYM).reduce((s,r)=>s+(r.revenue||0),0);
+  const mom = prevTotal > 0 ? ((latestTotal-prevTotal)/prevTotal*100).toFixed(1) : 0;
+
+  document.getElementById('kpi-grid').innerHTML = `
+    <div class="kpi-card"><div class="kpi-label">Total revenue</div><div class="kpi-val">${fmt(totalRev)}</div><div class="kpi-sub">All games combined</div></div>
+    <div class="kpi-card"><div class="kpi-label">Our profit (after RS)</div><div class="kpi-val">${fmt(totalOurProfit)}</div><div class="kpi-sub">매출 × (1-RS) 합산</div></div>
+    <div class="kpi-card"><div class="kpi-label">Latest month (${latestYM})</div><div class="kpi-val">${fmt(latestTotal)}</div><div class="kpi-sub"><span class="${parseFloat(mom)>=0?'up':'down'}">${mom}%</span> vs prev month</div></div>
+    <div class="kpi-card"><div class="kpi-label">Portfolio ROI</div><div class="kpi-val">${portfolioRoi.toFixed(1)}x</div><div class="kpi-sub">Our profit / (LF+MG) $${(totalInvest/1000000).toFixed(1)}M</div></div>`;
+
+  buildRevChart(currentRevTab);
+  buildMGBars();
+  buildROIChart();
+  buildInsights();
+}
+
+function buildLegend(id, games) {
+  document.getElementById(id).innerHTML = games.map(g =>
+    `<span class="leg-item"><span class="leg-dot" style="background:${clr(g)}"></span>${g}</span>`).join('');
+}
+
+function buildRevChart(type) {
+  if (revChart) { revChart.destroy(); revChart = null; }
+  const allYMs = getYMs();
+  buildLegend('rev-legend', GAMES);
+  const byGY = {};
+  GAMES.forEach(g => { byGY[g]={}; allYMs.forEach(ym => { byGY[g][ym]=RAW.filter(r=>r.game===g&&r.ym===ym).reduce((s,r)=>s+(r.revenue||0),0); }); });
+  const ctx = document.getElementById('revChart').getContext('2d');
+  const gc = 'rgba(255,255,255,.04)', tc = '#666';
+  if (type==='stacked') {
+    revChart = new Chart(ctx,{type:'bar',data:{labels:allYMs,datasets:GAMES.map(g=>({label:g,data:allYMs.map(ym=>byGY[g][ym]||0),backgroundColor:clr(g)+'cc',borderWidth:0}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt(c.raw)}`}}},scales:{x:{stacked:true,ticks:{autoSkip:true,maxRotation:45,font:{size:10},color:tc},grid:{color:gc}},y:{stacked:true,ticks:{callback:v=>fmt(v),font:{size:10},color:tc},grid:{color:gc}}}}});
+  } else if (type==='line') {
+    revChart = new Chart(ctx,{type:'line',data:{labels:allYMs,datasets:GAMES.map(g=>({label:g,data:allYMs.map(ym=>byGY[g][ym]||null),borderColor:clr(g),backgroundColor:'transparent',borderWidth:2,pointRadius:2,tension:0.3,spanGaps:false}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt(c.raw)}`}}},scales:{x:{ticks:{autoSkip:true,maxRotation:45,font:{size:10},color:tc},grid:{color:gc}},y:{ticks:{callback:v=>fmt(v),font:{size:10},color:tc},grid:{color:gc}}}}});
+  } else {
+    revChart = new Chart(ctx,{type:'line',data:{labels:allYMs,datasets:GAMES.map(g=>{const yms=allYMs.filter(ym=>byGY[g][ym]>0);const vals=yms.slice(1).map((ym,i)=>{const p=byGY[g][yms[i]];return p>0?((byGY[g][ym]-p)/p*100):null;});return{label:g,data:allYMs.map(ym=>{const i=yms.slice(1).indexOf(ym);return i>=0?vals[i]:null;}),borderColor:clr(g),backgroundColor:'transparent',borderWidth:2,pointRadius:2,tension:0.3,spanGaps:false};})},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw!=null?c.raw.toFixed(1)+'%':'N/A'}`}}},scales:{x:{ticks:{autoSkip:true,maxRotation:45,font:{size:10},color:tc},grid:{color:gc}},y:{ticks:{callback:v=>v.toFixed(0)+'%',font:{size:10},color:tc},grid:{color:gc}}}}});
+  }
+}
+
+function switchRevTab(t) {
+  currentRevTab=t;
+  document.querySelectorAll('#rev-tabs .tab').forEach((el,i)=>el.classList.toggle('active',['stacked','line','mom'][i]===t));
+  buildRevChart(t);
+}
+
+function buildMGBars() {
+  document.getElementById('mg-bars').innerHTML = GAMES.map(g => {
+    const recoupPct = mgRecoupPct(g);
+    const barW = Math.min(recoupPct, 100);
+    const c = recoupPct > 100 ? '#2ECC9A' : recoupPct > 50 ? '#E8A030' : '#E05555';
+    const rev = RAW.filter(r=>r.game===g).reduce((s,r)=>s+(r.revenue||0),0);
+    const rs = getRs(g);
+    const mg = getMg(g);
+    return `<div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px">
+        <span><span class="gdot" style="background:${clr(g)}"></span>${g}</span>
+        <span style="font-weight:500;color:${c}">${recoupPct.toFixed(0)}%</span>
+      </div>
+      <div class="bar-bg"><div class="bar-fill" style="width:${barW}%;background:${c}"></div></div>
+      <div style="font-size:10px;color:var(--text3);margin-top:3px">${fmt(rev*rs)} (매출×RS) / ${fmt(mg)} MG</div>
+    </div>`;
+  }).join('');
+}
+
+function buildROIChart() {
+  if (roiChart) { roiChart.destroy(); roiChart = null; }
+  const ctx = document.getElementById('roiChart').getContext('2d');
+  const vals = GAMES.map(g => +gameRoi(g).toFixed(2));
+  roiChart = new Chart(ctx,{type:'bar',data:{labels:GAMES.map(g=>g.split(' ').slice(0,2).join(' ')),datasets:[{data:vals,backgroundColor:GAMES.map(g=>clr(g)+'cc'),borderWidth:0}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`ROI: ${c.raw}x`}}},scales:{x:{ticks:{callback:v=>v+'x',font:{size:10},color:'#666'},grid:{color:'rgba(255,255,255,.04)'}},y:{ticks:{font:{size:11},color:'#aaa'},grid:{display:false}}}}});
+}
+
+function parseInsightSection(content, marker) {
+  const regex = new RegExp(`\\[${marker}\\]([\\s\\S]*?)(?=\\[[A-Z]+\\]|$)`);
+  const match = content.match(regex);
+  return match ? match[1].trim() : null;
+}
+
+function renderInsightBlock(title, text, color) {
+  if (!text) return '';
+  const lines = text.split('\n').filter(l => l.trim());
+  const body = lines.map(l => {
+    if (l.trim().startsWith('•') || l.trim().startsWith('-') || l.trim().startsWith('*')) {
+      return `<li style="margin-bottom:4px">${l.replace(/^[•\-*]\s*/, '')}</li>`;
+    }
+    return `<p style="margin-bottom:4px">${l}</p>`;
+  });
+  const hasLi = body.some(b => b.startsWith('<li'));
+  const inner = hasLi
+    ? `<ul style="padding-left:16px;margin:0">${body.join('')}</ul>`
+    : body.join('');
+  return `<div class="insight" style="border-left-color:${color}">
+    <div style="font-size:11px;font-weight:600;color:${color};margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">${title}</div>
+    <div style="font-size:12px;color:var(--text2);line-height:1.7">${inner}</div>
+  </div>`;
+}
+
+function buildInsights() {
+  const el = document.getElementById('insights');
+  if (!LATEST_INSIGHT) {
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="section-title">AI Insights</div>
+        <button class="btn" onclick="generateInsightsNow()" id="gen-btn">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          Generate insights
+        </button>
+      </div>
+      <div style="padding:24px;text-align:center;color:var(--text3);font-size:13px;border:1px dashed var(--border2);border-radius:var(--radius-lg)">
+        AI 인사이트가 없어요. Generate 버튼을 누르거나 매월 1일 자동 생성됩니다.
+      </div>`;
+    return;
+  }
+
+  const c = LATEST_INSIGHT.content;
+  const genDate = new Date(LATEST_INSIGHT.generated_at).toLocaleDateString('ko-KR', {year:'numeric',month:'long',day:'numeric'});
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div>
+        <div class="section-title">AI Insights</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:3px">Gemini AI 생성 · ${genDate}</div>
+      </div>
+      <button class="btn" onclick="generateInsightsNow()" id="gen-btn">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        Re-generate
+      </button>
+    </div>
+    ${renderInsightBlock('포트폴리오 전체', parseInsightSection(c,'PORTFOLIO'), '#4A9EF5')}
+    ${renderInsightBlock('Play Together', parseInsightSection(c,'PTG'), '#4A9EF5')}
+    ${renderInsightBlock('CSB M', parseInsightSection(c,'CSB'), '#2ECC9A')}
+    ${renderInsightBlock('Genesis', parseInsightSection(c,'GEN'), '#E8A030')}
+    ${renderInsightBlock('Lineage 2M', parseInsightSection(c,'L2M'), '#E06090')}
+    ${renderInsightBlock('Rememento', parseInsightSection(c,'REM'), '#9090A0')}
+    ${renderInsightBlock('Action items', parseInsightSection(c,'ACTION'), '#4A9EF5')}
+  `;
+}
+
+async function generateInsightsNow() {
+  const btn = document.getElementById('gen-btn');
+  if (!btn) return;
+  btn.textContent = 'Generating...';
+  btn.disabled = true;
+
+  try {
+    // 데이터 집계
+    const games = ['Play Together','CSB M','Genesis','Lineage 2M','Rememento'];
+    const allYMs = getYMs();
+    const latestYM = allYMs.slice(-1)[0];
+    const prevYM = allYMs.slice(-2,-1)[0];
+    const latestTotal = RAW.filter(r=>r.ym===latestYM).reduce((s,r)=>s+(r.revenue||0),0);
+    const prevTotal = RAW.filter(r=>r.ym===prevYM).reduce((s,r)=>s+(r.revenue||0),0);
+    const portfolioMoM = prevTotal>0?((latestTotal-prevTotal)/prevTotal*100).toFixed(1):null;
+
+    const gameSummary = {};
+    games.forEach(g => {
+      const rows = getGameData(g);
+      if (!rows.length) return;
+      const recent = rows.slice(-3);
+      const latest = rows.slice(-1)[0];
+      const prev = rows.slice(-2,-1)[0];
+      const mom = prev&&prev.revenue?((latest.revenue-prev.revenue)/prev.revenue*100).toFixed(1):null;
+      const rs = getRs(g);
+      gameSummary[g] = {
+        total_revenue: Math.round(rows.reduce((s,r)=>s+(r.revenue||0),0)),
+        latest_revenue: Math.round(latest.revenue||0),
+        latest_ym: latest.ym,
+        mom_pct: mom?parseFloat(mom):null,
+        avg_arppu: parseFloat((recent.filter(r=>r.arppu).reduce((s,r,_,a)=>s+r.arppu/a.length,0)||0).toFixed(1)),
+        avg_cr_pct: parseFloat(((recent.filter(r=>r.cr).reduce((s,r,_,a)=>s+r.cr/a.length,0)||0)*100).toFixed(2)),
+        roi: parseFloat(gameRoi(g).toFixed(2)),
+        mg_recoup_pct: parseFloat(mgRecoupPct(g).toFixed(1)),
+        months_live: rows.length
+      };
+    });
+
+    const dataStr = JSON.stringify({
+      report_month: latestYM,
+      portfolio: {
+        total_revenue: Math.round(RAW.reduce((s,r)=>s+(r.revenue||0),0)),
+        latest_month_revenue: Math.round(latestTotal),
+        mom_pct: portfolioMoM?parseFloat(portfolioMoM):null
+      },
+      games: gameSummary
+    }, null, 2);
+
+    const prompt = `당신은 모바일 게임 퍼블리싱 비즈니스 애널리스트입니다.
+아래는 한국 게임 포트폴리오의 ${latestYM} 기준 성과 데이터입니다.
+
+${dataStr}
+
+용어: total_revenue=누적매출(USD), mom_pct=전월대비증감률, avg_arppu=최근3개월평균ARPPU, avg_cr_pct=전환율%, roi=투자수익률, mg_recoup_pct=MG상쇄율%
+
+다음 형식으로 한국어로 인사이트를 작성하세요. 각 섹션은 반드시 아래 마커로 시작:
+
+[PORTFOLIO]
+전체 현황 2-3문장. 총 매출, MoM, 트렌드 포함.
+
+[PTG]
+Play Together 인사이트. 2-3문장.
+
+[CSB]
+CSB M 인사이트. 2-3문장.
+
+[GEN]
+Genesis 인사이트. 2-3문장.
+
+[L2M]
+Lineage 2M 인사이트. 2-3문장.
+
+[REM]
+Rememento 최종 성과 요약. 1-2문장.
+
+[ACTION]
+이번 달 액션 아이템 3가지를 bullet point로.
+
+숫자를 구체적으로 인용하고 비즈니스 인사이트를 제공하세요.`;
+
+    const GEMINI_KEY = 'AIzaSyDdQWowbqmoLqXvF62lDVEiLSZi7c9jrHo';
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        contents: [{parts:[{text: prompt}]}],
+        generationConfig: {temperature:0.4, maxOutputTokens:2048}
+      })
+    });
+    const data = await res.json();
+    const content = data.candidates[0].content.parts[0].text;
+
+    // Supabase에 저장
+    const now = new Date();
+    const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    await api('insights','POST',{year_month:ym, content},{}, true);
+
+    LATEST_INSIGHT = {year_month:ym, content, generated_at: now.toISOString()};
+    buildInsights();
+
+  } catch(e) {
+    console.error('Insight generation failed:', e);
+    alert('인사이트 생성 실패: ' + e.message);
+    btn.textContent = 'Generate insights';
+    btn.disabled = false;
+  }
+}
+
+// ===== GAME PAGE =====
+function renderGame(game) {
+  const gRows = getGameData(game);
+  const c = clr(game);
+  const totalRev = gRows.reduce((s,r)=>s+(r.revenue||0),0);
+  const totalProfit = ourProfit(game, totalRev);
+  const invest = getLf(game) + getMg(game);
+  const roi = invest > 0 ? (totalProfit/invest).toFixed(1) : '-';
+  const latestRev = gRows.slice(-1)[0]?.revenue;
+  const prevRev = gRows.slice(-2,-1)[0]?.revenue;
+  const gameMoM = prevRev > 0 ? ((latestRev-prevRev)/prevRev*100).toFixed(1) : null;
+  const avgArppu = gRows.filter(r=>r.arppu!=null).reduce((s,r,_,a)=>s+r.arppu/a.length,0);
+  const avgCr = gRows.filter(r=>r.cr!=null).reduce((s,r,_,a)=>s+r.cr/a.length,0);
+  const recoup = mgRecoupPct(game);
+
+  document.getElementById('game-kpis').innerHTML = `
+    <div class="game-kpi"><div class="game-kpi-label">Accum revenue</div><div class="game-kpi-val" style="color:${c}">${fmt(totalRev)}</div><div class="game-kpi-sub">Our profit: ${fmt(totalProfit)}</div></div>
+    <div class="game-kpi"><div class="game-kpi-label">Latest month</div><div class="game-kpi-val">${fmt(latestRev)}</div><div class="game-kpi-sub">${gameMoM!=null?`<span class="${parseFloat(gameMoM)>=0?'up':'down'}">${gameMoM}%</span> MoM`:'-'}</div></div>
+    <div class="game-kpi"><div class="game-kpi-label">ROI</div><div class="game-kpi-val">${roi}x</div><div class="game-kpi-sub">Our profit / (LF+MG)</div></div>
+    <div class="game-kpi"><div class="game-kpi-label">MG recoup</div><div class="game-kpi-val">${recoup.toFixed(0)}%</div><div class="game-kpi-sub">매출×RS / MG | Avg CR ${pct(avgCr)}</div></div>`;
+
+  document.querySelectorAll('#game-tabs .tab').forEach((el,i)=>el.classList.toggle('active',['revenue','cr_arppu','dau_mau','mkt'][i]===currentGameTab));
+  buildGameChart(game, currentGameTab);
+}
+
+function buildGameChart(game, metric) {
+  if (gameChart1) { gameChart1.destroy(); gameChart1=null; }
+  if (gameChart2) { gameChart2.destroy(); gameChart2=null; }
+  const gRows = getGameData(game);
+  const labels = gRows.map(r=>r.ym);
+  const c = clr(game);
+  const area = document.getElementById('game-chart-area');
+  const gc='rgba(255,255,255,.04)', tc='#666';
+
+  if (metric==='revenue') {
+    area.innerHTML=`<div style="display:flex;gap:12px;margin-bottom:12px"><span class="leg-item"><span class="leg-dot" style="background:${c}bb"></span>Revenue</span><span class="leg-item"><span class="leg-dot" style="background:${c}44"></span>Our profit (×(1-RS))</span></div><div class="chart-wrap" style="height:280px"><canvas id="gameChart1"></canvas></div>`;
+    const rs = getRs(game);
+    gameChart1=new Chart(document.getElementById('gameChart1').getContext('2d'),{type:'bar',data:{labels,datasets:[{label:'Revenue',data:gRows.map(r=>r.revenue),backgroundColor:c+'bb',borderWidth:0},{label:'Our profit',data:gRows.map(r=>r.revenue*(1-rs)),backgroundColor:c+'44',borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c2=>`${c2.dataset.label}: ${fmt(c2.raw)}`}}},scales:{x:{ticks:{autoSkip:true,maxRotation:45,font:{size:10},color:tc},grid:{color:gc}},y:{ticks:{callback:v=>fmt(v),font:{size:10},color:tc},grid:{color:gc}}}}});
+  } else if (metric==='cr_arppu') {
+    area.innerHTML=`<div class="two-col"><div class="chart-wrap" style="height:240px"><canvas id="gameChart1"></canvas></div><div class="chart-wrap" style="height:240px"><canvas id="gameChart2"></canvas></div></div>`;
+    gameChart1=new Chart(document.getElementById('gameChart1').getContext('2d'),{type:'line',data:{labels,datasets:[{label:'CR%',data:gRows.map(r=>r.cr!=null?+(r.cr*100).toFixed(2):null),borderColor:c,backgroundColor:c+'22',fill:true,borderWidth:2,pointRadius:2,tension:0.3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},title:{display:true,text:'Conversion rate (%)',font:{size:11,weight:'500'},color:'#888'}},scales:{x:{ticks:{autoSkip:true,maxRotation:45,font:{size:9},color:tc},grid:{color:gc}},y:{ticks:{callback:v=>v.toFixed(1)+'%',font:{size:10},color:tc},grid:{color:gc}}}}});
+    gameChart2=new Chart(document.getElementById('gameChart2').getContext('2d'),{type:'line',data:{labels,datasets:[{label:'ARPPU',data:gRows.map(r=>r.arppu),borderColor:'#E8A030',backgroundColor:'#E8A03022',fill:true,borderWidth:2,pointRadius:2,tension:0.3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},title:{display:true,text:'ARPPU (USD)',font:{size:11,weight:'500'},color:'#888'}},scales:{x:{ticks:{autoSkip:true,maxRotation:45,font:{size:9},color:tc},grid:{color:gc}},y:{ticks:{callback:v=>'$'+v.toFixed(0),font:{size:10},color:tc},grid:{color:gc}}}}});
+  } else if (metric==='dau_mau') {
+    area.innerHTML=`<div class="two-col"><div class="chart-wrap" style="height:240px"><canvas id="gameChart1"></canvas></div><div class="chart-wrap" style="height:240px"><canvas id="gameChart2"></canvas></div></div>`;
+    gameChart1=new Chart(document.getElementById('gameChart1').getContext('2d'),{type:'line',data:{labels,datasets:[{label:'DAU',data:gRows.map(r=>r.dau),borderColor:c,backgroundColor:c+'22',fill:true,borderWidth:2,pointRadius:2,tension:0.3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},title:{display:true,text:'Daily active users',font:{size:11,weight:'500'},color:'#888'}},scales:{x:{ticks:{autoSkip:true,maxRotation:45,font:{size:9},color:tc},grid:{color:gc}},y:{ticks:{callback:v=>fmtN(v),font:{size:10},color:tc},grid:{color:gc}}}}});
+    gameChart2=new Chart(document.getElementById('gameChart2').getContext('2d'),{type:'line',data:{labels,datasets:[{label:'MAU',data:gRows.map(r=>r.mau),borderColor:'#2ECC9A',backgroundColor:'#2ECC9A22',fill:true,borderWidth:2,pointRadius:2,tension:0.3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},title:{display:true,text:'Monthly active users',font:{size:11,weight:'500'},color:'#888'}},scales:{x:{ticks:{autoSkip:true,maxRotation:45,font:{size:9},color:tc},grid:{color:gc}},y:{ticks:{callback:v=>fmtN(v),font:{size:10},color:tc},grid:{color:gc}}}}});
+  } else {
+    area.innerHTML=`<div class="chart-wrap" style="height:280px"><canvas id="gameChart1"></canvas></div>`;
+    gameChart1=new Chart(document.getElementById('gameChart1').getContext('2d'),{type:'line',data:{labels,datasets:[{label:'Mkt/Rev %',data:gRows.map(r=>r.mkt_cost!=null&&r.revenue>0?+(r.mkt_cost/r.revenue*100).toFixed(1):null),borderColor:'#E06090',backgroundColor:'#E0609022',fill:true,borderWidth:2,pointRadius:2,tension:0.3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},title:{display:true,text:'Marketing cost / Revenue (%)',font:{size:11,weight:'500'},color:'#888'}},scales:{x:{ticks:{autoSkip:true,maxRotation:45,font:{size:10},color:tc},grid:{color:gc}},y:{ticks:{callback:v=>v.toFixed(0)+'%',font:{size:10},color:tc},grid:{color:gc}}}}});
+  }
+}
+
+function switchGameTab(t) {
+  currentGameTab=t;
+  document.querySelectorAll('#game-tabs .tab').forEach((el,i)=>el.classList.toggle('active',['revenue','cr_arppu','dau_mau','mkt'][i]===t));
+  buildGameChart(currentGame, t);
+}
+
+// ===== DEALS PAGE =====
+function renderDeals() {
+  const sc = s => s==='Launched'?'badge-green':s==='Terminated'?'badge-red':s==='Not Launched'?'badge-amber':'badge-gray';
+  document.getElementById('deals-tbody').innerHTML = DEALS.map((d, idx) => {
+    const key = d.id || idx;
+    return `<tr>
+      <td><span class="gdot" style="background:${COLORS[d.title]||'#555'}"></span>${d.title}</td>
+      <td style="color:var(--text2)">${d.developer||'-'}</td>
+      <td style="color:var(--text2)">${d.region||'-'}</td>
+      <td class="mono">${fmt(d.lf)}</td>
+      <td class="mono">${fmt(d.mg)}</td>
+      <td class="mono">${d.rs!=null?(d.rs*100).toFixed(0)+'%':'-'}</td>
+      <td class="mono" style="color:var(--text2)">${d.start_date||'-'}</td>
+      <td class="mono" style="color:var(--text2)">${d.end_date?d.end_date.slice(0,4):'-'}</td>
+      <td><span class="badge ${sc(d.status)}">${d.status}</span></td>
+      <td style="font-size:11px;color:var(--text2);max-width:220px;line-height:1.5">${d.special_condition||'-'}</td>
+      <td style="display:flex;gap:6px;white-space:nowrap">
+        <button class="btn" style="font-size:11px;padding:3px 10px" onclick="editDeal(${JSON.stringify(key)})">Edit</button>
+        <button class="btn btn-danger" style="font-size:11px;padding:3px 10px" onclick="deleteDeal(${JSON.stringify(key)})">Delete</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function editDeal(key) {
+  const d = typeof key === 'number' ? DEALS[key] : (DEALS.find(d => d.id === key) || DEALS[key]);
+  if (!d) return;
+  editingDealId = d.id || key;
+  document.getElementById('deal-modal-title').textContent = 'Edit deal';
+  document.getElementById('d-title').value = d.title || '';
+  document.getElementById('d-developer').value = d.developer || '';
+  document.getElementById('d-region').value = d.region || '';
+  document.getElementById('d-status').value = d.status || 'Not Launched';
+  document.getElementById('d-lf').value = d.lf || '';
+  document.getElementById('d-mg').value = d.mg || '';
+  document.getElementById('d-rs').value = d.rs != null ? (d.rs*100) : '';
+  document.getElementById('d-start').value = d.start_date || '';
+  document.getElementById('d-end').value = d.end_date || '';
+  document.getElementById('d-special').value = d.special_condition || '';
+  openModal('deal');
+}
+
+async function deleteDeal(key) {
+  if (!confirm('Delete this deal?')) return;
+  try {
+    const d = typeof key === 'number' ? DEALS[key] : DEALS.find(d => d.id === key);
+    if (d && d.id) {
+      await api('deal_terms', 'DELETE', null, `id=eq.${d.id}`);
+      DEALS = DEALS.filter(x => x.id !== d.id);
+    } else {
+      // no id — delete by index
+      DEALS.splice(key, 1);
+    }
+    renderDeals();
+    updateLastUpdated();
+  } catch(e) { alert('Delete failed: ' + e.message); }
+}
+
+// ===== DATA PAGE =====
+function renderDataPage() {
+  const gameList = ['All', ...GAMES];
+  document.getElementById('data-game-tabs').innerHTML = gameList.map(g =>
+    `<button class="tab${g===currentDataGame?' active':''}" onclick="switchDataGame('${g}')">${g==='All'?'All games':g}</button>`
+  ).join('');
+  renderDataTable(currentDataGame);
+}
+
+function switchDataGame(g) { currentDataGame=g; renderDataPage(); }
+
+function renderDataTable(g) {
+  const filtered = g==='All' ? RAW : RAW.filter(r=>r.game===g);
+  const sorted = [...filtered].sort((a,b)=>b.ym.localeCompare(a.ym)||a.game.localeCompare(b.game));
+  const showGame = g==='All';
+  document.getElementById('data-thead').innerHTML = `<tr>
+    <th>Month</th>${showGame?'<th>Game</th>':''}
+    <th>Revenue</th><th>DAU</th><th>MAU</th><th>NRU</th><th>MPU</th><th>ARPPU</th><th>CR%</th><th>Mkt Cost</th><th>Action</th>
+  </tr>`;
+  document.getElementById('data-tbody').innerHTML = sorted.map(r => `<tr>
+    <td class="mono">${r.ym}</td>
+    ${showGame?`<td><span class="gdot" style="background:${clr(r.game)}"></span>${r.game}</td>`:''}
+    <td class="mono">${fmt(r.revenue)}</td>
+    <td class="mono">${fmtN(r.dau)}</td>
+    <td class="mono">${fmtN(r.mau)}</td>
+    <td class="mono">${fmtN(r.nru)}</td>
+    <td class="mono">${fmtN(r.mpu)}</td>
+    <td class="mono">${r.arppu!=null?'$'+r.arppu.toFixed(0):'-'}</td>
+    <td class="mono">${pct(r.cr)}</td>
+    <td class="mono">${fmt(r.mkt_cost)}</td>
+    <td><button class="btn btn-danger" style="font-size:11px;padding:3px 8px" onclick="deleteMonthly('${r.id}')">Delete</button></td>
+  </tr>`).join('');
+}
+
+async function deleteMonthly(id) {
+  if (!confirm('Delete this row?')) return;
+  try {
+    await api('monthly_data', 'DELETE', null, `id=eq.${id}`);
+    RAW = RAW.filter(r => r.id !== id);
+    renderDataPage();
+    updateLastUpdated();
+  } catch(e) { alert('Delete failed: ' + e.message); }
+}
+
+// ===== MODALS =====
+function openModal(type) {
+  if (type === 'deal') {
+    if (!editingDealId) {
+      document.getElementById('deal-modal-title').textContent = 'Add deal';
+      ['d-title','d-developer','d-region','d-lf','d-mg','d-rs','d-start','d-end','d-special'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+      document.getElementById('d-status').value = 'Not Launched';
+    }
+    document.getElementById('deal-error').style.display = 'none';
+    document.getElementById('modal-deal').classList.add('open');
+  } else {
+    document.getElementById('monthly-error').style.display = 'none';
+    document.getElementById('modal-monthly').classList.add('open');
+  }
+}
+
+function closeModal(type) {
+  document.getElementById(`modal-${type}`).classList.remove('open');
+  if (type === 'deal') editingDealId = null;
+}
+
+async function submitMonthly() {
+  const game = document.getElementById('f-game').value;
+  const dateRaw = document.getElementById('f-date').value;
+  const revenue = parseFloat(document.getElementById('f-revenue').value);
+  const errEl = document.getElementById('monthly-error');
+  if (!game || !dateRaw || isNaN(revenue)) {
+    errEl.textContent = 'Game, month, revenue는 필수입니다.';
+    errEl.style.display = 'block'; return;
+  }
+  const ym = dateRaw.slice(0,7);
+  if (RAW.find(r=>r.game===game&&r.ym===ym)) {
+    errEl.textContent = `${game} ${ym} 데이터가 이미 존재합니다. Raw Data에서 삭제 후 다시 입력하세요.`;
+    errEl.style.display = 'block'; return;
+  }
+  const crRaw = parseFloat(document.getElementById('f-cr').value);
+  const row = {
+    game, ym, revenue,
+    dau: parseFloat(document.getElementById('f-dau').value)||null,
+    mau: parseFloat(document.getElementById('f-mau').value)||null,
+    nru: parseFloat(document.getElementById('f-nru').value)||null,
+    mpu: parseFloat(document.getElementById('f-mpu').value)||null,
+    arppu: parseFloat(document.getElementById('f-arppu').value)||null,
+    cr: !isNaN(crRaw) ? crRaw/100 : null,
+    mkt_cost: parseFloat(document.getElementById('f-mkt').value)||null,
+  };
+  const btn = document.getElementById('monthly-submit-btn');
+  btn.textContent='Saving...'; btn.disabled=true;
+  try {
+    const saved = await api('monthly_data','POST',row);
+    RAW.push(Array.isArray(saved)?saved[0]:saved||row);
+    closeModal('monthly');
+    updateLastUpdated();
+    ['f-game','f-date','f-revenue','f-dau','f-mau','f-nru','f-mpu','f-arppu','f-cr','f-mkt'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    const ap = document.querySelector('.page.active').id;
+    if(ap==='page-overview') renderOverview();
+    else if(ap==='page-game') renderGame(currentGame);
+    else if(ap==='page-data') renderDataPage();
+    btn.textContent='Saved!'; btn.style.background='#2ECC9A';
+    setTimeout(()=>{btn.textContent='Save';btn.style.background='';btn.disabled=false;},1500);
+  } catch(e) {
+    errEl.textContent='저장 실패: '+e.message; errEl.style.display='block';
+    btn.textContent='Save'; btn.disabled=false;
+  }
+}
+
+async function submitDeal() {
+  const title = document.getElementById('d-title').value.trim();
+  const errEl = document.getElementById('deal-error');
+  if (!title) { errEl.textContent='Game title은 필수입니다.'; errEl.style.display='block'; return; }
+  const rsRaw = parseFloat(document.getElementById('d-rs').value);
+  const row = {
+    title,
+    developer: document.getElementById('d-developer').value.trim()||null,
+    region: document.getElementById('d-region').value.trim()||null,
+    status: document.getElementById('d-status').value,
+    lf: parseFloat(document.getElementById('d-lf').value)||null,
+    mg: parseFloat(document.getElementById('d-mg').value)||null,
+    rs: !isNaN(rsRaw) ? rsRaw/100 : null,
+    start_date: document.getElementById('d-start').value||null,
+    end_date: document.getElementById('d-end').value||null,
+    special_condition: document.getElementById('d-special').value.trim()||null,
+  };
+  const btn = document.getElementById('deal-submit-btn');
+  btn.textContent='Saving...'; btn.disabled=true;
+  try {
+    if (editingDealId !== null) {
+      if (typeof editingDealId === 'string' || (typeof editingDealId === 'number' && DEALS[editingDealId]?.id)) {
+        const realId = typeof editingDealId === 'number' ? DEALS[editingDealId].id : editingDealId;
+        const saved = await api('deal_terms','PATCH',row,`id=eq.${realId}`);
+        const updated = Array.isArray(saved)?saved[0]:{...row,id:realId};
+        DEALS = DEALS.map(d=>d.id===realId?updated:d);
+      } else if (typeof editingDealId === 'number') {
+        DEALS[editingDealId] = {...DEALS[editingDealId], ...row};
+      }
+    } else {
+      const saved = await api('deal_terms','POST',row);
+      DEALS.push(Array.isArray(saved)?saved[0]:saved||row);
+    }
+    closeModal('deal');
+    updateLastUpdated();
+    renderDeals();
+    btn.textContent='Saved!'; btn.style.background='#2ECC9A';
+    setTimeout(()=>{btn.textContent='Save';btn.style.background='';btn.disabled=false;},1500);
+  } catch(e) {
+    errEl.textContent='저장 실패: '+e.message; errEl.style.display='block';
+    btn.textContent='Save'; btn.disabled=false;
+  }
+}
+
+function updateLastUpdated() {
+  const now = new Date();
+  document.getElementById('last-updated').textContent = `Updated ${now.toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}`;
+}
+
+// Close modal on overlay click
+['modal-monthly','modal-deal'].forEach(id => {
+  document.getElementById(id).addEventListener('click', function(e) {
+    if (e.target===this) closeModal(id.replace('modal-',''));
+  });
+});
+
+// ===== INIT =====
+init();
+</script>
+</body>
+</html>

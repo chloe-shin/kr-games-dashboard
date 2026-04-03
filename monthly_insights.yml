@@ -1,0 +1,169 @@
+name: Monthly AI Insights
+
+on:
+  schedule:
+    - cron: '0 1 1 * *'  # 매월 1일 오전 1시 (UTC)
+  workflow_dispatch:       # 수동 실행 버튼도 활성화
+
+jobs:
+  generate-insights:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate insights via Gemini and save to Supabase
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          python3 << 'PYEOF'
+          import urllib.request
+          import json
+          import datetime
+
+          GEMINI_KEY = "${{ secrets.GEMINI_API_KEY }}"
+          SUPA_URL   = "${{ secrets.SUPABASE_URL }}"
+          SUPA_KEY   = "${{ secrets.SUPABASE_KEY }}"
+          HEADERS    = {"apikey": SUPA_KEY, "Authorization": f"Bearer {SUPA_KEY}", "Content-Type": "application/json", "Prefer": "return=representation"}
+
+          def supa_get(table, params=""):
+              url = f"{SUPA_URL}/rest/v1/{table}?{params}"
+              req = urllib.request.Request(url, headers=HEADERS)
+              with urllib.request.urlopen(req) as r:
+                  return json.loads(r.read())
+
+          def supa_post(table, body):
+              url = f"{SUPA_URL}/rest/v1/{table}"
+              data = json.dumps(body).encode()
+              req = urllib.request.Request(url, data=data, headers=HEADERS, method="POST")
+              with urllib.request.urlopen(req) as r:
+                  return json.loads(r.read())
+
+          def supa_upsert(table, body):
+              h = dict(HEADERS)
+              h["Prefer"] = "resolution=merge-duplicates,return=representation"
+              url = f"{SUPA_URL}/rest/v1/{table}"
+              data = json.dumps(body).encode()
+              req = urllib.request.Request(url, data=data, headers=h, method="POST")
+              with urllib.request.urlopen(req) as r:
+                  return json.loads(r.read())
+
+          # 현재 월
+          now = datetime.datetime.utcnow()
+          year_month = now.strftime("%Y-%m")
+          prev_month = (now.replace(day=1) - datetime.timedelta(days=1)).strftime("%Y-%m")
+
+          print(f"Generating insights for {year_month}")
+
+          # Supabase에서 데이터 가져오기
+          monthly = supa_get("monthly_data", "order=ym.desc&limit=100")
+          deals   = supa_get("deal_terms",   "order=created_at.asc")
+
+          # 게임별 최근 3개월 집계
+          games = ["Play Together", "CSB M", "Genesis", "Lineage 2M", "Rememento"]
+          summary = {}
+          for game in games:
+              rows = sorted([r for r in monthly if r["game"] == game], key=lambda x: x["ym"])
+              if not rows:
+                  continue
+              recent = rows[-3:]
+              total_rev = sum(r["revenue"] or 0 for r in rows)
+              latest = rows[-1]
+              prev   = rows[-2] if len(rows) >= 2 else None
+              mom = ((latest["revenue"] - prev["revenue"]) / prev["revenue"] * 100) if prev and prev["revenue"] else None
+              deal = next((d for d in deals if d["title"].startswith(game) or game.startswith(d["title"][:6])), None)
+              rs = deal["rs"] if deal else 0.25
+              lf = deal["lf"] if deal else 0
+              mg = deal["mg"] if deal else 0
+              our_profit = total_rev * (1 - rs)
+              invest = (lf or 0) + (mg or 0)
+              roi = our_profit / invest if invest > 0 else 0
+              mg_recoup = total_rev * rs / mg * 100 if mg else 0
+              summary[game] = {
+                  "total_revenue": round(total_rev),
+                  "latest_revenue": round(latest["revenue"] or 0),
+                  "latest_ym": latest["ym"],
+                  "mom_pct": round(mom, 1) if mom is not None else None,
+                  "avg_arppu": round(sum(r["arppu"] or 0 for r in recent if r["arppu"]) / max(len([r for r in recent if r["arppu"]]), 1), 1),
+                  "avg_cr_pct": round(sum(r["cr"] or 0 for r in recent if r["cr"]) / max(len([r for r in recent if r["cr"]]), 1) * 100, 2),
+                  "roi": round(roi, 2),
+                  "mg_recoup_pct": round(mg_recoup, 1),
+                  "months_live": len(rows),
+                  "status": deal["status"] if deal else "Unknown"
+              }
+
+          # 포트폴리오 합계
+          all_rows = [r for r in monthly]
+          portfolio_rev = sum(r["revenue"] or 0 for r in all_rows)
+          latest_month_rev = sum(r["revenue"] or 0 for r in all_rows if r["ym"] == sorted(set(r["ym"] for r in all_rows))[-1])
+          prev_month_rev   = sum(r["revenue"] or 0 for r in all_rows if r["ym"] == sorted(set(r["ym"] for r in all_rows))[-2]) if len(set(r["ym"] for r in all_rows)) >= 2 else 0
+          portfolio_mom = round((latest_month_rev - prev_month_rev) / prev_month_rev * 100, 1) if prev_month_rev else None
+
+          data_str = json.dumps({
+              "report_month": year_month,
+              "portfolio": {
+                  "total_revenue": round(portfolio_rev),
+                  "latest_month_revenue": round(latest_month_rev),
+                  "mom_pct": portfolio_mom
+              },
+              "games": summary
+          }, ensure_ascii=False, indent=2)
+
+          prompt = f"""당신은 모바일 게임 퍼블리싱 비즈니스 애널리스트입니다.
+아래는 한국 게임 포트폴리오의 {year_month} 기준 성과 데이터입니다.
+
+{data_str}
+
+용어 설명:
+- total_revenue: 누적 매출 (USD)
+- latest_revenue: 가장 최근 월 매출
+- mom_pct: 전월 대비 매출 증감률 (%)
+- avg_arppu: 최근 3개월 평균 결제 유저당 매출 (USD)
+- avg_cr_pct: 최근 3개월 평균 결제 전환율 (%)
+- roi: 우리 수익(매출×(1-RS)) / (LF+MG) — 투자 대비 수익률
+- mg_recoup_pct: 누적매출×RS / MG — 개발사 선급금 상쇄율
+- months_live: 런칭 후 운영 개월 수
+
+다음 형식으로 한국어로 인사이트를 작성해주세요. 각 섹션은 반드시 아래 마커로 시작하세요:
+
+[PORTFOLIO]
+전체 포트폴리오 현황을 2-3문장으로 요약. 총 매출, MoM 성장률, 주목할 트렌드 포함.
+
+[PTG]
+Play Together 인사이트. 성장세/하락세, CR/ARPPU 변화, 특이사항. 2-3문장.
+
+[CSB]
+CSB M 인사이트. 2-3문장.
+
+[GEN]
+Genesis 인사이트. 2-3문장.
+
+[L2M]
+Lineage 2M 인사이트. 2-3문장.
+
+[REM]
+Rememento 인사이트 (서비스 종료 게임). 최종 성과 요약. 1-2문장.
+
+[ACTION]
+이번 달 주목해야 할 액션 아이템 3가지를 bullet point로. 구체적이고 실행 가능한 내용으로.
+
+숫자는 구체적으로 인용하고, 단순 나열이 아닌 비즈니스 인사이트를 제공하세요."""
+
+          # Gemini API 호출
+          gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_KEY}"
+          gemini_body = json.dumps({
+              "contents": [{"parts": [{"text": prompt}]}],
+              "generationConfig": {"temperature": 0.4, "maxOutputTokens": 2048}
+          }).encode()
+          req = urllib.request.Request(gemini_url, data=gemini_body, headers={"Content-Type": "application/json"}, method="POST")
+          with urllib.request.urlopen(req) as r:
+              result = json.loads(r.read())
+
+          content = result["candidates"][0]["content"]["parts"][0]["text"]
+          print("Generated insights:")
+          print(content[:500])
+
+          # Supabase에 저장 (upsert — 같은 달이면 덮어쓰기)
+          supa_upsert("insights", {"year_month": year_month, "content": content})
+          print(f"Saved insights for {year_month} to Supabase!")
+
+          PYEOF
