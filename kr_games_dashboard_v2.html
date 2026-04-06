@@ -437,127 +437,6 @@ const HDRS = {
 const GAMES = ['Play Together','CSB M','Genesis','Lineage 2M','Rememento'];
 const COLORS = {'Play Together':'#4A9EF5','CSB M':'#2ECC9A','Genesis':'#E8A030','Lineage 2M':'#E06090','Rememento':'#9090A0'};
 
-// ===== SEED DATA =====
-const SEED_MONTHLY = [
-  {game:'Play Together',ym:'2022-06',dau:872354,mau:872354,nru:872354,mpu:8942,arppu:null,cr:0.01025,revenue:54986,mkt_cost:12960},
-  {game:'Play Together',ym:'2022-07',dau:566759,mau:3946002,nru:3298635,mpu:27960,arppu:17.28,cr:0.007086,revenue:483243,mkt_cost:286901},
-  {game:'Play Together',ym:'2022-08',dau:537240,mau:3656578,nru:2483420,mpu:24072,arppu:18.79,cr:0.006583,revenue:452321,mkt_cost:619223},
-  {game:'Play Together',ym:'2022-09',dau:400693,mau:2333129,nru:1138886,mpu:18710,arppu:20.40,cr:0.008019,revenue:381758,mkt_cost:138463},
-  {game:'Play Together',ym:'2022-10',dau:333485,mau:1938865,nru:867719,mpu:15348,arppu:19.13,cr:0.007916,revenue:293590,mkt_cost:55039},
-  {game:'Play Together',ym:'2022-11',dau:324820,mau:1821269,nru:850399,mpu:16629,arppu:15.95,cr:0.009130,revenue:265258,mkt_cost:35446},
-  {game:'Play Together',ym:'2022-12',dau:308750,mau:1828538,nru:859221,mpu:11935,arppu:19.96,cr:0.006527,revenue:238236,mkt_cost:40028},
-  {game:'Play Together',ym:'2023-01',dau:374984,mau:2343377,nru:1229426,mpu:14231,arppu:19.50,cr:0.006073,revenue:277515,mkt_cost:34930},
-  {game:'Play Together',ym:'2023-02',dau:374526,mau:2003131,nru:976727,mpu:11566,arppu:17.41,cr:0.005774,revenue:201346,mkt_cost:45303},
-  {game:'Play Together',ym:'2023-03',dau:444509,mau:2186897,nru:990760,mpu:14858,arppu:19.41,cr:0.006794,revenue:288404,mkt_cost:19159},
-  {game:'Play Together',ym:'2023-04',dau:607894,mau:2740797,nru:1319206,mpu:18257,arppu:17.96,cr:0.006661,revenue:327896,mkt_cost:20694},
-  {game:'Play Together',ym:'2023-05',dau:851564,mau:3832410,nru:1960473,mpu:21017,arppu:15.65,cr:0.005484,revenue:328958,mkt_cost:21821},
-  {game:'Play Together',ym:'2023-06',dau:1430419,mau:6063399,nru:3232539,mpu:42973,arppu:14.83,cr:0.007087,revenue:637430,mkt_cost:47283},
-  {game:'Play Together',ym:'2023-07',dau:1646769,mau:6349702,nru:2990872,mpu:52647,arppu:14.71,cr:0.008291,revenue:774249,mkt_cost:30383},
-  {game:'Play Together',ym:'2023-08',dau:1568909,mau:5650370,nru:2297169,mpu:67872,arppu:13.44,cr:0.012012,revenue:912243,mkt_cost:21711},
-  {game:'Play Together',ym:'2023-09',dau:1249860,mau:4477826,nru:1402935,mpu:47854,arppu:14.93,cr:0.010687,revenue:714487,mkt_cost:16921},
-  {game:'Play Together',ym:'2023-10',dau:987201,mau:3705788,nru:1051367,mpu:43616,arppu:15.03,cr:0.011770,revenue:655401,mkt_cost:11158},
-  {game:'Play Together',ym:'2023-11',dau:798760,mau:3138445,nru:816881,mpu:37758,arppu:14.99,cr:0.012031,revenue:565962,mkt_cost:15043},
-  {game:'Play Together',ym:'2023-12',dau:756604,mau:2918294,nru:750968,mpu:28616,arppu:16.83,cr:0.009806,revenue:481608,mkt_cost:19745},
-  {game:'Play Together',ym:'2024-01',dau:819664,mau:3280034,nru:1234327,mpu:27226,arppu:17.49,cr:0.008301,revenue:476110,mkt_cost:32015},
-  {game:'Play Together',ym:'2024-02',dau:951906,mau:3817437,nru:1197217,mpu:34812,arppu:18.34,cr:0.009119,revenue:638464,mkt_cost:27400},
-  {game:'Play Together',ym:'2024-03',dau:976692,mau:3915136,nru:1529924,mpu:25244,arppu:18.83,cr:0.006448,revenue:475365,mkt_cost:22156},
-  {game:'Play Together',ym:'2024-04',dau:1256343,mau:3886191,nru:936685,mpu:31372,arppu:16.99,cr:0.008073,revenue:533055,mkt_cost:14626},
-  {game:'Play Together',ym:'2024-05',dau:1081046,mau:4185400,nru:1460452,mpu:29650,arppu:16.51,cr:0.007084,revenue:489493,mkt_cost:16476},
-  {game:'Play Together',ym:'2024-06',dau:1378375,mau:5016173,nru:2302310,mpu:64201,arppu:12.15,cr:0.012799,revenue:779785,mkt_cost:58236},
-  {game:'Play Together',ym:'2024-07',dau:1450865,mau:5074734,nru:2189156,mpu:82855,arppu:10.44,cr:0.016327,revenue:865172,mkt_cost:38828},
-  {game:'Play Together',ym:'2024-08',dau:1425570,mau:5674253,nru:2026004,mpu:76266,arppu:13.40,cr:0.013441,revenue:1022086,mkt_cost:30556},
-  {game:'Play Together',ym:'2024-09',dau:1196201,mau:5113900,nru:1369979,mpu:70121,arppu:13.35,cr:0.013712,revenue:935871,mkt_cost:12585},
-  {game:'Play Together',ym:'2024-10',dau:1017305,mau:4244027,nru:1088565,mpu:59010,arppu:13.82,cr:0.013904,revenue:815237,mkt_cost:21822},
-  {game:'Play Together',ym:'2024-11',dau:792833,mau:3573880,nru:848793,mpu:67833,arppu:14.56,cr:0.018980,revenue:987932,mkt_cost:10152},
-  {game:'Play Together',ym:'2024-12',dau:1172053,mau:5770811,nru:2098080,mpu:58317,arppu:14.41,cr:0.010106,revenue:840589,mkt_cost:14986},
-  {game:'Play Together',ym:'2025-01',dau:650839,mau:3889026,nru:1559454,mpu:61175,arppu:12.34,cr:0.015730,revenue:754604,mkt_cost:31282},
-  {game:'Play Together',ym:'2025-02',dau:611186,mau:3632286,nru:1479342,mpu:67039,arppu:11.49,cr:0.018456,revenue:770287,mkt_cost:27964},
-  {game:'Play Together',ym:'2025-03',dau:777777,mau:4364696,nru:1726451,mpu:74599,arppu:13.29,cr:0.017091,revenue:991486,mkt_cost:22338},
-  {game:'Play Together',ym:'2025-04',dau:954096,mau:4075850,nru:1328468,mpu:101428,arppu:12.07,cr:0.024885,revenue:1224013,mkt_cost:18194},
-  {game:'Play Together',ym:'2025-05',dau:1069659,mau:4276000,nru:1145561,mpu:120146,arppu:10.52,cr:0.028098,revenue:1263490,mkt_cost:23728},
-  {game:'Play Together',ym:'2025-06',dau:1270651,mau:5075054,nru:1856411,mpu:194586,arppu:9.92,cr:0.038342,revenue:1929615,mkt_cost:24153},
-  {game:'Play Together',ym:'2025-07',dau:1235179,mau:5301672,nru:1952749,mpu:231893,arppu:10.75,cr:0.043740,revenue:2491833,mkt_cost:99602},
-  {game:'Play Together',ym:'2025-08',dau:1170978,mau:4649484,nru:1433501,mpu:235826,arppu:12.65,cr:0.050721,revenue:2984119,mkt_cost:50545},
-  {game:'Play Together',ym:'2025-09',dau:999307,mau:4098542,nru:1057931,mpu:245752,arppu:11.56,cr:0.059961,revenue:2841519,mkt_cost:31174},
-  {game:'Play Together',ym:'2025-10',dau:1027951,mau:3713548,nru:969744,mpu:245183,arppu:10.68,cr:0.066024,revenue:2618628,mkt_cost:62741},
-  {game:'Play Together',ym:'2025-11',dau:1057953,mau:3685369,nru:959431,mpu:274201,arppu:12.03,cr:0.074403,revenue:3299588,mkt_cost:68089},
-  {game:'Play Together',ym:'2025-12',dau:1182481,mau:4353221,nru:1143023,mpu:299258,arppu:8.80,cr:0.068744,revenue:2632385,mkt_cost:133036},
-  {game:'Play Together',ym:'2026-01',dau:1328182,mau:4937202,nru:1270341,mpu:310062,arppu:8.23,cr:0.062801,revenue:2551447,mkt_cost:73296},
-  {game:'Play Together',ym:'2026-02',dau:1018336,mau:4856341,nru:1248395,mpu:290739,arppu:9.07,cr:0.059868,revenue:2637531,mkt_cost:269138},
-  {game:'Play Together',ym:'2026-03',dau:1049020,mau:4148122,nru:1269917,mpu:264295,arppu:9.92,cr:0.063714,revenue:2620812,mkt_cost:0},
-  {game:'CSB M',ym:'2024-01',dau:37256,mau:123513,nru:123513,mpu:6112,arppu:114.98,cr:0.049485,revenue:702763,mkt_cost:846157},
-  {game:'CSB M',ym:'2024-02',dau:14621,mau:63030,nru:34112,mpu:4550,arppu:440.81,cr:0.072188,revenue:2005678,mkt_cost:97478},
-  {game:'CSB M',ym:'2024-03',dau:9114,mau:23272,nru:8163,mpu:2992,arppu:438.11,cr:0.128567,revenue:1310818,mkt_cost:77436},
-  {game:'CSB M',ym:'2024-04',dau:7217,mau:15831,nru:4498,mpu:2122,arppu:520.37,cr:0.134041,revenue:1104217,mkt_cost:50266},
-  {game:'CSB M',ym:'2024-05',dau:5919,mau:12514,nru:2141,mpu:1699,arppu:569.00,cr:0.135768,revenue:966739,mkt_cost:17054},
-  {game:'CSB M',ym:'2024-06',dau:5035,mau:8812,nru:1521,mpu:1382,arppu:522.88,cr:0.156832,revenue:722620,mkt_cost:12300},
-  {game:'CSB M',ym:'2024-07',dau:4481,mau:8449,nru:1738,mpu:1334,arppu:527.64,cr:0.157889,revenue:703867,mkt_cost:28487},
-  {game:'CSB M',ym:'2024-08',dau:4001,mau:7145,nru:1223,mpu:1024,arppu:528.28,cr:0.143317,revenue:540957,mkt_cost:89646},
-  {game:'CSB M',ym:'2024-09',dau:3525,mau:6054,nru:865,mpu:965,arppu:420.35,cr:0.159399,revenue:405635,mkt_cost:3955},
-  {game:'CSB M',ym:'2024-10',dau:3242,mau:5442,nru:528,mpu:883,arppu:452.94,cr:0.162257,revenue:399949,mkt_cost:1652},
-  {game:'CSB M',ym:'2024-11',dau:3290,mau:5165,nru:501,mpu:1378,arppu:254.58,cr:0.266796,revenue:350815,mkt_cost:4374},
-  {game:'CSB M',ym:'2024-12',dau:3220,mau:5235,nru:608,mpu:1350,arppu:227.72,cr:0.257880,revenue:307416,mkt_cost:6598},
-  {game:'CSB M',ym:'2025-01',dau:3252,mau:5567,nru:715,mpu:1338,arppu:306.94,cr:0.240345,revenue:410686,mkt_cost:13433},
-  {game:'CSB M',ym:'2025-02',dau:3037,mau:4727,nru:405,mpu:1196,arppu:278.87,cr:0.253015,revenue:333528,mkt_cost:5003},
-  {game:'CSB M',ym:'2025-03',dau:3034,mau:5111,nru:774,mpu:1075,arppu:335.84,cr:0.210331,revenue:361023,mkt_cost:13365},
-  {game:'CSB M',ym:'2025-04',dau:2924,mau:4279,nru:446,mpu:898,arppu:335.19,cr:0.209862,revenue:301005,mkt_cost:11012},
-  {game:'CSB M',ym:'2025-05',dau:2606,mau:4306,nru:385,mpu:981,arppu:332.76,cr:0.227822,revenue:326435,mkt_cost:5869},
-  {game:'CSB M',ym:'2025-06',dau:2400,mau:4282,nru:431,mpu:661,arppu:379.52,cr:0.154367,revenue:250864,mkt_cost:2404},
-  {game:'CSB M',ym:'2025-07',dau:2371,mau:4675,nru:945,mpu:685,arppu:353.58,cr:0.146524,revenue:242199,mkt_cost:2747},
-  {game:'CSB M',ym:'2025-08',dau:2173,mau:3814,nru:374,mpu:578,arppu:439.00,cr:0.151500,revenue:253550,mkt_cost:1800},
-  {game:'CSB M',ym:'2025-09',dau:1984,mau:3347,nru:281,mpu:531,arppu:362.00,cr:0.158600,revenue:192120,mkt_cost:1484},
-  {game:'CSB M',ym:'2025-10',dau:1933,mau:3280,nru:260,mpu:509,arppu:369.00,cr:0.155183,revenue:187592,mkt_cost:1619},
-  {game:'CSB M',ym:'2025-11',dau:1887,mau:3360,nru:437,mpu:562,arppu:319.88,cr:0.167262,revenue:179775,mkt_cost:2195},
-  {game:'CSB M',ym:'2025-12',dau:1954,mau:3433,nru:320,mpu:555,arppu:300.74,cr:0.161666,revenue:166910,mkt_cost:1584},
-  {game:'CSB M',ym:'2026-01',dau:1953,mau:3716,nru:443,mpu:528,arppu:332.30,cr:0.142088,revenue:175464,mkt_cost:8836},
-  {game:'CSB M',ym:'2026-02',dau:2006,mau:4282,nru:975,mpu:571,arppu:299.70,cr:0.133349,revenue:171131,mkt_cost:18451},
-  {game:'CSB M',ym:'2026-03',dau:1767,mau:3098,nru:273,mpu:464,arppu:299.70,cr:0.149774,revenue:131382,mkt_cost:1792},
-  {game:'Genesis',ym:'2025-02',dau:109682,mau:667995,nru:667995,mpu:4939,arppu:81.20,cr:0.007394,revenue:401026,mkt_cost:492700},
-  {game:'Genesis',ym:'2025-03',dau:71093,mau:385048,nru:254340,mpu:2970,arppu:141.92,cr:0.007713,revenue:421492,mkt_cost:54960},
-  {game:'Genesis',ym:'2025-04',dau:31659,mau:61663,nru:9999,mpu:1465,arppu:127.84,cr:0.023758,revenue:187292,mkt_cost:9503},
-  {game:'Genesis',ym:'2025-05',dau:3223,mau:23035,nru:2091,mpu:846,arppu:161.02,cr:0.036727,revenue:136222,mkt_cost:0},
-  {game:'Genesis',ym:'2025-06',dau:2879,mau:13529,nru:1032,mpu:1007,arppu:90.05,cr:0.074433,revenue:90683,mkt_cost:0},
-  {game:'Genesis',ym:'2025-07',dau:2184,mau:8582,nru:848,mpu:531,arppu:119.36,cr:0.061874,revenue:63378,mkt_cost:0},
-  {game:'Genesis',ym:'2025-08',dau:1688,mau:3369,nru:770,mpu:474,arppu:118.81,cr:0.140695,revenue:56317,mkt_cost:0},
-  {game:'Genesis',ym:'2025-09',dau:1423,mau:2839,nru:617,mpu:364,arppu:178.60,cr:0.128214,revenue:65010,mkt_cost:0},
-  {game:'Genesis',ym:'2025-10',dau:1463,mau:5630,nru:2654,mpu:480,arppu:191.36,cr:0.085258,revenue:91854,mkt_cost:18828},
-  {game:'Genesis',ym:'2025-11',dau:1055,mau:2974,nru:374,mpu:234,arppu:202.21,cr:0.078682,revenue:47316,mkt_cost:0},
-  {game:'Genesis',ym:'2025-12',dau:936,mau:1783,nru:365,mpu:208,arppu:146.15,cr:0.116657,revenue:30400,mkt_cost:0},
-  {game:'Genesis',ym:'2026-01',dau:880,mau:1880,nru:500,mpu:222,arppu:201.82,cr:0.118085,revenue:44802,mkt_cost:0},
-  {game:'Genesis',ym:'2026-02',dau:869,mau:1731,nru:381,mpu:307,arppu:349.80,cr:0.177354,revenue:107391,mkt_cost:0},
-  {game:'Genesis',ym:'2026-03',dau:826,mau:1607,nru:375,mpu:264,arppu:268.96,cr:0.164281,revenue:71005,mkt_cost:0},
-  {game:'Lineage 2M',ym:'2025-05',dau:305539,mau:2131391,nru:2128521,mpu:86113,arppu:37.40,cr:0.040402,revenue:3223828,mkt_cost:2537274},
-  {game:'Lineage 2M',ym:'2025-06',dau:203132,mau:2364947,nru:2103793,mpu:120404,arppu:46.93,cr:0.050912,revenue:5650678,mkt_cost:406159},
-  {game:'Lineage 2M',ym:'2025-07',dau:153758,mau:1094740,nru:806126,mpu:60085,arppu:82.80,cr:0.054885,revenue:4974893,mkt_cost:null},
-  {game:'Lineage 2M',ym:'2025-08',dau:130702,mau:405368,nru:175755,mpu:20806,arppu:186.94,cr:0.051326,revenue:3889374,mkt_cost:null},
-  {game:'Lineage 2M',ym:'2025-09',dau:137642,mau:507713,nru:277597,mpu:34204,arppu:98.03,cr:0.067369,revenue:3353140,mkt_cost:51817},
-  {game:'Lineage 2M',ym:'2025-10',dau:174152,mau:436078,nru:157378,mpu:24253,arppu:106.11,cr:0.055616,revenue:2573501,mkt_cost:60623},
-  {game:'Lineage 2M',ym:'2025-11',dau:161775,mau:346499,nru:82175,mpu:10456,arppu:206.48,cr:0.030176,revenue:2158995,mkt_cost:null},
-  {game:'Lineage 2M',ym:'2025-12',dau:208307,mau:376787,nru:112573,mpu:7020,arppu:308.87,cr:0.018631,revenue:2168288,mkt_cost:null},
-  {game:'Lineage 2M',ym:'2026-01',dau:236649,mau:388914,nru:98524,mpu:6119,arppu:326.49,cr:0.015734,revenue:1997789,mkt_cost:null},
-  {game:'Lineage 2M',ym:'2026-02',dau:235093,mau:345936,nru:31808,mpu:6160,arppu:279.03,cr:0.017807,revenue:1718841,mkt_cost:8434},
-  {game:'Lineage 2M',ym:'2026-03',dau:193056,mau:267597,nru:7755,mpu:5430,arppu:328.75,cr:0.020292,revenue:1785122,mkt_cost:8284},
-  {game:'Rememento',ym:'2025-07',dau:null,mau:210967,nru:210940,mpu:19637,arppu:10.00,cr:0.093081,revenue:196294,mkt_cost:274889},
-  {game:'Rememento',ym:'2025-08',dau:null,mau:46338,nru:23958,mpu:2634,arppu:13.65,cr:0.056843,revenue:35954,mkt_cost:69063},
-  {game:'Rememento',ym:'2025-09',dau:null,mau:13711,nru:6456,mpu:714,arppu:22.30,cr:0.052075,revenue:15942,mkt_cost:1985},
-  {game:'Rememento',ym:'2025-10',dau:null,mau:7186,nru:3323,mpu:306,arppu:11.19,cr:0.042583,revenue:3425,mkt_cost:null},
-  {game:'Rememento',ym:'2025-11',dau:null,mau:4110,nru:2206,mpu:88,arppu:5.20,cr:0.021411,revenue:457,mkt_cost:null},
-  {game:'Rememento',ym:'2025-12',dau:null,mau:2943,nru:1642,mpu:83,arppu:2.79,cr:0.028000,revenue:231,mkt_cost:null},
-  {game:'Rememento',ym:'2026-01',dau:null,mau:2634,nru:1546,mpu:59,arppu:1.95,cr:0.022399,revenue:115,mkt_cost:null},
-  {game:'Rememento',ym:'2026-02',dau:null,mau:1697,nru:1035,mpu:31,arppu:1.58,cr:0.018268,revenue:49,mkt_cost:null},
-];
-
-const SEED_DEALS = [
-  {title:'Play Together',developer:'Haegin',region:'VN',lf:1500000,mg:1500000,rs:0.42,status:'Launched',start_date:'2022-06-30',end_date:'2030-06-30',special_condition:'계약기간 5년 (2025년 7월~ 연장). 누적매출 $15M → RS 44%, $30M → RS 46%'},
-  {title:'CSB M',developer:'Sesisoft',region:'TWHKMC',lf:200000,mg:300000,rs:0.25,status:'Launched',start_date:'2024-01-18',end_date:'2027-01-18',special_condition:null},
-  {title:'Genesis: Asura Project',developer:'Linegames',region:'TWHKMC',lf:500000,mg:1000000,rs:0.25,status:'Launched',start_date:'2025-02-18',end_date:'2028-02-18',special_condition:null},
-  {title:'Lineage 2M',developer:'NC(V)',region:'SEA',lf:1000000,mg:7000000,rs:0.25,status:'Launched',start_date:'2025-05-20',end_date:'2028-05-20',special_condition:'MG 선입금 X. 로열티 미달시에만 지급. NC 25%, VNGSing 11%, VNGVN 약11%'},
-  {title:'Rememento White Shadow',developer:'Blackstorm',region:'SEA+TWHKMC',lf:1123000,mg:1123000,rs:0.22,status:'Terminated',start_date:'2025-07-09',end_date:'2028-07-09',special_condition:'실제 계약금액 $1.3M. TWHKMC 퍼블리싱 취소로 3차 LF/MG 각 $177K 미지급'},
-  {title:'Lineage W',developer:'NC(V)',region:'SEA',lf:1000000,mg:7000000,rs:0.25,status:'Not Launched',start_date:null,end_date:null,special_condition:'MG 선입금 X. 로열티 미달시에만 지급'},
-  {title:'Chosun2M',developer:'Smartnow',region:'TWHKMC',lf:200000,mg:200000,rs:0.23,status:'Not Launched',start_date:null,end_date:null,special_condition:null},
-  {title:'Cookierun: Oven Smash',developer:'Devsisters',region:'SEA+TWHKMC',lf:1600000,mg:4000000,rs:0.26,status:'Not Launched',start_date:null,end_date:null,special_condition:'대만 RS 30%. 누적 $35M 달성시 인센티브 $1.6M. 마케팅 개런티 $6M 또는 그로스 매출의 25%'},
-];
-
 // ===== SUPABASE API =====
 let RAW = [], DEALS = [], LATEST_INSIGHT = null;
 let editingDealId = null;
@@ -581,25 +460,22 @@ async function init() {
       api('deal_terms', 'GET', null, 'order=created_at.asc'),
       api('insights', 'GET', null, 'order=year_month.desc&limit=1')
     ]);
+    RAW = monthly || [];
+    DEALS = deals || [];
     LATEST_INSIGHT = insightsRes && insightsRes.length > 0 ? insightsRes[0] : null;
-
-    if (monthly.length === 0) {
-      const seeded = await api('monthly_data', 'POST', SEED_MONTHLY);
-      RAW = Array.isArray(seeded) ? seeded : SEED_MONTHLY;
-    } else { RAW = monthly; }
-
-    if (deals.length === 0) {
-      const seeded = await api('deal_terms', 'POST', SEED_DEALS);
-      DEALS = Array.isArray(seeded) ? seeded : SEED_DEALS;
-    } else { DEALS = deals; }
-
   } catch(e) {
     console.error('Init error:', e);
-    RAW = SEED_MONTHLY;
-    DEALS = SEED_DEALS;
+    alert('데이터를 불러오지 못했어요. 네트워크를 확인해주세요.');
   }
   document.getElementById('loading-overlay').style.display = 'none';
   updateLastUpdated();
+
+  // 게임 select를 DEALS 기반으로 동적 생성 (Launched 게임만)
+  const launchedGames = DEALS.filter(d => d.status === 'Launched').map(d => d.title);
+  const gameSelect = document.getElementById('f-game');
+  gameSelect.innerHTML = '<option value="">Select game</option>' +
+    launchedGames.map(t => `<option value="${t}">${t}</option>`).join('');
+
   showPage('overview');
 }
 
@@ -931,12 +807,22 @@ Rememento 최종 성과 요약. 1-2문장.
       })
     });
     const data = await res.json();
+    console.log('Gemini response:', JSON.stringify(data).slice(0, 300));
+
+    if (!data.candidates || !data.candidates[0]) {
+      throw new Error('Gemini 응답 없음: ' + JSON.stringify(data));
+    }
     const content = data.candidates[0].content.parts[0].text;
 
-    // Supabase에 저장
+    // Supabase에 저장 (upsert — 같은 달이면 덮어쓰기)
     const now = new Date();
     const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-    await api('insights','POST',{year_month:ym, content},{}, true);
+    const existing = await api('insights', 'GET', null, `year_month=eq.${ym}`);
+    if (existing && existing.length > 0) {
+      await api('insights', 'PATCH', {content, generated_at: now.toISOString()}, `year_month=eq.${ym}`);
+    } else {
+      await api('insights', 'POST', {year_month:ym, content});
+    }
 
     LATEST_INSIGHT = {year_month:ym, content, generated_at: now.toISOString()};
     buildInsights();
@@ -1032,9 +918,11 @@ function renderDeals() {
 }
 
 function editDeal(key) {
-  const d = typeof key === 'number' ? DEALS[key] : (DEALS.find(d => d.id === key) || DEALS[key]);
-  if (!d) return;
-  editingDealId = d.id || key;
+  const d = typeof key === 'number'
+    ? DEALS[key]
+    : DEALS.find(d => d.id === key);
+  if (!d) { alert('Deal not found'); return; }
+  editingDealId = d.id !== undefined ? d.id : key;
   document.getElementById('deal-modal-title').textContent = 'Edit deal';
   document.getElementById('d-title').value = d.title || '';
   document.getElementById('d-developer').value = d.developer || '';
@@ -1112,7 +1000,7 @@ async function deleteMonthly(id) {
 // ===== MODALS =====
 function openModal(type) {
   if (type === 'deal') {
-    if (!editingDealId) {
+    if (editingDealId === null) {
       document.getElementById('deal-modal-title').textContent = 'Add deal';
       ['d-title','d-developer','d-region','d-lf','d-mg','d-rs','d-start','d-end','d-special'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
       document.getElementById('d-status').value = 'Not Launched';
