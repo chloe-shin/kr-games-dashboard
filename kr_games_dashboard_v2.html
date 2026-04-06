@@ -1318,7 +1318,7 @@ Rememento 최종 성과 요약. 1-2문장.
 숫자를 구체적으로 인용하고 비즈니스 인사이트를 제공하세요.`;
 
         const GEMINI_KEY = 'AIzaSyDdQWowbqmoLqXvF62lDVEiLSZi7c9jrHo';
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_KEY}`, {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
