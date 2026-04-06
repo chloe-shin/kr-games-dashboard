@@ -1317,7 +1317,15 @@ Rememento 최종 성과 요약. 1-2문장.
 
 숫자를 구체적으로 인용하고 비즈니스 인사이트를 제공하세요.`;
 
-        const GEMINI_KEY = 'AIzaSyDdQWowbqmoLqXvF62lDVEiLSZi7c9jrHo';
+        let GEMINI_KEY = localStorage.getItem('gemini_api_key');
+        if (!GEMINI_KEY) {
+          GEMINI_KEY = window.prompt('Gemini API 키를 입력해주세요.\n(입력하신 키는 귀하의 브라우저에만 안전하게 저장되며 서버나 깃허브로 전송되지 않습니다.)');
+          if (!GEMINI_KEY || GEMINI_KEY.trim() === '') {
+            throw new Error('API 키 입력이 취소되었습니다.');
+          }
+          localStorage.setItem('gemini_api_key', GEMINI_KEY.trim());
+        }
+
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1329,8 +1337,16 @@ Rememento 최종 성과 요약. 1-2문장.
         const data = await res.json();
         console.log('Gemini response:', JSON.stringify(data).slice(0, 300));
 
+        if (!res.ok) {
+          if (res.status === 400 || res.status === 403 || res.status === 404) {
+            localStorage.removeItem('gemini_api_key');
+            throw new Error(`API 키가 유효하지 않거나 한도 초과입니다 (${res.status}). 다음 번 버튼 클릭 시 새 키를 다시 입력해주세요.`);
+          }
+          throw new Error(`Gemini API 호출 실패 (${res.status}): ` + (data.error?.message || res.statusText));
+        }
+
         if (!data.candidates || !data.candidates[0]) {
-          throw new Error('Gemini 응답 없음: ' + JSON.stringify(data));
+          throw new Error('Gemini 응답 형식 오류: ' + JSON.stringify(data));
         }
         const content = data.candidates[0].content.parts[0].text;
 
