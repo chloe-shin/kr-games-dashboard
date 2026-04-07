@@ -1342,13 +1342,13 @@ Rememento 최종 성과 요약. 1-2문장.
                 
                 if (listData && listData.models) {
                   const valid = listData.models.filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent'));
-                  const flash = valid.find(m => m.name.includes('gemini-1.5-flash'));
-                  const pro15 = valid.find(m => m.name.includes('gemini-1.5-pro'));
-                  const basicPro = valid.find(m => m.name.includes('gemini-pro'));
                   
+                  // Priority 1: generic flash (like gemini-2.0-flash or gemini-flash)
+                  const flash = valid.find(m => m.name.includes('flash') && !m.name.includes('experimental') && !m.name.includes('tuning'));
+                  const pro = valid.find(m => m.name.includes('pro') && !m.name.includes('experimental') && !m.name.includes('tuning'));
+
                   if (flash) modelName = flash.name;
-                  else if (pro15) modelName = pro15.name;
-                  else if (basicPro) modelName = basicPro.name;
+                  else if (pro) modelName = pro.name;
                   else if (valid.length > 0) modelName = valid[0].name;
                   
                   if (modelName) localStorage.setItem('gemini_model_name', modelName);
