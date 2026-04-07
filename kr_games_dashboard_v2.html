@@ -1193,10 +1193,15 @@
       if (!text) return '';
       const lines = text.split('\n').filter(l => l.trim());
       const body = lines.map(l => {
-        if (l.trim().startsWith('•') || l.trim().startsWith('-') || l.trim().startsWith('*')) {
-          return `<li style="margin-bottom:4px">${l.replace(/^[•\-*]\s*/, '')}</li>`;
+        // Escape HTML to prevent cutoff from < characters
+        let safe = l.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        // Parse markdown bold
+        safe = safe.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        
+        if (safe.trim().startsWith('•') || safe.trim().startsWith('-') || safe.trim().startsWith('*')) {
+          return `<li style="margin-bottom:4px">${safe.replace(/^[•\-*]\s*/, '')}</li>`;
         }
-        return `<p style="margin-bottom:4px">${l}</p>`;
+        return `<p style="margin-bottom:4px">${safe}</p>`;
       });
       const hasLi = body.some(b => b.startsWith('<li'));
       const inner = hasLi
@@ -1204,7 +1209,7 @@
         : body.join('');
       return `<div class="insight" style="border-left-color:${color}">
     <div style="font-size:11px;font-weight:600;color:${color};margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">${title}</div>
-    <div style="font-size:12px;color:var(--text2);line-height:1.7">${inner}</div>
+    <div style="font-size:12px;color:var(--text);line-height:1.7">${inner}</div>
   </div>`;
     }
 
