@@ -1047,7 +1047,46 @@
     // Our profit = revenue × (1 - RS)
     function ourProfit(game, revenue) { return revenue * (1 - getRs(game)); }
     // MG recoup = revenue × RS / MG  (개발사 입장에서 MG 상쇄율)
-    function mgRecoupPct(game) {
+    function mgRecoupPct(game, customData = RAW) {
+      const rev = customData.filter(r => r.game === game).reduce((s, r) => s + (r.revenue || 0), 0);
+      const mg = getMg(game);
+      return mg > 0 ? rev * getRs(game) / mg * 100 : 0;
+    }
+    // Game ROI = Σ(revenue × (1-RS)) / (LF + MG)
+    function gameRoi(game, customData = RAW) {
+      const rev = customData.filter(r => r.game === game).reduce((s, r) => s + (r.revenue || 0), 0);
+      const invest = getLf(game) + getMg(game);
+      return invest > 0 ? ourProfit(game, rev) / invest : 0;
+    }
+
+    // ===== CHARTS STATE =====
+    let revChart = null, roiChart = null, gameChart1 = null, gameChart2 = null;
+    let currentRevTab = 'stacked', currentGame = 'Play Together', currentGameTab = 'revenue', currentDataGame = 'All';
+    let overviewStartYM = null, overviewEndYM = null;
+
+    function getFilteredRAW() {
+      if (!overviewStartYM && !overviewEndYM) return RAW;
+      return RAW.filter(r => {
+        if (overviewStartYM && r.ym < overviewStartYM) return false;
+        if (overviewEndYM && r.ym > overviewEndYM) return false;
+        return true;
+      });
+    }
+
+    function updateOverviewPeriod() {
+      const startEl = document.getElementById('op-start');
+      const endEl = document.getElementById('op-end');
+      if (startEl && endEl) {
+        if (startEl.value > endEl.value) {
+          alert('시작 월은 종료 월보다 뒤에 올 수 없습니다.');
+          startEl.value = overviewStartYM || endEl.value;
+          return;
+        }
+        overviewStartYM = startEl.value;
+        overviewEndYM = endEl.value;
+        renderOverview();
+      }
+    }
       const rev = RAW.filter(r => r.game === game).reduce((s, r) => s + (r.revenue || 0), 0);
       const mg = getMg(game);
       return mg > 0 ? rev * getRs(game) / mg * 100 : 0;
@@ -1075,7 +1114,25 @@
         document.getElementById('page-overview').classList.add('active');
         document.getElementById('topbar-title').textContent = 'Overview';
         navItems[0].classList.add('active');
-        actions.innerHTML = `<button class="btn btn-primary" onclick="openModal('monthly')">+ Add monthly data</button>`;
+        
+        const allYMs = getYMs();
+        if (!overviewStartYM && allYMs.length > 0) overviewStartYM = allYMs[0];
+        if (!overviewEndYM && allYMs.length > 0) overviewEndYM = allYMs[allYMs.length - 1];
+        
+        const opts = allYMs.map(ym => `<option value="${ym}">${ym}</option>`).join('');
+        actions.innerHTML = `
+          <div style="display:flex;gap:8px;align-items:center;background:rgba(255,255,255,0.05);padding:4px 10px;border-radius:6px;margin-right:12px;border:1px solid var(--border2)">
+            <select id="op-start" onchange="updateOverviewPeriod()" style="font-size:13px;padding:2px;border:none;background:transparent;color:var(--text2);cursor:pointer;outline:none">${opts}</select>
+            <span style="color:var(--text3)">~</span>
+            <select id="op-end" onchange="updateOverviewPeriod()" style="font-size:13px;padding:2px;border:none;background:transparent;color:var(--text2);cursor:pointer;outline:none">${opts}</select>
+          </div>
+          <button class="btn btn-primary" onclick="openModal('monthly')">+ Add monthly data</button>`;
+          
+        setTimeout(() => {
+          if (document.getElementById('op-start')) document.getElementById('op-start').value = overviewStartYM;
+          if (document.getElementById('op-end')) document.getElementById('op-end').value = overviewEndYM;
+        }, 0);
+        
         renderOverview();
       } else if (page === 'game') {
         currentGame = game;
@@ -1102,26 +1159,29 @@
 
     // ===== OVERVIEW =====
     function renderOverview() {
-      const allYMs = getYMs();
-      const totalRev = RAW.reduce((s, r) => s + (r.revenue || 0), 0);
-      const totalOurProfit = GAMES.reduce((s, g) => {
-        const rev = RAW.filter(r => r.game === g).reduce((a, r) => a + (r.revenue || 0), 0);
-        return s + ourProfit(g, rev);
-      }, 0);
+      const dataToUse = getFilteredRAW();
+      const allYMs = [...new Set(dataToUse.map(r => r.ym))].sort();
+      const totalRev = dataToUse.reduce((s, r) => s + (r.revenue || 0), 0);
+      
       const totalInvest = GAMES.reduce((s, g) => s + getLf(g) + getMg(g), 0);
-      const portfolioRoi = totalInvest > 0 ? totalOurProfit / totalInvest : 0;
+      const totalOurGrossProfit = GAMES.reduce((s, g) => {
+        const rev = dataToUse.filter(r => r.game === g).reduce((a, r) => a + (r.revenue || 0), 0);
+        return s + (rev * (1 - getRs(g)));
+      }, 0);
+      const totalOurNetProfit = totalOurGrossProfit - totalInvest;
+      const portfolioRoi = totalInvest > 0 ? totalOurGrossProfit / totalInvest : 0;
 
-      const latestYM = allYMs.slice(-1)[0];
-      const prevYM = allYMs.slice(-2, -1)[0];
-      const latestTotal = RAW.filter(r => r.ym === latestYM).reduce((s, r) => s + (r.revenue || 0), 0);
-      const prevTotal = RAW.filter(r => r.ym === prevYM).reduce((s, r) => s + (r.revenue || 0), 0);
+      const latestYM = allYMs.length > 0 ? allYMs.slice(-1)[0] : '-';
+      const prevYM = allYMs.length > 1 ? allYMs.slice(-2, -1)[0] : '-';
+      const latestTotal = dataToUse.filter(r => r.ym === latestYM).reduce((s, r) => s + (r.revenue || 0), 0);
+      const prevTotal = dataToUse.filter(r => r.ym === prevYM).reduce((s, r) => s + (r.revenue || 0), 0);
       const mom = prevTotal > 0 ? ((latestTotal - prevTotal) / prevTotal * 100).toFixed(1) : 0;
 
       document.getElementById('kpi-grid').innerHTML = `
     <div class="kpi-card"><div class="kpi-label">Total revenue</div><div class="kpi-val">${fmt(totalRev)}</div><div class="kpi-sub">All games combined</div></div>
-    <div class="kpi-card"><div class="kpi-label">Our profit (after RS)</div><div class="kpi-val">${fmt(totalOurProfit)}</div><div class="kpi-sub">매출 × (1-RS) 합산</div></div>
+    <div class="kpi-card" style="border:1px solid rgba(74,158,245,0.4);background:rgba(74,158,245,0.05)"><div class="kpi-label" style="color:#4A9EF5;font-weight:700">VNG RS PROFIT AFTER LF MG</div><div class="kpi-val">${fmt(totalOurNetProfit)}</div><div class="kpi-sub">{총매출 * (1-RS)} - LF - MG</div></div>
     <div class="kpi-card"><div class="kpi-label">Latest month (${latestYM})</div><div class="kpi-val">${fmt(latestTotal)}</div><div class="kpi-sub"><span class="${parseFloat(mom) >= 0 ? 'up' : 'down'}">${mom}%</span> vs prev month</div></div>
-    <div class="kpi-card"><div class="kpi-label">Portfolio ROI</div><div class="kpi-val">${portfolioRoi.toFixed(1)}x</div><div class="kpi-sub">Our profit / (LF+MG) $${(totalInvest / 1000000).toFixed(1)}M</div></div>`;
+    <div class="kpi-card"><div class="kpi-label">Portfolio ROI</div><div class="kpi-val">${portfolioRoi.toFixed(1)}x</div><div class="kpi-sub">Gross profit / (LF+MG) $${(totalInvest / 1000000).toFixed(1)}M</div></div>`;
 
       buildRevChart(currentRevTab);
       buildMGBars();
@@ -1136,10 +1196,11 @@
 
     function buildRevChart(type) {
       if (revChart) { revChart.destroy(); revChart = null; }
-      const allYMs = getYMs();
+      const dataToUse = getFilteredRAW();
+      const allYMs = [...new Set(dataToUse.map(r => r.ym))].sort();
       buildLegend('rev-legend', GAMES);
       const byGY = {};
-      GAMES.forEach(g => { byGY[g] = {}; allYMs.forEach(ym => { byGY[g][ym] = RAW.filter(r => r.game === g && r.ym === ym).reduce((s, r) => s + (r.revenue || 0), 0); }); });
+      GAMES.forEach(g => { byGY[g] = {}; allYMs.forEach(ym => { byGY[g][ym] = dataToUse.filter(r => r.game === g && r.ym === ym).reduce((s, r) => s + (r.revenue || 0), 0); }); });
       const ctx = document.getElementById('revChart').getContext('2d');
       const gc = 'rgba(255,255,255,.04)', tc = '#666';
       if (type === 'stacked') {
@@ -1158,11 +1219,12 @@
     }
 
     function buildMGBars() {
+      const dataToUse = getFilteredRAW();
       document.getElementById('mg-bars').innerHTML = GAMES.map(g => {
-        const recoupPct = mgRecoupPct(g);
+        const recoupPct = mgRecoupPct(g, dataToUse);
         const barW = Math.min(recoupPct, 100);
         const c = recoupPct > 100 ? '#2ECC9A' : recoupPct > 50 ? '#E8A030' : '#E05555';
-        const rev = RAW.filter(r => r.game === g).reduce((s, r) => s + (r.revenue || 0), 0);
+        const rev = dataToUse.filter(r => r.game === g).reduce((s, r) => s + (r.revenue || 0), 0);
         const rs = getRs(g);
         const mg = getMg(g);
         return `<div style="margin-bottom:14px">
@@ -1178,8 +1240,9 @@
 
     function buildROIChart() {
       if (roiChart) { roiChart.destroy(); roiChart = null; }
+      const dataToUse = getFilteredRAW();
       const ctx = document.getElementById('roiChart').getContext('2d');
-      const vals = GAMES.map(g => +gameRoi(g).toFixed(2));
+      const vals = GAMES.map(g => +gameRoi(g, dataToUse).toFixed(2));
       roiChart = new Chart(ctx, { type: 'bar', data: { labels: GAMES.map(g => g.split(' ').slice(0, 2).join(' ')), datasets: [{ data: vals, backgroundColor: GAMES.map(g => clr(g) + 'cc'), borderWidth: 0 }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `ROI: ${c.raw}x` } } }, scales: { x: { ticks: { callback: v => v + 'x', font: { size: 10 }, color: '#666' }, grid: { color: 'rgba(255,255,255,.04)' } }, y: { ticks: { font: { size: 11 }, color: '#aaa' }, grid: { display: false } } } } });
     }
 
@@ -1261,18 +1324,19 @@
       btn.disabled = true;
 
       try {
+        const dataToUse = getFilteredRAW();
         // 데이터 집계
         const games = ['Play Together', 'CSB M', 'Genesis', 'Lineage 2M', 'Rememento'];
-        const allYMs = getYMs();
-        const latestYM = allYMs.slice(-1)[0];
-        const prevYM = allYMs.slice(-2, -1)[0];
-        const latestTotal = RAW.filter(r => r.ym === latestYM).reduce((s, r) => s + (r.revenue || 0), 0);
-        const prevTotal = RAW.filter(r => r.ym === prevYM).reduce((s, r) => s + (r.revenue || 0), 0);
+        const allYMs = [...new Set(dataToUse.map(r => r.ym))].sort();
+        const latestYM = allYMs.length > 0 ? allYMs.slice(-1)[0] : '-';
+        const prevYM = allYMs.length > 1 ? allYMs.slice(-2, -1)[0] : '-';
+        const latestTotal = dataToUse.filter(r => r.ym === latestYM).reduce((s, r) => s + (r.revenue || 0), 0);
+        const prevTotal = dataToUse.filter(r => r.ym === prevYM).reduce((s, r) => s + (r.revenue || 0), 0);
         const portfolioMoM = prevTotal > 0 ? ((latestTotal - prevTotal) / prevTotal * 100).toFixed(1) : null;
 
         const gameSummary = {};
         games.forEach(g => {
-          const rows = getGameData(g);
+          const rows = dataToUse.filter(r => r.game === g).sort((a, b) => a.ym.localeCompare(b.ym));
           if (!rows.length) return;
           const recent = rows.slice(-3);
           const latest = rows.slice(-1)[0];
@@ -1286,8 +1350,8 @@
             mom_pct: mom ? parseFloat(mom) : null,
             avg_arppu: parseFloat((recent.filter(r => r.arppu).reduce((s, r, _, a) => s + r.arppu / a.length, 0) || 0).toFixed(1)),
             avg_cr_pct: parseFloat(((recent.filter(r => r.cr).reduce((s, r, _, a) => s + r.cr / a.length, 0) || 0) * 100).toFixed(2)),
-            roi: parseFloat(gameRoi(g).toFixed(2)),
-            mg_recoup_pct: parseFloat(mgRecoupPct(g).toFixed(1)),
+            roi: parseFloat(gameRoi(g, dataToUse).toFixed(2)),
+            mg_recoup_pct: parseFloat(mgRecoupPct(g, dataToUse).toFixed(1)),
             months_live: rows.length
           };
         });
@@ -1417,7 +1481,7 @@ Rememento 최종 성과 요약. 1-2문장.
 
         // Supabase에 저장 (upsert — 같은 달이면 덮어쓰기)
         const now = new Date();
-        const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const ym = overviewEndYM || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
         const existing = await api('insights', 'GET', null, `year_month=eq.${ym}`);
         if (existing && existing.length > 0) {
           await api('insights', 'PATCH', { content, generated_at: now.toISOString() }, `year_month=eq.${ym}`);
