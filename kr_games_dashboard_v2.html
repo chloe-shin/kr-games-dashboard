@@ -1087,20 +1087,7 @@
         renderOverview();
       }
     }
-      const rev = RAW.filter(r => r.game === game).reduce((s, r) => s + (r.revenue || 0), 0);
-      const mg = getMg(game);
-      return mg > 0 ? rev * getRs(game) / mg * 100 : 0;
-    }
-    // Game ROI = Σ(revenue × (1-RS)) / (LF + MG)
-    function gameRoi(game) {
-      const rev = RAW.filter(r => r.game === game).reduce((s, r) => s + (r.revenue || 0), 0);
-      const invest = getLf(game) + getMg(game);
-      return invest > 0 ? ourProfit(game, rev) / invest : 0;
-    }
 
-    // ===== CHARTS STATE =====
-    let revChart = null, roiChart = null, gameChart1 = null, gameChart2 = null;
-    let currentRevTab = 'stacked', currentGame = 'Play Together', currentGameTab = 'revenue', currentDataGame = 'All';
 
     // ===== PAGE NAV =====
     function showPage(page, game) {
