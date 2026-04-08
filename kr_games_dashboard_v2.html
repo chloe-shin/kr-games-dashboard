@@ -1156,7 +1156,7 @@
         return s + (rev * (1 - getRs(g)));
       }, 0);
       const totalOurNetProfit = totalOurGrossProfit - totalInvest;
-      const portfolioRoi = totalInvest > 0 ? totalOurGrossProfit / totalInvest : 0;
+      const portfolioRoi = totalRev > 0 ? (totalOurNetProfit / totalRev) * 100 : 0;
 
       const latestYM = allYMs.length > 0 ? allYMs.slice(-1)[0] : '-';
       const prevYM = allYMs.length > 1 ? allYMs.slice(-2, -1)[0] : '-';
@@ -1168,7 +1168,7 @@
     <div class="kpi-card"><div class="kpi-label">Total revenue</div><div class="kpi-val">${fmt(totalRev)}</div><div class="kpi-sub">All games combined</div></div>
     <div class="kpi-card" style="border:1px solid rgba(74,158,245,0.4);background:rgba(74,158,245,0.05)"><div class="kpi-label" style="color:#4A9EF5;font-weight:700">VNG RS PROFIT AFTER LF MG</div><div class="kpi-val">${fmt(totalOurNetProfit)}</div><div class="kpi-sub">{총매출 * (1-RS)} - LF - MG</div></div>
     <div class="kpi-card"><div class="kpi-label">Latest month (${latestYM})</div><div class="kpi-val">${fmt(latestTotal)}</div><div class="kpi-sub"><span class="${parseFloat(mom) >= 0 ? 'up' : 'down'}">${mom}%</span> vs prev month</div></div>
-    <div class="kpi-card"><div class="kpi-label">Portfolio ROI</div><div class="kpi-val">${portfolioRoi.toFixed(1)}x</div><div class="kpi-sub">Gross profit / (LF+MG) $${(totalInvest / 1000000).toFixed(1)}M</div></div>`;
+    <div class="kpi-card"><div class="kpi-label">Portfolio ROI</div><div class="kpi-val">${portfolioRoi.toFixed(1)}%</div><div class="kpi-sub">(VNG RS PROFIT AFTER LF MG) / (TOTAL REVENUE)</div></div>`;
 
       buildRevChart(currentRevTab);
       buildMGBars();
