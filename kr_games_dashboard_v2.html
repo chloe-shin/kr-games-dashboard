@@ -1184,7 +1184,7 @@
     }
 
     function parseInsightSection(content, marker) {
-      const regex = new RegExp(`\\[${marker}\\]([\\s\\S]*?)(?=\\[[A-Z]+\\]|$)`);
+      const regex = new RegExp(`\\[${marker}\\]([\\s\\S]*?)(?=\\[[A-Z0-9]+\\]|$)`);
       const match = content.match(regex);
       return match ? match[1].trim() : null;
     }
