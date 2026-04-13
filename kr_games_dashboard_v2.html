@@ -1176,13 +1176,13 @@
       const mom = prevTotal > 0 ? ((latestTotal - prevTotal) / prevTotal * 100).toFixed(1) : 0;
 
       document.getElementById('kpi-grid').innerHTML = `
-    <div class="kpi-card" style="border:1px solid rgba(232,160,48,0.4);background:rgba(232,160,48,0.05)">
-      <div class="kpi-label" style="color:#E8A030;font-weight:700">Gross Rev</div>
+    <div class="kpi-card" style="border:1px solid rgba(74,158,245,0.4);background:rgba(74,158,245,0.05)">
+      <div class="kpi-label" style="color:#4A9EF5;font-weight:700">Gross Rev</div>
       <div class="kpi-val">${fmt(totalRev)}</div>
       <div class="kpi-sub">All games combined</div>
     </div>
-    <div class="kpi-card" style="border:1px solid rgba(232,160,48,0.4);background:rgba(232,160,48,0.05)">
-      <div class="kpi-label" style="color:#E8A030;font-weight:700">Latest month (${latestYM})</div>
+    <div class="kpi-card" style="border:1px solid rgba(46,204,154,0.4);background:rgba(46,204,154,0.05)">
+      <div class="kpi-label" style="color:#2ECC9A;font-weight:700">Latest month (${latestYM})</div>
       <div class="kpi-val">${fmt(latestTotal)}</div>
       <div class="kpi-sub"><span class="${parseFloat(mom) >= 0 ? 'up' : 'down'}">${mom}%</span> vs prev month</div>
     </div>
@@ -1191,8 +1191,8 @@
       <div class="kpi-val">${fmt(totalOurNetProfit)}</div>
       <div style="font-size:10px;color:var(--text3);margin-top:4px">{Total Gross Rev * (1-RS)} - LF - MG<br><span style="color:#E05555;font-weight:500;">*Excl. OPEX (BD review)</span></div>
     </div>
-    <div class="kpi-card" style="border:1px solid rgba(232,160,48,0.4);background:rgba(232,160,48,0.05)">
-      <div class="kpi-label" style="color:#E8A030;font-weight:700">Portfolio ROI</div>
+    <div class="kpi-card" style="border:1px solid rgba(224,96,144,0.4);background:rgba(224,96,144,0.05)">
+      <div class="kpi-label" style="color:#E06090;font-weight:700">Portfolio ROI</div>
       <div class="kpi-val">${portfolioRoi.toFixed(1)}%</div>
       <div style="font-size:10px;color:var(--text3);margin-top:4px">(RS Profit) / (LF+MG) x 100%<br><span style="color:#E05555;font-weight:500;">*Excl. OPEX (BD review)</span></div>
     </div>`;
@@ -1560,13 +1560,13 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
       const recoup = mgRecoupPct(game);
 
       document.getElementById('game-kpis').innerHTML = `
-    <div class="game-kpi" style="border:1px solid rgba(232,160,48,0.4);background:rgba(232,160,48,0.05)">
-      <div class="game-kpi-label" style="color:#E8A030;font-weight:700">Accum revenue</div>
+    <div class="game-kpi" style="border:1px solid rgba(74,158,245,0.4);background:rgba(74,158,245,0.05)">
+      <div class="game-kpi-label" style="color:#4A9EF5;font-weight:700">Accum revenue</div>
       <div class="game-kpi-val">${fmt(totalRev)}</div>
       <div class="game-kpi-sub">Total gross generated</div>
     </div>
-    <div class="game-kpi" style="border:1px solid rgba(232,160,48,0.4);background:rgba(232,160,48,0.05)">
-      <div class="game-kpi-label" style="color:#E8A030;font-weight:700">Latest month</div>
+    <div class="game-kpi" style="border:1px solid rgba(46,204,154,0.4);background:rgba(46,204,154,0.05)">
+      <div class="game-kpi-label" style="color:#2ECC9A;font-weight:700">Latest month</div>
       <div class="game-kpi-val">${fmt(latestRev)}</div>
       <div class="game-kpi-sub">${gameMoM != null ? `<span class="${parseFloat(gameMoM) >= 0 ? 'up' : 'down'}">${gameMoM}%</span> MoM` : '-'}</div>
     </div>
@@ -1575,13 +1575,13 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
       <div class="game-kpi-val">${fmt(netProfit)}</div>
       <div style="font-size:10px;color:var(--text3);margin-top:4px">{Total Gross Rev * (1-RS)} - LF - MG<br><span style="color:#E05555;font-weight:500;">*Excl. OPEX (BD review)</span></div>
     </div>
-    <div class="game-kpi" style="border:1px solid rgba(232,160,48,0.4);background:rgba(232,160,48,0.05)">
-      <div class="game-kpi-label" style="color:#E8A030;font-weight:700">ROI</div>
+    <div class="game-kpi" style="border:1px solid rgba(224,96,144,0.4);background:rgba(224,96,144,0.05)">
+      <div class="game-kpi-label" style="color:#E06090;font-weight:700">ROI</div>
       <div class="game-kpi-val">${roi}</div>
       <div style="font-size:10px;color:var(--text3);margin-top:4px">(RS Profit) / (LF+MG) x 100%<br><span style="color:#E05555;font-weight:500;">*Excl. OPEX (BD review)</span></div>
     </div>
-    <div class="game-kpi" style="border:1px solid rgba(232,160,48,0.4);background:rgba(232,160,48,0.05)">
-      <div class="game-kpi-label" style="color:#E8A030;font-weight:700">MG recoup</div>
+    <div class="game-kpi" style="border:1px solid rgba(168,117,255,0.4);background:rgba(168,117,255,0.05)">
+      <div class="game-kpi-label" style="color:#A875FF;font-weight:700">MG recoup</div>
       <div class="game-kpi-val">${recoup.toFixed(0)}%</div>
       <div class="game-kpi-sub">Gross Rev × RS / MG | Avg CR ${pct(avgCr)}</div>
     </div>`;
