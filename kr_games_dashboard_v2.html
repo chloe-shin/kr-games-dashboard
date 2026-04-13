@@ -769,7 +769,7 @@
           </div>
           <div class="card">
             <div class="section-title" style="margin-bottom:4px">Portfolio ROI by game</div>
-            <div style="font-size:11px;color:var(--text3);margin-bottom:12px">(Profit) / (LF+MG) x 100%</div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:12px">(RS Profit) / (LF+MG) x 100%</div>
             <div class="chart-wrap" style="height:200px"><canvas id="roiChart"></canvas></div>
           </div>
         </div>
@@ -1176,17 +1176,17 @@
       const mom = prevTotal > 0 ? ((latestTotal - prevTotal) / prevTotal * 100).toFixed(1) : 0;
 
       document.getElementById('kpi-grid').innerHTML = `
-    <div class="kpi-card"><div class="kpi-label">Total revenue</div><div class="kpi-val">${fmt(totalRev)}</div><div class="kpi-sub">All games combined</div></div>
+    <div class="kpi-card"><div class="kpi-label">Gross Rev</div><div class="kpi-val">${fmt(totalRev)}</div><div class="kpi-sub">All games combined</div></div>
     <div class="kpi-card"><div class="kpi-label">Latest month (${latestYM})</div><div class="kpi-val">${fmt(latestTotal)}</div><div class="kpi-sub"><span class="${parseFloat(mom) >= 0 ? 'up' : 'down'}">${mom}%</span> vs prev month</div></div>
     <div class="kpi-card" style="border:1px solid rgba(74,158,245,0.4);background:rgba(74,158,245,0.05)">
-      <div class="kpi-label" style="color:#4A9EF5;font-weight:700">VNG RS PROFIT AFTER LF MG</div>
+      <div class="kpi-label" style="color:#4A9EF5;font-weight:700">RS Profit</div>
       <div class="kpi-val">${fmt(totalOurNetProfit)}</div>
-      <div style="font-size:10px;color:var(--text3);margin-top:4px">{Total Rev * (1-RS)} - LF - MG<br><span style="color:#E05555;font-weight:500;">*Excl. OPEX (BD review)</span></div>
+      <div style="font-size:10px;color:var(--text3);margin-top:4px">{Total Gross Rev * (1-RS)} - LF - MG<br><span style="color:#E05555;font-weight:500;">*Excl. OPEX (BD review)</span></div>
     </div>
     <div class="kpi-card">
       <div class="kpi-label">Portfolio ROI</div>
       <div class="kpi-val">${portfolioRoi.toFixed(1)}%</div>
-      <div style="font-size:10px;color:var(--text3);margin-top:4px">(Profit) / (LF+MG) x 100%<br><span style="color:#E05555;font-weight:500;">*Excl. OPEX (BD review)</span></div>
+      <div style="font-size:10px;color:var(--text3);margin-top:4px">(RS Profit) / (LF+MG) x 100%<br><span style="color:#E05555;font-weight:500;">*Excl. OPEX (BD review)</span></div>
     </div>`;
 
       buildRevChart(currentRevTab);
@@ -1555,14 +1555,14 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
     <div class="game-kpi"><div class="game-kpi-label">Accum revenue</div><div class="game-kpi-val" style="color:${c}">${fmt(totalRev)}</div><div class="game-kpi-sub">Total gross generated</div></div>
     <div class="game-kpi"><div class="game-kpi-label">Latest month</div><div class="game-kpi-val">${fmt(latestRev)}</div><div class="game-kpi-sub">${gameMoM != null ? `<span class="${parseFloat(gameMoM) >= 0 ? 'up' : 'down'}">${gameMoM}%</span> MoM` : '-'}</div></div>
     <div class="game-kpi" style="border:1px solid rgba(74,158,245,0.4);background:rgba(74,158,245,0.05)">
-      <div class="game-kpi-label" style="color:#4A9EF5;font-weight:700">VNG RS PROFIT AFTER LF MG</div>
+      <div class="game-kpi-label" style="color:#4A9EF5;font-weight:700">RS Profit</div>
       <div class="game-kpi-val">${fmt(netProfit)}</div>
-      <div style="font-size:10px;color:var(--text3);margin-top:4px">{Total Rev * (1-RS)} - LF - MG<br><span style="color:#E05555;font-weight:500;">*Excl. OPEX (BD review)</span></div>
+      <div style="font-size:10px;color:var(--text3);margin-top:4px">{Total Gross Rev * (1-RS)} - LF - MG<br><span style="color:#E05555;font-weight:500;">*Excl. OPEX (BD review)</span></div>
     </div>
     <div class="game-kpi">
       <div class="game-kpi-label">ROI</div>
       <div class="game-kpi-val">${roi}</div>
-      <div style="font-size:10px;color:var(--text3);margin-top:4px">(Profit) / (LF+MG) x 100%<br><span style="color:#E05555;font-weight:500;">*Excl. OPEX (BD review)</span></div>
+      <div style="font-size:10px;color:var(--text3);margin-top:4px">(RS Profit) / (LF+MG) x 100%<br><span style="color:#E05555;font-weight:500;">*Excl. OPEX (BD review)</span></div>
     </div>
     <div class="game-kpi"><div class="game-kpi-label">MG recoup</div><div class="game-kpi-val">${recoup.toFixed(0)}%</div><div class="game-kpi-sub">Rev × RS / MG | Avg CR ${pct(avgCr)}</div></div>`;
 
@@ -1580,9 +1580,9 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
       const gc = 'rgba(255,255,255,.04)', tc = '#666';
 
       if (metric === 'revenue') {
-        area.innerHTML = `<div style="display:flex;gap:12px;margin-bottom:12px"><span class="leg-item"><span class="leg-dot" style="background:${c}bb"></span>Revenue</span><span class="leg-item"><span class="leg-dot" style="background:${c}44"></span>Our profit (×(1-RS))</span></div><div class="chart-wrap" style="height:280px"><canvas id="gameChart1"></canvas></div>`;
+        area.innerHTML = `<div style="display:flex;gap:12px;margin-bottom:12px"><span class="leg-item"><span class="leg-dot" style="background:${c}bb"></span>Revenue</span><span class="leg-item"><span class="leg-dot" style="background:${c}44"></span>RS Profit</span></div><div class="chart-wrap" style="height:280px"><canvas id="gameChart1"></canvas></div>`;
         const rs = getRs(game);
-        gameChart1 = new Chart(document.getElementById('gameChart1').getContext('2d'), { type: 'bar', data: { labels, datasets: [{ label: 'Revenue', data: gRows.map(r => r.revenue), backgroundColor: c + 'bb', borderWidth: 0 }, { label: 'Our profit', data: gRows.map(r => r.revenue * (1 - rs)), backgroundColor: c + '44', borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c2 => `${c2.dataset.label}: ${fmt(c2.raw)}` } } }, scales: { x: { ticks: { autoSkip: true, maxRotation: 45, font: { size: 10 }, color: tc }, grid: { color: gc } }, y: { ticks: { callback: v => fmt(v), font: { size: 10 }, color: tc }, grid: { color: gc } } } } });
+        gameChart1 = new Chart(document.getElementById('gameChart1').getContext('2d'), { type: 'bar', data: { labels, datasets: [{ label: 'Revenue', data: gRows.map(r => r.revenue), backgroundColor: c + 'bb', borderWidth: 0 }, { label: 'RS Profit', data: gRows.map(r => r.revenue * (1 - rs)), backgroundColor: c + '44', borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c2 => `${c2.dataset.label}: ${fmt(c2.raw)}` } } }, scales: { x: { ticks: { autoSkip: true, maxRotation: 45, font: { size: 10 }, color: tc }, grid: { color: gc } }, y: { ticks: { callback: v => fmt(v), font: { size: 10 }, color: tc }, grid: { color: gc } } } } });
       } else if (metric === 'cr_arppu') {
         area.innerHTML = `<div class="two-col"><div class="chart-wrap" style="height:240px"><canvas id="gameChart1"></canvas></div><div class="chart-wrap" style="height:240px"><canvas id="gameChart2"></canvas></div></div>`;
         gameChart1 = new Chart(document.getElementById('gameChart1').getContext('2d'), { type: 'line', data: { labels, datasets: [{ label: 'CR%', data: gRows.map(r => r.cr != null ? +(r.cr * 100).toFixed(2) : null), borderColor: c, backgroundColor: c + '22', fill: true, borderWidth: 2, pointRadius: 2, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, title: { display: true, text: 'Conversion rate (%)', font: { size: 11, weight: '500' }, color: '#888' } }, scales: { x: { ticks: { autoSkip: true, maxRotation: 45, font: { size: 9 }, color: tc }, grid: { color: gc } }, y: { ticks: { callback: v => v.toFixed(1) + '%', font: { size: 10 }, color: tc }, grid: { color: gc } } } } });
