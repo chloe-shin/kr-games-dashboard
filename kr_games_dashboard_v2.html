@@ -358,6 +358,8 @@
       border-collapse: collapse;
       font-size: 12px;
     }
+    table th.sortable { cursor: pointer; user-select: none; }
+    table th.sortable:hover { color: var(--text); background: rgba(255,255,255,0.05); }
 
     th {
       font-size: 11px;
@@ -793,15 +795,15 @@
           <table id="deals-table">
             <thead>
               <tr>
-                <th>Game</th>
-                <th>Developer</th>
-                <th>Region</th>
-                <th>LF</th>
-                <th>MG</th>
-                <th>RS</th>
-                <th>Start</th>
-                <th>End</th>
-                <th>Status</th>
+                <th onclick="sortDeals('title')" class="sortable">Game <span id="sort-ind-title"></span></th>
+                <th onclick="sortDeals('developer')" class="sortable">Developer <span id="sort-ind-developer"></span></th>
+                <th onclick="sortDeals('region')" class="sortable">Region <span id="sort-ind-region"></span></th>
+                <th onclick="sortDeals('lf')" class="sortable">LF <span id="sort-ind-lf"></span></th>
+                <th onclick="sortDeals('mg')" class="sortable">MG <span id="sort-ind-mg"></span></th>
+                <th onclick="sortDeals('rs')" class="sortable">RS <span id="sort-ind-rs"></span></th>
+                <th onclick="sortDeals('start_date')" class="sortable">Start <span id="sort-ind-start_date"></span></th>
+                <th onclick="sortDeals('end_date')" class="sortable">End <span id="sort-ind-end_date"></span></th>
+                <th onclick="sortDeals('status')" class="sortable">Status <span id="sort-ind-status"></span></th>
                 <th style="min-width:200px">Special Condition</th>
                 <th>Action</th>
               </tr>
@@ -1599,6 +1601,34 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
     }
 
     // ===== DEALS PAGE =====
+    let currentDealSort = null;
+    let currentDealAsc = true;
+
+    function sortDeals(col) {
+      if (currentDealSort === col) {
+        currentDealAsc = !currentDealAsc;
+      } else {
+        currentDealSort = col;
+        currentDealAsc = true;
+      }
+      DEALS.sort((a, b) => {
+        let valA = a[col] != null ? a[col] : '';
+        let valB = b[col] != null ? b[col] : '';
+        if (typeof valA === 'string') valA = valA.toLowerCase();
+        if (typeof valB === 'string') valB = valB.toLowerCase();
+        if (valA < valB) return currentDealAsc ? -1 : 1;
+        if (valA > valB) return currentDealAsc ? 1 : -1;
+        return 0;
+      });
+      ['title','developer','region','lf','mg','rs','start_date','end_date','status'].forEach(c => {
+        const span = document.getElementById('sort-ind-' + c);
+        if (span) span.textContent = '';
+      });
+      const ind = document.getElementById('sort-ind-' + col);
+      if (ind) ind.textContent = currentDealAsc ? ' ▲' : ' ▼';
+      renderDeals();
+    }
+
     function renderDeals() {
       const sc = s => s === 'Launched' ? 'badge-green' : s === 'Terminated' ? 'badge-red' : s === 'Not Launched' ? 'badge-amber' : 'badge-gray';
       document.getElementById('deals-tbody').innerHTML = DEALS.map((d, idx) => {
