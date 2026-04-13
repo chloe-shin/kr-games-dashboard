@@ -1615,8 +1615,8 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
       <td><span class="badge ${sc(d.status)}">${d.status}</span></td>
       <td style="font-size:11px;color:var(--text2);max-width:220px;line-height:1.5">${d.special_condition || '-'}</td>
       <td style="display:flex;gap:6px;white-space:nowrap">
-        <button class="btn" style="font-size:11px;padding:3px 10px" onclick="editDeal(${JSON.stringify(key)})">Edit</button>
-        <button class="btn btn-danger" style="font-size:11px;padding:3px 10px" onclick="deleteDeal(${JSON.stringify(key)})">Delete</button>
+        <button class="btn" style="font-size:11px;padding:3px 10px" onclick='editDeal(${JSON.stringify(key)})'>Edit</button>
+        <button class="btn btn-danger" style="font-size:11px;padding:3px 10px" onclick='deleteDeal(${JSON.stringify(key)})'>Delete</button>
       </td>
     </tr>`;
       }).join('');
