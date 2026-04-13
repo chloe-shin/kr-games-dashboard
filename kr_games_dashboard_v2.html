@@ -789,7 +789,7 @@
 
       <!-- DEALS -->
       <div class="page" id="page-deals">
-        <div class="card">
+        <div class="card" style="overflow-x:auto;">
           <table id="deals-table">
             <thead>
               <tr>
@@ -1611,7 +1611,7 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
       <td class="mono">${fmt(d.mg)}</td>
       <td class="mono">${d.rs != null ? (d.rs * 100).toFixed(0) + '%' : '-'}</td>
       <td class="mono" style="color:var(--text2)">${d.start_date || '-'}</td>
-      <td class="mono" style="color:var(--text2)">${d.end_date ? d.end_date.slice(0, 4) : '-'}</td>
+      <td class="mono" style="color:var(--text2)">${d.end_date || '-'}</td>
       <td><span class="badge ${sc(d.status)}">${d.status}</span></td>
       <td style="font-size:11px;color:var(--text2);max-width:220px;line-height:1.5">${d.special_condition || '-'}</td>
       <td style="display:flex;gap:6px;white-space:nowrap">
