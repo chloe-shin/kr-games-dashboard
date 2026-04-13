@@ -767,7 +767,7 @@
           </div>
           <div class="card">
             <div class="section-title" style="margin-bottom:4px">Portfolio ROI by game</div>
-            <div style="font-size:11px;color:var(--text3);margin-bottom:12px">매출 × (1-RS) / (LF+MG)</div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:12px">{매출 × (1-RS) - LF - MG} / 총매출</div>
             <div class="chart-wrap" style="height:200px"><canvas id="roiChart"></canvas></div>
           </div>
         </div>
@@ -1055,11 +1055,13 @@
       const mg = getMg(game);
       return mg > 0 ? rev * getRs(game) / mg * 100 : 0;
     }
-    // Game ROI = Σ(revenue × (1-RS)) / (LF + MG)
+    // Game ROI = (revenue × (1-RS) - LF - MG) / revenue
     function gameRoi(game, customData = RAW) {
       const rev = customData.filter(r => r.game === game).reduce((s, r) => s + (r.revenue || 0), 0);
+      if (rev <= 0) return 0;
       const invest = getLf(game) + getMg(game);
-      return invest > 0 ? ourProfit(game, rev) / invest : 0;
+      const profit = (rev * (1 - getRs(game))) - invest;
+      return (profit / rev) * 100;
     }
 
     // ===== CHARTS STATE =====
@@ -1233,7 +1235,7 @@
       const dataToUse = getFilteredRAW();
       const ctx = document.getElementById('roiChart').getContext('2d');
       const vals = GAMES.map(g => +gameRoi(g, dataToUse).toFixed(2));
-      roiChart = new Chart(ctx, { type: 'bar', data: { labels: GAMES.map(g => g.split(' ').slice(0, 2).join(' ')), datasets: [{ data: vals, backgroundColor: GAMES.map(g => clr(g) + 'cc'), borderWidth: 0 }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `ROI: ${c.raw}x` } } }, scales: { x: { ticks: { callback: v => v + 'x', font: { size: 10 }, color: '#666' }, grid: { color: 'rgba(255,255,255,.04)' } }, y: { ticks: { font: { size: 11 }, color: '#aaa' }, grid: { display: false } } } } });
+      roiChart = new Chart(ctx, { type: 'bar', data: { labels: GAMES.map(g => g.split(' ').slice(0, 2).join(' ')), datasets: [{ data: vals, backgroundColor: GAMES.map(g => clr(g) + 'cc'), borderWidth: 0 }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `ROI: ${c.raw}%` } } }, scales: { x: { ticks: { callback: v => v + '%', font: { size: 10 }, color: '#666' }, grid: { color: 'rgba(255,255,255,.04)' } }, y: { ticks: { font: { size: 11 }, color: '#aaa' }, grid: { display: false } } } } });
     }
 
     function parseInsightSection(content, marker) {
