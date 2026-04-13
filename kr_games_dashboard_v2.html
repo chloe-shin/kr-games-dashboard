@@ -1030,7 +1030,10 @@
       return Math.round(n).toLocaleString();
     }
     function pct(n) { if (n == null || isNaN(n)) return '-'; return (n * 100).toFixed(1) + '%'; }
-    function clr(g) { return COLORS[g] || '#888'; }
+    function clr(g) { 
+      const k = Object.keys(COLORS).find(key => g === key || g.startsWith(key));
+      return k ? COLORS[k] : '#555'; 
+    }
     function getYMs() { return [...new Set(RAW.map(r => r.ym))].sort(); }
     function getGameData(g) { return RAW.filter(r => r.game === g).sort((a, b) => a.ym.localeCompare(b.ym)); }
 
@@ -1634,7 +1637,7 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
       document.getElementById('deals-tbody').innerHTML = DEALS.map((d, idx) => {
         const key = d.id || idx;
         return `<tr>
-      <td><span class="gdot" style="background:${COLORS[d.title] || '#555'}"></span>${d.title}</td>
+      <td><span class="gdot" style="background:${clr(d.title)}"></span>${d.title}</td>
       <td style="color:var(--text2)">${d.developer || '-'}</td>
       <td style="color:var(--text2)">${d.region || '-'}</td>
       <td class="mono">${fmt(d.lf)}</td>
