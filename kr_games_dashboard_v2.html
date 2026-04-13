@@ -1068,6 +1068,7 @@
     let revChart = null, roiChart = null, gameChart1 = null, gameChart2 = null;
     let currentRevTab = 'stacked', currentGame = 'Play Together', currentGameTab = 'revenue', currentDataGame = 'All';
     let overviewStartYM = null, overviewEndYM = null;
+    let insightLang = 'KO';
 
     function getFilteredRAW() {
       if (!overviewStartYM && !overviewEndYM) return RAW;
@@ -1172,8 +1173,16 @@
       document.getElementById('kpi-grid').innerHTML = `
     <div class="kpi-card"><div class="kpi-label">Total revenue</div><div class="kpi-val">${fmt(totalRev)}</div><div class="kpi-sub">All games combined</div></div>
     <div class="kpi-card"><div class="kpi-label">Latest month (${latestYM})</div><div class="kpi-val">${fmt(latestTotal)}</div><div class="kpi-sub"><span class="${parseFloat(mom) >= 0 ? 'up' : 'down'}">${mom}%</span> vs prev month</div></div>
-    <div class="kpi-card" style="border:1px solid rgba(74,158,245,0.4);background:rgba(74,158,245,0.05)"><div class="kpi-label" style="color:#4A9EF5;font-weight:700">VNG RS PROFIT AFTER LF MG</div><div class="kpi-val">${fmt(totalOurNetProfit)}</div><div class="kpi-sub">{총매출 * (1-RS)} - LF - MG</div></div>
-    <div class="kpi-card"><div class="kpi-label">Portfolio ROI</div><div class="kpi-val">${portfolioRoi.toFixed(1)}%</div><div class="kpi-sub">(VNG RS PROFIT AFTER LF MG) / (LF+MG) x 100%</div></div>`;
+    <div class="kpi-card" style="border:1px solid rgba(74,158,245,0.4);background:rgba(74,158,245,0.05)">
+      <div class="kpi-label" style="color:#4A9EF5;font-weight:700">VNG RS PROFIT AFTER LF MG</div>
+      <div class="kpi-val">${fmt(totalOurNetProfit)}</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:4px">Formula: {Total Revenue * (1-RS)} - LF - MG<br><span style="color:#E05555;font-weight:500;">Marketing & other OPEX excluded. For BD Deal Review only.</span></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Portfolio ROI</div>
+      <div class="kpi-val">${portfolioRoi.toFixed(1)}%</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:4px">Formula: (VNG RS PROFIT AFTER LF MG) / (LF+MG) x 100%<br><span style="color:#E05555;font-weight:500;">Marketing & other OPEX excluded. For BD Deal Review only.</span></div>
+    </div>`;
 
       buildRevChart(currentRevTab);
       buildMGBars();
@@ -1239,7 +1248,7 @@
     }
 
     function parseInsightSection(content, marker) {
-      const regex = new RegExp(`\\[${marker}\\]([\\s\\S]*?)(?=\\[[A-Z0-9]+\\]|$)`);
+      const regex = new RegExp(`\\[${marker}\\]([\\s\\S]*?)(?=\\[[A-Z0-9_]+\\]|$)`);
       const match = content.match(regex);
       return match ? match[1].trim() : null;
     }
@@ -1294,24 +1303,30 @@
         <div class="section-title">AI Insights</div>
         <div style="font-size:11px;color:var(--text3);margin-top:3px">Gemini AI 생성 · ${genDate}</div>
       </div>
-      <button class="btn" onclick="generateInsightsNow()" id="gen-btn">
-        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-        Re-generate
-      </button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:6px;overflow:hidden;display:flex;font-size:11px;">
+          <button onclick="insightLang='KO'; buildInsights()" style="padding:4px 10px;cursor:pointer;border:none;background:${insightLang==='KO'?'var(--primary)':'transparent'};color:${insightLang==='KO'?'#fff':'var(--text2)'}">Korean</button>
+          <button onclick="insightLang='EN'; buildInsights()" style="padding:4px 10px;cursor:pointer;border:none;background:${insightLang==='EN'?'var(--primary)':'transparent'};color:${insightLang==='EN'?'#fff':'var(--text2)'}">English</button>
+        </div>
+        <button class="btn" onclick="generateInsightsNow()" id="gen-btn">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          Re-generate
+        </button>
+      </div>
     </div>
-    ${renderInsightBlock('포트폴리오 전체', parseInsightSection(c, 'PORTFOLIO'), '#4A9EF5')}
+    ${renderInsightBlock('포트폴리오 전체 (Portfolio)', parseInsightSection(c, 'PORTFOLIO_' + insightLang) || parseInsightSection(c, 'PORTFOLIO'), '#4A9EF5')}
     <details style="margin-bottom:16px;">
       <summary style="cursor:pointer; font-size:12px; font-weight:600; color:var(--text); margin-bottom:12px; padding:10px 14px; background:var(--bg3); border-radius:6px; border:1px solid var(--border); list-style:none; display:flex; justify-content:space-between; align-items:center;">
           <span>📊 게임별 상세 분석 펼쳐보기 (Breakdown)</span>
           <span style="font-size:10px; color:var(--text3)">▼ 펼치기</span>
       </summary>
       <div style="padding-top:4px; padding-left:8px;">
-        ${renderInsightBlock('Play Together', parseInsightSection(c, 'PTG'), '#4A9EF5')}
-        ${renderInsightBlock('CSB M', parseInsightSection(c, 'CSB'), '#2ECC9A')}
-        ${renderInsightBlock('Genesis', parseInsightSection(c, 'GEN'), '#E8A030')}
-        ${renderInsightBlock('Lineage 2M', parseInsightSection(c, 'L2M'), '#E06090')}
-        ${renderInsightBlock('Rememento', parseInsightSection(c, 'REM'), '#9090A0')}
-        ${renderInsightBlock('Action items', parseInsightSection(c, 'ACTION'), '#4A9EF5')}
+        ${renderInsightBlock('Play Together', parseInsightSection(c, 'PTG_' + insightLang) || parseInsightSection(c, 'PTG'), '#4A9EF5')}
+        ${renderInsightBlock('CSB M', parseInsightSection(c, 'CSB_' + insightLang) || parseInsightSection(c, 'CSB'), '#2ECC9A')}
+        ${renderInsightBlock('Genesis', parseInsightSection(c, 'GEN_' + insightLang) || parseInsightSection(c, 'GEN'), '#E8A030')}
+        ${renderInsightBlock('Lineage 2M', parseInsightSection(c, 'L2M_' + insightLang) || parseInsightSection(c, 'L2M'), '#E06090')}
+        ${renderInsightBlock('Rememento', parseInsightSection(c, 'REM_' + insightLang) || parseInsightSection(c, 'REM'), '#9090A0')}
+        ${renderInsightBlock('Action items', parseInsightSection(c, 'ACTION_' + insightLang) || parseInsightSection(c, 'ACTION'), '#4A9EF5')}
       </div>
     </details>
   `;
@@ -1367,6 +1382,7 @@
         }, null, 2);
 
         const prompt = `당신은 15년 차 시니어 게임 사업 디렉터(Business Analyst)입니다. 제공된 실적 데이터를 바탕으로, 핵심을 찌르는 날카로운 비즈니스 인사이트와 전략적 조언을 작성하세요.
+반드시 한국어와 영어 두 가지 버전으로 모두 작성해야 합니다. (Write in BOTH Korean and English)
 
 Here is our data:
 ${dataStr}
@@ -1376,26 +1392,40 @@ ${dataStr}
 
 다음 형식으로 작성하세요. 긍정적인 부분은 물론, 마케팅 낭비, 전환율 하락, 수익성 악화 등 부정적인 위험(Risk) 요인을 반드시 날카롭게 짚어주세요.
 
-[PORTFOLIO]
-포트폴리오 전체의 건강 상태에 대한 3-4문장 요약. (마케팅 효율 및 수익성 중심)
+[PORTFOLIO_KO]
+포트폴리오 전체의 건강 상태에 대한 3-4문장 요약. (마케팅 효율 및 수익성 중심) (한국어)
+[PORTFOLIO_EN]
+(English translation of the above)
 
-[PTG]
-Play Together 인사이트. 2-3문장.
+[PTG_KO]
+Play Together 인사이트. 2-3문장. (한국어)
+[PTG_EN]
+(English translation of the above)
 
-[CSB]
-CSB M 인사이트. 2-3문장.
+[CSB_KO]
+CSB M 인사이트. 2-3문장. (한국어)
+[CSB_EN]
+(English translation of the above)
 
-[GEN]
-Genesis 인사이트. 2-3문장.
+[GEN_KO]
+Genesis 인사이트. 2-3문장. (한국어)
+[GEN_EN]
+(English translation of the above)
 
-[L2M]
-Lineage 2M 인사이트. 2-3문장.
+[L2M_KO]
+Lineage 2M 인사이트. 2-3문장. (한국어)
+[L2M_EN]
+(English translation of the above)
 
-[REM]
-Rememento 최종 성과 요약. 1-2문장.
+[REM_KO]
+Rememento 최종 성과 요약. 1-2문장. (한국어)
+[REM_EN]
+(English translation of the above)
 
-[ACTION]
-이번 달 액션 아이템 3가지를 bullet point로.
+[ACTION_KO]
+이번 달 액션 아이템 3가지를 bullet point로. (한국어)
+[ACTION_EN]
+(English translation of the above)
 
 숫자를 구체적으로 인용하고 비즈니스 인사이트를 제공하세요.`;
 
@@ -1505,9 +1535,10 @@ Rememento 최종 성과 요약. 1-2문장.
       const gRows = getGameData(game);
       const c = clr(game);
       const totalRev = gRows.reduce((s, r) => s + (r.revenue || 0), 0);
-      const totalProfit = ourProfit(game, totalRev);
       const invest = getLf(game) + getMg(game);
-      const roi = invest > 0 ? (totalProfit / invest).toFixed(1) : '-';
+      const totalGrossProfit = ourProfit(game, totalRev);
+      const netProfit = totalGrossProfit - invest;
+      const roi = invest > 0 ? gameRoi(game, getFilteredRAW()).toFixed(1) + '%' : '-';
       const latestRev = gRows.slice(-1)[0]?.revenue;
       const prevRev = gRows.slice(-2, -1)[0]?.revenue;
       const gameMoM = prevRev > 0 ? ((latestRev - prevRev) / prevRev * 100).toFixed(1) : null;
@@ -1516,9 +1547,18 @@ Rememento 최종 성과 요약. 1-2문장.
       const recoup = mgRecoupPct(game);
 
       document.getElementById('game-kpis').innerHTML = `
-    <div class="game-kpi"><div class="game-kpi-label">Accum revenue</div><div class="game-kpi-val" style="color:${c}">${fmt(totalRev)}</div><div class="game-kpi-sub">Our profit: ${fmt(totalProfit)}</div></div>
+    <div class="game-kpi"><div class="game-kpi-label">Accum revenue</div><div class="game-kpi-val" style="color:${c}">${fmt(totalRev)}</div><div class="game-kpi-sub">Total gross generated</div></div>
     <div class="game-kpi"><div class="game-kpi-label">Latest month</div><div class="game-kpi-val">${fmt(latestRev)}</div><div class="game-kpi-sub">${gameMoM != null ? `<span class="${parseFloat(gameMoM) >= 0 ? 'up' : 'down'}">${gameMoM}%</span> MoM` : '-'}</div></div>
-    <div class="game-kpi"><div class="game-kpi-label">ROI</div><div class="game-kpi-val">${roi}x</div><div class="game-kpi-sub">Our profit / (LF+MG)</div></div>
+    <div class="game-kpi" style="border:1px solid rgba(74,158,245,0.4);background:rgba(74,158,245,0.05)">
+      <div class="game-kpi-label" style="color:#4A9EF5;font-weight:700">VNG RS PROFIT AFTER LF MG</div>
+      <div class="game-kpi-val">${fmt(netProfit)}</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:4px">Formula: {Total Revenue * (1-RS)} - LF - MG<br><span style="color:#E05555;font-weight:500;">Marketing & other OPEX excluded. For BD Deal Review only.</span></div>
+    </div>
+    <div class="game-kpi">
+      <div class="game-kpi-label">ROI</div>
+      <div class="game-kpi-val">${roi}</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:4px">Formula: (VNG RS PROFIT AFTER LF MG) / (LF+MG) x 100%<br><span style="color:#E05555;font-weight:500;">Marketing & other OPEX excluded. For BD Deal Review only.</span></div>
+    </div>
     <div class="game-kpi"><div class="game-kpi-label">MG recoup</div><div class="game-kpi-val">${recoup.toFixed(0)}%</div><div class="game-kpi-sub">매출×RS / MG | Avg CR ${pct(avgCr)}</div></div>`;
 
       document.querySelectorAll('#game-tabs .tab').forEach((el, i) => el.classList.toggle('active', ['revenue', 'cr_arppu', 'dau_mau', 'mkt'][i] === currentGameTab));
