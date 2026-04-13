@@ -1583,7 +1583,7 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
     <div class="game-kpi" style="border:1px solid rgba(168,117,255,0.4);background:rgba(168,117,255,0.05)">
       <div class="game-kpi-label" style="color:#A875FF;font-weight:700">MG recoup</div>
       <div class="game-kpi-val">${recoup.toFixed(0)}%</div>
-      <div class="game-kpi-sub">Gross Rev × RS / MG | Avg CR ${pct(avgCr)}</div>
+      <div class="game-kpi-sub">Gross Rev × RS / MG</div>
     </div>`;
 
       document.querySelectorAll('#game-tabs .tab').forEach((el, i) => el.classList.toggle('active', ['revenue', 'cr_arppu', 'dau_mau', 'mkt'][i] === currentGameTab));
