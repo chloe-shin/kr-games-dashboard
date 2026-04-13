@@ -1503,7 +1503,9 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
         let modelName = localStorage.getItem('gemini_model_name');
         if (!modelName) {
             try {
-                const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_KEY}`);
+                const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models`, {
+                    headers: { 'x-goog-api-key': GEMINI_KEY }
+                });
                 if (!listRes.ok) {
                   if (listRes.status === 400 || listRes.status === 403) {
                     localStorage.removeItem('gemini_api_key');
@@ -1513,19 +1515,21 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
                 }
                 const listData = await listRes.json();
                 
-                if (listData && listData.models) {
-                  const valid = listData.models.filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent'));
-                  
-                  // Priority 1: generic flash (like gemini-2.0-flash or gemini-flash)
-                  const flash = valid.find(m => m.name.includes('flash') && !m.name.includes('experimental') && !m.name.includes('tuning'));
-                  const pro = valid.find(m => m.name.includes('pro') && !m.name.includes('experimental') && !m.name.includes('tuning'));
+                  if (listData && listData.models) {
+                    const valid = listData.models.filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent'));
+                    
+                    // Priority 1: stable gemini-1.5-flash (most reliable)
+                    let bestModel = valid.find(m => m.name.includes('gemini-1.5-flash') && !m.name.includes('experimental'));
+                    
+                    // Priority 2: any other stable flash
+                    if (!bestModel) bestModel = valid.find(m => m.name.includes('flash') && !m.name.includes('experimental') && !m.name.includes('tuning'));
+                    
+                    // Priority 3: any pro model
+                    if (!bestModel) bestModel = valid.find(m => m.name.includes('pro') && !m.name.includes('experimental') && !m.name.includes('tuning'));
 
-                  if (flash) modelName = flash.name;
-                  else if (pro) modelName = pro.name;
-                  else if (valid.length > 0) modelName = valid[0].name;
-                  
-                  if (modelName) localStorage.setItem('gemini_model_name', modelName);
-                }
+                    modelName = bestModel ? bestModel.name : (valid.length > 0 ? valid[0].name : 'models/gemini-1.5-flash');
+                    localStorage.setItem('gemini_model_name', modelName);
+                  }
             } catch (err) {
                 console.warn('Dynamic model discovery failed, falling back to gemini-1.5-flash:', err);
                 modelName = 'models/gemini-1.5-flash';
@@ -1533,14 +1537,24 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
         }
 
         // 3. Generate insights using the dynamically selected model
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/${modelName}:generateContent?key=${GEMINI_KEY}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.4, maxOutputTokens: 8192 }
-          })
-        });
+        let res;
+        try {
+          res = await fetch(`https://generativelanguage.googleapis.com/v1beta/${modelName}:generateContent`, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'x-goog-api-key': GEMINI_KEY 
+            },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: { temperature: 0.4, maxOutputTokens: 8192 }
+            })
+          });
+        } catch (fetchErr) {
+          localStorage.removeItem('gemini_model_name');
+          throw new Error('네트워크 오류 혹은 API 서버 미응답. 잠시 후 다시 시도해주세요.');
+        }
+
         const data = await res.json();
         console.log('Gemini response:', data);
 
