@@ -762,7 +762,7 @@
         <div class="two-col section">
           <div class="card">
             <div class="section-title" style="margin-bottom:16px">MG recoup status</div>
-            <div style="font-size:11px;color:var(--text3);margin-bottom:12px">누적매출 × RS / MG — 개발사의 선급금 상쇄율</div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:12px">Total Revenue × RS / MG — Developer's MG Recoup Rate</div>
             <div id="mg-bars"></div>
           </div>
           <div class="card">
@@ -1234,7 +1234,7 @@
         <span style="font-weight:500;color:${c}">${recoupPct.toFixed(0)}%</span>
       </div>
       <div class="bar-bg"><div class="bar-fill" style="width:${barW}%;background:${c}"></div></div>
-      <div style="font-size:10px;color:var(--text3);margin-top:3px">${fmt(rev * rs)} (매출×RS) / ${fmt(mg)} MG</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:3px">${fmt(rev * rs)} (Rev×RS) / ${fmt(mg)} MG</div>
     </div>`;
       }).join('');
     }
@@ -1559,7 +1559,7 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
       <div class="game-kpi-val">${roi}</div>
       <div style="font-size:10px;color:var(--text3);margin-top:4px">Formula: (VNG RS PROFIT AFTER LF MG) / (LF+MG) x 100%<br><span style="color:#E05555;font-weight:500;">Marketing & other OPEX excluded. For BD Deal Review only.</span></div>
     </div>
-    <div class="game-kpi"><div class="game-kpi-label">MG recoup</div><div class="game-kpi-val">${recoup.toFixed(0)}%</div><div class="game-kpi-sub">매출×RS / MG | Avg CR ${pct(avgCr)}</div></div>`;
+    <div class="game-kpi"><div class="game-kpi-label">MG recoup</div><div class="game-kpi-val">${recoup.toFixed(0)}%</div><div class="game-kpi-sub">Rev × RS / MG | Avg CR ${pct(avgCr)}</div></div>`;
 
       document.querySelectorAll('#game-tabs .tab').forEach((el, i) => el.classList.toggle('active', ['revenue', 'cr_arppu', 'dau_mau', 'mkt'][i] === currentGameTab));
       buildGameChart(game, currentGameTab);
