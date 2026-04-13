@@ -1672,20 +1672,53 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
       openModal('deal');
     }
 
-    async function deleteDeal(key) {
-      if (!confirm('Delete this deal?')) return;
-      try {
-        const d = typeof key === 'number' ? DEALS[key] : DEALS.find(d => d.id === key);
-        if (d && d.id) {
-          await api('deal_terms', 'DELETE', null, `id=eq.${d.id}`);
-          DEALS = DEALS.filter(x => x.id !== d.id);
-        } else {
-          // no id — delete by index
-          DEALS.splice(key, 1);
+    function showToast(msg) {
+      let t = document.getElementById('toast');
+      if (!t) {
+        t = document.createElement('div');
+        t.id = 'toast';
+        t.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:10px 20px;border-radius:8px;font-size:13px;z-index:10000;box-shadow:0 4px 12px rgba(0,0,0,0.5);opacity:0;pointer-events:none;transition:opacity 0.3s;';
+        document.body.appendChild(t);
+      }
+      t.textContent = msg;
+      t.style.opacity = '1';
+      setTimeout(() => t.style.opacity = '0', 4000);
+    }
+
+    let pendingDeletes = [];
+
+    window.addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.key.toLowerCase() === 'z') {
+        if (pendingDeletes.length > 0) {
+          const task = pendingDeletes.pop();
+          clearTimeout(task.timeoutId);
+          DEALS.splice(task.idx, 0, task.deal); // restore exactly where it was
+          renderDeals();
+          showToast('Undone! Deal successfully restored.');
         }
-        renderDeals();
-        updateLastUpdated();
-      } catch (e) { alert('Delete failed: ' + e.message); }
+      }
+    });
+
+    async function deleteDeal(key) {
+      const idx = typeof key === 'number' ? key : DEALS.findIndex(d => d.id === key);
+      if (idx === -1) return;
+      const d = DEALS[idx];
+
+      DEALS.splice(idx, 1);
+      renderDeals();
+      showToast('Deal deleted! Press Ctrl+Z to undo.');
+
+      const timeoutId = setTimeout(async () => {
+        try {
+          if (d.id) await api('deal_terms', 'DELETE', null, `id=eq.${d.id}`);
+          updateLastUpdated();
+          pendingDeletes = pendingDeletes.filter(x => x.timeoutId !== timeoutId);
+        } catch (e) {
+          console.error('Delete failed:', e);
+        }
+      }, 7000);
+
+      pendingDeletes.push({ deal: d, idx: idx, timeoutId: timeoutId });
     }
 
     // ===== DATA PAGE =====
