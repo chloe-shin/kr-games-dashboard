@@ -1692,9 +1692,15 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
         if (pendingDeletes.length > 0) {
           const task = pendingDeletes.pop();
           clearTimeout(task.timeoutId);
-          DEALS.splice(task.idx, 0, task.deal); // restore exactly where it was
-          renderDeals();
-          showToast('Undone! Deal successfully restored.');
+          if (task.type === 'raw') {
+            RAW.splice(task.idx, 0, task.deal);
+            renderDataPage();
+            showToast('Undone! Row successfully restored.');
+          } else {
+            DEALS.splice(task.idx, 0, task.deal);
+            renderDeals();
+            showToast('Undone! Deal successfully restored.');
+          }
         }
       }
     });
@@ -1719,7 +1725,7 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
         }
       }, 7000);
 
-      pendingDeletes.push({ deal: d, idx: idx, timeoutId: timeoutId });
+      pendingDeletes.push({ type: 'deal', deal: d, idx: idx, timeoutId: timeoutId });
     }
 
     // ===== DATA PAGE =====
@@ -1757,13 +1763,27 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
     }
 
     async function deleteMonthly(id) {
-      if (!confirm('Delete this row?')) return;
-      try {
-        await api('monthly_data', 'DELETE', null, `id=eq.${id}`);
-        RAW = RAW.filter(r => r.id !== id);
-        renderDataPage();
-        updateLastUpdated();
-      } catch (e) { alert('Delete failed: ' + e.message); }
+      if (!confirm('Are you sure you want to delete this row?')) return;
+      
+      const idx = RAW.findIndex(r => r.id === id);
+      if (idx === -1) return;
+      const r = RAW[idx];
+
+      RAW.splice(idx, 1);
+      renderDataPage();
+      showToast('Row deleted! Press Ctrl+Z to undo.');
+
+      const timeoutId = setTimeout(async () => {
+        try {
+          await api('monthly_data', 'DELETE', null, `id=eq.${id}`);
+          updateLastUpdated();
+          pendingDeletes = pendingDeletes.filter(x => x.timeoutId !== timeoutId);
+        } catch (e) {
+          console.error('Delete failed:', e);
+        }
+      }, 7000);
+
+      pendingDeletes.push({ type: 'raw', deal: r, idx: idx, timeoutId: timeoutId });
     }
 
     // ===== MODALS =====
