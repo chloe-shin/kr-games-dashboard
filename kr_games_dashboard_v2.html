@@ -1700,6 +1700,7 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
     });
 
     async function deleteDeal(key) {
+      if (!confirm('Are you sure you want to delete this deal?')) return;
       const idx = typeof key === 'number' ? key : DEALS.findIndex(d => d.id === key);
       if (idx === -1) return;
       const d = DEALS[idx];
