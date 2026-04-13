@@ -1499,8 +1499,12 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
           localStorage.setItem('gemini_api_key', GEMINI_KEY.trim());
         }
 
-        // 1. Fetch available models dynamically only if not cached
+        // 1. Fetch available models dynamically only if not cached (Safety check: clear unstable 2.x versions)
         let modelName = localStorage.getItem('gemini_model_name');
+        if (modelName && (modelName.includes('2.5') || modelName.includes('2.0'))) {
+            localStorage.removeItem('gemini_model_name');
+            modelName = null;
+        }
         if (!modelName) {
             try {
                 const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models`, {
@@ -1518,16 +1522,16 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
                   if (listData && listData.models) {
                     const valid = listData.models.filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent'));
                     
-                    // Priority 1: stable gemini-1.5-flash (most reliable)
-                    let bestModel = valid.find(m => m.name.includes('gemini-1.5-flash') && !m.name.includes('experimental'));
+                    // Priority 1: STRICTLY stable gemini-1.5-flash
+                    let bestModel = valid.find(m => m.name.includes('gemini-1.5-flash') && !m.name.includes('experimental') && !m.name.includes('2.0') && !m.name.includes('2.5'));
                     
-                    // Priority 2: any other stable flash
+                    // Priority 2: any stable 1.5 pro
+                    if (!bestModel) bestModel = valid.find(m => m.name.includes('gemini-1.5-pro') && !m.name.includes('experimental'));
+                    
+                    // Priority 3: any other stable flash
                     if (!bestModel) bestModel = valid.find(m => m.name.includes('flash') && !m.name.includes('experimental') && !m.name.includes('tuning'));
-                    
-                    // Priority 3: any pro model
-                    if (!bestModel) bestModel = valid.find(m => m.name.includes('pro') && !m.name.includes('experimental') && !m.name.includes('tuning'));
 
-                    modelName = bestModel ? bestModel.name : (valid.length > 0 ? valid[0].name : 'models/gemini-1.5-flash');
+                    modelName = bestModel ? bestModel.name : 'models/gemini-1.5-flash';
                     localStorage.setItem('gemini_model_name', modelName);
                   }
             } catch (err) {
