@@ -752,10 +752,15 @@
         
         <div class="section">
           <div class="card">
-            <div class="tabs" id="rev-tabs">
-              <button class="tab active" onclick="switchRevTab('stacked')">Stacked</button>
-              <button class="tab" onclick="switchRevTab('line')">By game</button>
-              <button class="tab" onclick="switchRevTab('mom')">MoM growth</button>
+            <div class="tabs" id="rev-tabs" style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="display:flex; gap:4px">
+                <button class="tab active" onclick="switchRevTab('stacked')">Stacked</button>
+                <button class="tab" onclick="switchRevTab('line')">By game</button>
+                <button class="tab" onclick="switchRevTab('mom')">MoM growth</button>
+              </div>
+              <select id="ov-game-select" onchange="switchOverviewGame(this.value)" style="background:var(--bg3); border:1px solid var(--border); color:var(--text); font-size:12px; padding:4px 8px; border-radius:4px; cursor:pointer;">
+                <option value="All">All Games</option>
+              </select>
             </div>
             <div class="legend" id="rev-legend"></div>
             <div class="chart-wrap" style="height:300px"><canvas id="revChart"></canvas></div>
@@ -990,6 +995,38 @@
       return text ? JSON.parse(text) : [];
     }
 
+    // ===== DATA ENRICHMENT =====
+    function enrichRAWData(data) {
+      if (!data || data.length === 0) return [];
+      const sorted = [...data].sort((a,b) => a.ym.localeCompare(b.ym));
+      let ptCumul = 0;
+      sorted.forEach(r => {
+        let ds = 0, vp = 0;
+        const rev = r.revenue || 0;
+        if (r.game === 'Play Together') {
+          if (r.ym <= '2025-06') {
+            ds = rev * 0.36; vp = rev * (1 - 0.36);
+          } else {
+            let start = ptCumul, end = ptCumul + rev;
+            let t1 = 15000000, t2 = 30000000;
+            // Proportionate split logic
+            let s1 = Math.max(start, 0), e1 = Math.min(end, t1);
+            if (e1 > s1) { ds += (e1-s1)*0.42; vp += (e1-s1)*(1-0.42); }
+            let s2 = Math.max(start, t1), e2 = Math.min(end, t2);
+            if (e2 > s2) { ds += (e2-s2)*0.44; vp += (e2-s2)*(1-0.44); }
+            let s3 = Math.max(start, t2), e3 = end;
+            if (e3 > s3) { ds += (e3-s3)*0.46; vp += (e3-s3)*(1-0.46); }
+            ptCumul += rev;
+          }
+        } else {
+          const rs = getRs(r.game);
+          ds = rev * rs; vp = rev * (1 - rs);
+        }
+        r.devShare = ds; r.vngProfit = vp;
+      });
+      return sorted;
+    }
+
     async function init() {
       try {
         const [monthly, deals, insightsRes] = await Promise.all([
@@ -997,9 +1034,13 @@
           api('deal_terms', 'GET', null, 'order=created_at.asc'),
           api('insights', 'GET', null, 'order=year_month.desc&limit=1')
         ]);
-        RAW = monthly || [];
         DEALS = deals || [];
+        RAW = enrichRAWData(monthly || []);
         LATEST_INSIGHT = insightsRes && insightsRes.length > 0 ? insightsRes[0] : null;
+
+        // Populate Overview Game Select
+        const ovSelect = document.getElementById('ov-game-select');
+        ovSelect.innerHTML = '<option value="All">All Games</option>' + GAMES.map(g => `<option value="${g}">${g}</option>`).join('');
       } catch (e) {
         console.error('Init error:', e);
         alert('데이터를 불러오지 못했어요. 네트워크를 확인해주세요.');
@@ -1052,32 +1093,33 @@
       return d ? (d.mg || 0) : 0;
     }
 
-    // Our profit = revenue × (1 - RS)
-    function ourProfit(game, revenue) { return revenue * (1 - getRs(game)); }
-    // MG recoup = revenue × RS / MG  (개발사 입장에서 MG 상쇄율)
+    // MG recoup = (r.devShare) / MG
     function mgRecoupPct(game, customData = RAW) {
-      const rev = customData.filter(r => r.game === game).reduce((s, r) => s + (r.revenue || 0), 0);
+      const devShare = customData.filter(r => r.game === game).reduce((s, r) => s + (r.devShare || 0), 0);
       const mg = getMg(game);
-      return mg > 0 ? rev * getRs(game) / mg * 100 : 0;
+      return mg > 0 ? (devShare / mg) * 100 : 0;
     }
-    // Game ROI = (revenue × (1-RS) - LF - MG) / (LF + MG)
+    // Game ROI = (profit - LF - MG) / (LF + MG)
     function gameRoi(game, customData = RAW) {
-      const rev = customData.filter(r => r.game === game).reduce((s, r) => s + (r.revenue || 0), 0);
+      const profit = customData.filter(r => r.game === game).reduce((s, r) => s + (r.vngProfit || 0), 0);
       const invest = getLf(game) + getMg(game);
       if (invest <= 0) return 0;
-      const profit = (rev * (1 - getRs(game))) - invest;
-      return (profit / invest) * 100;
+      return ((profit - invest) / invest) * 100;
     }
 
     // ===== CHARTS STATE =====
     let revChart = null, roiChart = null, gameChart1 = null, gameChart2 = null;
-    let currentRevTab = 'stacked', currentGame = 'Play Together', currentGameTab = 'revenue', currentDataGame = 'All';
+    let currentRevTab = 'stacked', currentOverViewGame = 'All', currentGame = 'Play Together', currentGameTab = 'revenue', currentDataGame = 'All';
     let overviewStartYM = null, overviewEndYM = null;
     let insightLang = 'KO';
 
     function getFilteredRAW() {
-      if (!overviewStartYM && !overviewEndYM) return RAW;
-      return RAW.filter(r => {
+      let data = RAW;
+      if (currentOverViewGame !== 'All') {
+        data = data.filter(r => r.game === currentOverViewGame || r.game.startsWith(currentOverViewGame));
+      }
+      if (!overviewStartYM && !overviewEndYM) return data;
+      return data.filter(r => {
         if (overviewStartYM && r.ym < overviewStartYM) return false;
         if (overviewEndYM && r.ym > overviewEndYM) return false;
         return true;
@@ -1156,15 +1198,21 @@
     }
 
     // ===== OVERVIEW =====
+    function switchOverviewGame(val) {
+      currentOverViewGame = val;
+      renderOverview();
+    }
+
     function renderOverview() {
       const dataToUse = getFilteredRAW();
       const allYMs = [...new Set(dataToUse.map(r => r.ym))].sort();
       const totalRev = dataToUse.reduce((s, r) => s + (r.revenue || 0), 0);
       
-      const totalInvest = GAMES.reduce((s, g) => s + getLf(g) + getMg(g), 0);
-      const totalOurGrossProfit = GAMES.reduce((s, g) => {
-        const rev = dataToUse.filter(r => r.game === g).reduce((a, r) => a + (r.revenue || 0), 0);
-        return s + (rev * (1 - getRs(g)));
+      const targetGames = currentOverViewGame === 'All' ? GAMES : [currentOverViewGame];
+      
+      const totalInvest = targetGames.reduce((s, g) => s + getLf(g) + getMg(g), 0);
+      const totalOurGrossProfit = targetGames.reduce((s, g) => {
+        return s + dataToUse.filter(r => r.game === g).reduce((a, r) => a + (r.vngProfit || 0), 0);
       }, 0);
       const totalOurNetProfit = totalOurGrossProfit - totalInvest;
       const portfolioRoi = totalInvest > 0 ? (totalOurNetProfit / totalInvest) * 100 : 0;
@@ -1212,17 +1260,18 @@
       if (revChart) { revChart.destroy(); revChart = null; }
       const dataToUse = getFilteredRAW();
       const allYMs = [...new Set(dataToUse.map(r => r.ym))].sort();
-      buildLegend('rev-legend', GAMES);
+      const targetGames = currentOverViewGame === 'All' ? GAMES : [currentOverViewGame];
+      buildLegend('rev-legend', targetGames);
       const byGY = {};
-      GAMES.forEach(g => { byGY[g] = {}; allYMs.forEach(ym => { byGY[g][ym] = dataToUse.filter(r => r.game === g && r.ym === ym).reduce((s, r) => s + (r.revenue || 0), 0); }); });
+      targetGames.forEach(g => { byGY[g] = {}; allYMs.forEach(ym => { byGY[g][ym] = dataToUse.filter(r => r.game === g && r.ym === ym).reduce((s, r) => s + (r.revenue || 0), 0); }); });
       const ctx = document.getElementById('revChart').getContext('2d');
       const gc = 'rgba(255,255,255,.04)', tc = '#666';
       if (type === 'stacked') {
-        revChart = new Chart(ctx, { type: 'bar', data: { labels: allYMs, datasets: GAMES.map(g => ({ label: g, data: allYMs.map(ym => byGY[g][ym] || 0), backgroundColor: clr(g) + 'cc', borderWidth: 0 })) }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${c.dataset.label}: ${fmt(c.raw)}` } } }, scales: { x: { stacked: true, ticks: { autoSkip: true, maxRotation: 45, font: { size: 10 }, color: tc }, grid: { color: gc } }, y: { stacked: true, ticks: { callback: v => fmt(v), font: { size: 10 }, color: tc }, grid: { color: gc } } } } });
+        revChart = new Chart(ctx, { type: 'bar', data: { labels: allYMs, datasets: targetGames.map(g => ({ label: g, data: allYMs.map(ym => byGY[g][ym] || 0), backgroundColor: clr(g) + 'cc', borderWidth: 0 })) }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${c.dataset.label}: ${fmt(c.raw)}` } } }, scales: { x: { stacked: true, ticks: { autoSkip: true, maxRotation: 45, font: { size: 10 }, color: tc }, grid: { color: gc } }, y: { stacked: true, ticks: { callback: v => fmt(v), font: { size: 10 }, color: tc }, grid: { color: gc } } } } });
       } else if (type === 'line') {
-        revChart = new Chart(ctx, { type: 'line', data: { labels: allYMs, datasets: GAMES.map(g => ({ label: g, data: allYMs.map(ym => byGY[g][ym] || null), borderColor: clr(g), backgroundColor: 'transparent', borderWidth: 2, pointRadius: 2, tension: 0.3, spanGaps: false })) }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${c.dataset.label}: ${fmt(c.raw)}` } } }, scales: { x: { ticks: { autoSkip: true, maxRotation: 45, font: { size: 10 }, color: tc }, grid: { color: gc } }, y: { ticks: { callback: v => fmt(v), font: { size: 10 }, color: tc }, grid: { color: gc } } } } });
+        revChart = new Chart(ctx, { type: 'line', data: { labels: allYMs, datasets: targetGames.map(g => ({ label: g, data: allYMs.map(ym => byGY[g][ym] || null), borderColor: clr(g), backgroundColor: 'transparent', borderWidth: 2, pointRadius: 2, tension: 0.3, spanGaps: false })) }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${c.dataset.label}: ${fmt(c.raw)}` } } }, scales: { x: { ticks: { autoSkip: true, maxRotation: 45, font: { size: 10 }, color: tc }, grid: { color: gc } }, y: { ticks: { callback: v => fmt(v), font: { size: 10 }, color: tc }, grid: { color: gc } } } } });
       } else {
-        revChart = new Chart(ctx, { type: 'line', data: { labels: allYMs, datasets: GAMES.map(g => { const yms = allYMs.filter(ym => byGY[g][ym] > 0); const vals = yms.slice(1).map((ym, i) => { const p = byGY[g][yms[i]]; return p > 0 ? ((byGY[g][ym] - p) / p * 100) : null; }); return { label: g, data: allYMs.map(ym => { const i = yms.slice(1).indexOf(ym); return i >= 0 ? vals[i] : null; }), borderColor: clr(g), backgroundColor: 'transparent', borderWidth: 2, pointRadius: 2, tension: 0.3, spanGaps: false }; }) }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.raw != null ? c.raw.toFixed(1) + '%' : 'N/A'}` } } }, scales: { x: { ticks: { autoSkip: true, maxRotation: 45, font: { size: 10 }, color: tc }, grid: { color: gc } }, y: { ticks: { callback: v => v.toFixed(0) + '%', font: { size: 10 }, color: tc }, grid: { color: gc } } } } });
+        revChart = new Chart(ctx, { type: 'line', data: { labels: allYMs, datasets: targetGames.map(g => { const yms = allYMs.filter(ym => byGY[g][ym] > 0); const vals = yms.slice(1).map((ym, i) => { const p = byGY[g][yms[i]]; return p > 0 ? ((byGY[g][ym] - p) / p * 100) : null; }); return { label: g, data: allYMs.map(ym => { const i = yms.slice(1).indexOf(ym); return i >= 0 ? vals[i] : null; }), borderColor: clr(g), backgroundColor: 'transparent', borderWidth: 2, pointRadius: 2, tension: 0.3, spanGaps: false }; }) }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.raw != null ? c.raw.toFixed(1) + '%' : 'N/A'}` } } }, scales: { x: { ticks: { autoSkip: true, maxRotation: 45, font: { size: 10 }, color: tc }, grid: { color: gc } }, y: { ticks: { callback: v => v.toFixed(0) + '%', font: { size: 10 }, color: tc }, grid: { color: gc } } } } });
       }
     }
 
@@ -1238,8 +1287,7 @@
         const recoupPct = mgRecoupPct(g, dataToUse);
         const barW = Math.min(recoupPct, 100);
         const c = recoupPct > 100 ? '#2ECC9A' : recoupPct > 50 ? '#E8A030' : '#E05555';
-        const rev = dataToUse.filter(r => r.game === g).reduce((s, r) => s + (r.revenue || 0), 0);
-        const rs = getRs(g);
+        const devShare = dataToUse.filter(r => r.game === g).reduce((s, r) => s + (r.devShare || 0), 0);
         const mg = getMg(g);
         return `<div style="margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px">
@@ -1247,7 +1295,7 @@
         <span style="font-weight:500;color:${c}">${recoupPct.toFixed(0)}%</span>
       </div>
       <div class="bar-bg"><div class="bar-fill" style="width:${barW}%;background:${c}"></div></div>
-      <div style="font-size:10px;color:var(--text3);margin-top:3px">${fmt(rev * rs)} (Gross Rev×RS) / ${fmt(mg)} MG</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:3px">${fmt(devShare)} (Gross Rev×RS) / ${fmt(mg)} MG</div>
     </div>`;
       }).join('');
     }
@@ -1549,7 +1597,7 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
       const c = clr(game);
       const totalRev = gRows.reduce((s, r) => s + (r.revenue || 0), 0);
       const invest = getLf(game) + getMg(game);
-      const totalGrossProfit = ourProfit(game, totalRev);
+      const totalGrossProfit = gRows.reduce((s, r) => s + (r.vngProfit || 0), 0);
       const netProfit = totalGrossProfit - invest;
       const roi = invest > 0 ? gameRoi(game, getFilteredRAW()).toFixed(1) + '%' : '-';
       const latestRev = gRows.slice(-1)[0]?.revenue;
@@ -1602,7 +1650,7 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
       if (metric === 'revenue') {
         area.innerHTML = `<div style="display:flex;gap:12px;margin-bottom:12px"><span class="leg-item"><span class="leg-dot" style="background:${c}bb"></span>Revenue</span><span class="leg-item"><span class="leg-dot" style="background:${c}44"></span>RS Profit</span></div><div class="chart-wrap" style="height:280px"><canvas id="gameChart1"></canvas></div>`;
         const rs = getRs(game);
-        gameChart1 = new Chart(document.getElementById('gameChart1').getContext('2d'), { type: 'bar', data: { labels, datasets: [{ label: 'Revenue', data: gRows.map(r => r.revenue), backgroundColor: c + 'bb', borderWidth: 0 }, { label: 'RS Profit', data: gRows.map(r => r.revenue * (1 - rs)), backgroundColor: c + '44', borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c2 => `${c2.dataset.label}: ${fmt(c2.raw)}` } } }, scales: { x: { ticks: { autoSkip: true, maxRotation: 45, font: { size: 10 }, color: tc }, grid: { color: gc } }, y: { ticks: { callback: v => fmt(v), font: { size: 10 }, color: tc }, grid: { color: gc } } } } });
+        gameChart1 = new Chart(document.getElementById('gameChart1').getContext('2d'), { type: 'bar', data: { labels, datasets: [{ label: 'Revenue', data: gRows.map(r => r.revenue), backgroundColor: c + 'bb', borderWidth: 0 }, { label: 'RS Profit', data: gRows.map(r => r.vngProfit), backgroundColor: c + '44', borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c2 => `${c2.dataset.label}: ${fmt(c2.raw)}` } } }, scales: { x: { ticks: { autoSkip: true, maxRotation: 45, font: { size: 10 }, color: tc }, grid: { color: gc } }, y: { ticks: { callback: v => fmt(v), font: { size: 10 }, color: tc }, grid: { color: gc } } } } });
       } else if (metric === 'cr_arppu') {
         area.innerHTML = `<div class="two-col"><div class="chart-wrap" style="height:240px"><canvas id="gameChart1"></canvas></div><div class="chart-wrap" style="height:240px"><canvas id="gameChart2"></canvas></div></div>`;
         gameChart1 = new Chart(document.getElementById('gameChart1').getContext('2d'), { type: 'line', data: { labels, datasets: [{ label: 'CR%', data: gRows.map(r => r.cr != null ? +(r.cr * 100).toFixed(2) : null), borderColor: c, backgroundColor: c + '22', fill: true, borderWidth: 2, pointRadius: 2, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, title: { display: true, text: 'Conversion rate (%)', font: { size: 11, weight: '500' }, color: '#888' } }, scales: { x: { ticks: { autoSkip: true, maxRotation: 45, font: { size: 9 }, color: tc }, grid: { color: gc } }, y: { ticks: { callback: v => v.toFixed(1) + '%', font: { size: 10 }, color: tc }, grid: { color: gc } } } } });
@@ -1717,6 +1765,7 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
           clearTimeout(task.timeoutId);
           if (task.type === 'raw') {
             RAW.splice(task.idx, 0, task.deal);
+            RAW = enrichRAWData(RAW);
             renderDataPage();
             showToast('Undone! Row successfully restored.');
           } else {
@@ -1793,6 +1842,7 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
       const r = RAW[idx];
 
       RAW.splice(idx, 1);
+      RAW = enrichRAWData(RAW);
       renderDataPage();
       showToast('Row deleted! Press Ctrl+Z to undo.');
 
@@ -1860,6 +1910,7 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
       try {
         const saved = await api('monthly_data', 'POST', row);
         RAW.push(Array.isArray(saved) ? saved[0] : saved || row);
+        RAW = enrichRAWData(RAW);
         closeModal('monthly');
         updateLastUpdated();
         ['f-game', 'f-date', 'f-revenue', 'f-dau', 'f-mau', 'f-nru', 'f-mpu', 'f-arppu', 'f-cr', 'f-mkt'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
