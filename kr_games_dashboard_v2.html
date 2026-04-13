@@ -742,6 +742,12 @@
       <!-- OVERVIEW -->
       <div class="page active" id="page-overview">
         <div class="kpi-grid" id="kpi-grid"></div>
+        
+        <!-- AI Insights Section -->
+        <div class="section">
+          <div id="insights"></div>
+        </div>
+        
         <div class="section">
           <div class="card">
             <div class="tabs" id="rev-tabs">
@@ -764,9 +770,6 @@
             <div style="font-size:11px;color:var(--text3);margin-bottom:12px">매출 × (1-RS) / (LF+MG)</div>
             <div class="chart-wrap" style="height:200px"><canvas id="roiChart"></canvas></div>
           </div>
-        </div>
-        <div class="section">
-          <div id="insights"></div>
         </div>
       </div>
 
@@ -1295,11 +1298,19 @@
       </button>
     </div>
     ${renderInsightBlock('포트폴리오 전체', parseInsightSection(c, 'PORTFOLIO'), '#4A9EF5')}
-    ${renderInsightBlock('Play Together', parseInsightSection(c, 'PTG'), '#4A9EF5')}
-    ${renderInsightBlock('CSB M', parseInsightSection(c, 'CSB'), '#2ECC9A')}
-    ${renderInsightBlock('Genesis', parseInsightSection(c, 'GEN'), '#E8A030')}
-    ${renderInsightBlock('Lineage 2M', parseInsightSection(c, 'L2M'), '#E06090')}
-    ${renderInsightBlock('Rememento', parseInsightSection(c, 'REM'), '#9090A0')}
+    <details style="margin-bottom:16px;">
+      <summary style="cursor:pointer; font-size:12px; font-weight:600; color:var(--text); margin-bottom:12px; padding:10px 14px; background:var(--bg3); border-radius:6px; border:1px solid var(--border); list-style:none; display:flex; justify-content:space-between; align-items:center;">
+          <span>📊 게임별 상세 분석 펼쳐보기 (Breakdown)</span>
+          <span style="font-size:10px; color:var(--text3)">▼ 펼치기</span>
+      </summary>
+      <div style="padding-top:4px; padding-left:8px;">
+        ${renderInsightBlock('Play Together', parseInsightSection(c, 'PTG'), '#4A9EF5')}
+        ${renderInsightBlock('CSB M', parseInsightSection(c, 'CSB'), '#2ECC9A')}
+        ${renderInsightBlock('Genesis', parseInsightSection(c, 'GEN'), '#E8A030')}
+        ${renderInsightBlock('Lineage 2M', parseInsightSection(c, 'L2M'), '#E06090')}
+        ${renderInsightBlock('Rememento', parseInsightSection(c, 'REM'), '#9090A0')}
+      </div>
+    </details>
     ${renderInsightBlock('Action items', parseInsightSection(c, 'ACTION'), '#4A9EF5')}
   `;
     }
