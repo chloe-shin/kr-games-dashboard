@@ -762,12 +762,12 @@
         <div class="two-col section">
           <div class="card">
             <div class="section-title" style="margin-bottom:16px">MG recoup status</div>
-            <div style="font-size:11px;color:var(--text3);margin-bottom:12px">Total Revenue × RS / MG — Developer's MG Recoup Rate</div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:12px">(Rev × RS) / MG — Developer Recoup</div>
             <div id="mg-bars"></div>
           </div>
           <div class="card">
             <div class="section-title" style="margin-bottom:4px">Portfolio ROI by game</div>
-            <div style="font-size:11px;color:var(--text3);margin-bottom:12px">( {Total Revenue * (1-RS)} - LF - MG ) / (LF+MG) x 100%</div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:12px">(Profit) / (LF+MG) x 100%</div>
             <div class="chart-wrap" style="height:200px"><canvas id="roiChart"></canvas></div>
           </div>
         </div>
@@ -1176,12 +1176,12 @@
     <div class="kpi-card" style="border:1px solid rgba(74,158,245,0.4);background:rgba(74,158,245,0.05)">
       <div class="kpi-label" style="color:#4A9EF5;font-weight:700">VNG RS PROFIT AFTER LF MG</div>
       <div class="kpi-val">${fmt(totalOurNetProfit)}</div>
-      <div style="font-size:10px;color:var(--text3);margin-top:4px">Formula: {Total Revenue * (1-RS)} - LF - MG<br><span style="color:#E05555;font-weight:500;">Marketing & other OPEX excluded. For BD Deal Review only.</span></div>
+      <div style="font-size:10px;color:var(--text3);margin-top:4px">{Total Rev * (1-RS)} - LF - MG<br><span style="color:#E05555;font-weight:500;">*Excl. OPEX (BD review)</span></div>
     </div>
     <div class="kpi-card">
       <div class="kpi-label">Portfolio ROI</div>
       <div class="kpi-val">${portfolioRoi.toFixed(1)}%</div>
-      <div style="font-size:10px;color:var(--text3);margin-top:4px">Formula: (VNG RS PROFIT AFTER LF MG) / (LF+MG) x 100%<br><span style="color:#E05555;font-weight:500;">Marketing & other OPEX excluded. For BD Deal Review only.</span></div>
+      <div style="font-size:10px;color:var(--text3);margin-top:4px">(Profit) / (LF+MG) x 100%<br><span style="color:#E05555;font-weight:500;">*Excl. OPEX (BD review)</span></div>
     </div>`;
 
       buildRevChart(currentRevTab);
@@ -1552,12 +1552,12 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
     <div class="game-kpi" style="border:1px solid rgba(74,158,245,0.4);background:rgba(74,158,245,0.05)">
       <div class="game-kpi-label" style="color:#4A9EF5;font-weight:700">VNG RS PROFIT AFTER LF MG</div>
       <div class="game-kpi-val">${fmt(netProfit)}</div>
-      <div style="font-size:10px;color:var(--text3);margin-top:4px">Formula: {Total Revenue * (1-RS)} - LF - MG<br><span style="color:#E05555;font-weight:500;">Marketing & other OPEX excluded. For BD Deal Review only.</span></div>
+      <div style="font-size:10px;color:var(--text3);margin-top:4px">{Total Rev * (1-RS)} - LF - MG<br><span style="color:#E05555;font-weight:500;">*Excl. OPEX (BD review)</span></div>
     </div>
     <div class="game-kpi">
       <div class="game-kpi-label">ROI</div>
       <div class="game-kpi-val">${roi}</div>
-      <div style="font-size:10px;color:var(--text3);margin-top:4px">Formula: (VNG RS PROFIT AFTER LF MG) / (LF+MG) x 100%<br><span style="color:#E05555;font-weight:500;">Marketing & other OPEX excluded. For BD Deal Review only.</span></div>
+      <div style="font-size:10px;color:var(--text3);margin-top:4px">(Profit) / (LF+MG) x 100%<br><span style="color:#E05555;font-weight:500;">*Excl. OPEX (BD review)</span></div>
     </div>
     <div class="game-kpi"><div class="game-kpi-label">MG recoup</div><div class="game-kpi-val">${recoup.toFixed(0)}%</div><div class="game-kpi-sub">Rev × RS / MG | Avg CR ${pct(avgCr)}</div></div>`;
 
