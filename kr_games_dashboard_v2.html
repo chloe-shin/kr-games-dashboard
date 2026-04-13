@@ -1499,27 +1499,35 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
           localStorage.setItem('gemini_api_key', GEMINI_KEY.trim());
         }
 
-        // 1. Set stable default model (Hardcoded for maximum reliability)
-        let modelName = 'models/gemini-1.5-flash';
-        localStorage.setItem('gemini_model_v3', modelName); // Use new key to bypass old cache
-        
-        // Optional: Background check to see if we can use Pro, but don't let it block or break thing
-        try {
-            const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models`, {
-                headers: { 'x-goog-api-key': GEMINI_KEY }
-            });
-            if (listRes.ok) {
-              const listData = await listRes.json();
-              if (listData && listData.models) {
-                const valid = listData.models.filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent'));
-                // Only upgrade to Pro if available, otherwise stay on stable Flash
-                const pro = valid.find(m => m.name.includes('gemini-1.5-pro') && !m.name.includes('experimental'));
-                if (pro) modelName = pro.name;
-              }
+        // 1. Fetch available models dynamically based on the current API Key
+        let modelName = localStorage.getItem('gemini_model_v4');
+        if (!modelName) {
+            try {
+                const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models`, {
+                    headers: { 'x-goog-api-key': GEMINI_KEY }
+                });
+                if (listRes.ok) {
+                  const listData = await listRes.json();
+                  if (listData && listData.models) {
+                    const valid = listData.models.filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent'));
+                    
+                    // Priority: latest > flash > pro
+                    let best = valid.find(m => m.name.includes('gemini-1.5-flash-latest'));
+                    if (!best) best = valid.find(m => m.name.includes('gemini-1.5-flash') && !m.name.includes('experimental'));
+                    if (!best) best = valid.find(m => m.name.includes('gemini-1.5-pro') && !m.name.includes('experimental'));
+                    if (!best) best = valid.find(m => m.name.includes('flash') && !m.name.includes('experimental'));
+
+                    if (best) {
+                      modelName = best.name; // Use the EXACT name from Google (e.g., "models/gemini-1.5-flash-latest")
+                      localStorage.setItem('gemini_model_v4', modelName);
+                    }
+                  }
+                }
+            } catch (err) {
+                console.warn('Model discovery failed:', err);
             }
-        } catch (err) {
-            console.warn('Silent discovery failed, sticking with default:', err);
         }
+        if (!modelName) modelName = 'models/gemini-1.5-flash'; // Final fallback
 
         // 3. Generate insights using the dynamically selected model
         let res;
