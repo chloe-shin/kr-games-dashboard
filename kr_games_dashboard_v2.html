@@ -1508,8 +1508,19 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
                 const listData = await listRes.json();
                 if (listData && listData.models) {
                     const valid = listData.models.filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent'));
+                    // Rank: 2.5 Lite > 2.5 Pro > 2.0 Pro > 2.0 Flash Lite > 1.5 Pro > 1.5 Flash
                     candidates = valid.sort((a, b) => {
-                        const score = m => (m.includes('pro') ? 10 : 0) + (m.includes('2.0') ? 20 : (m.includes('1.5') ? 5 : 0));
+                        const score = name => {
+                            let s = 0;
+                            const m = name.toLowerCase();
+                            if (m.includes('2.5')) s += 30;
+                            else if (m.includes('2.0')) s += 20;
+                            else if (m.includes('1.5')) s += 5;
+                            
+                            if (m.includes('lite')) s += 10; // Lite has better quota for free tier
+                            if (m.includes('pro')) s += 5;
+                            return s;
+                        };
                         return score(b.name) - score(a.name);
                     }).map(m => m.name);
                 }
@@ -1518,7 +1529,8 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
             console.warn('Model discovery failed, using defaults:', err);
         }
         
-        if (!candidates.includes('models/gemini-2.0-flash')) candidates.unshift('models/gemini-2.0-flash');
+        
+        if (!candidates.includes('models/gemini-2.5-flash-lite')) candidates.unshift('models/gemini-2.5-flash-lite');
         if (!candidates.includes('models/gemini-1.5-flash')) candidates.push('models/gemini-1.5-flash');
 
         let content = null;
