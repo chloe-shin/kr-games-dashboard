@@ -798,6 +798,24 @@
           </div>
           <div id="game-chart-area"></div>
         </div>
+        <div class="card" style="margin-top:20px; overflow-x:auto;">
+          <div class="section-title" style="margin-bottom:12px">Monthly Raw Data (Filtered)</div>
+          <table style="width:100%; text-align:left; font-size:12px; border-collapse:collapse;">
+            <thead>
+              <tr style="border-bottom:1px solid var(--border); color:var(--text2)">
+                <th style="padding:8px">Month</th>
+                <th style="padding:8px">Revenue</th>
+                <th style="padding:8px">Profit</th>
+                <th style="padding:8px">CR (%)</th>
+                <th style="padding:8px">ARPPU ($)</th>
+                <th style="padding:8px">DAU</th>
+                <th style="padding:8px">MAU</th>
+                <th style="padding:8px">Mkt Spend</th>
+              </tr>
+            </thead>
+            <tbody id="game-raw-tbody"></tbody>
+          </table>
+        </div>
       </div>
 
       <!-- DEALS -->
@@ -1689,6 +1707,19 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
       <div class="game-kpi-sub">Gross Rev × RS / MG</div>
     </div>`;
 
+      const rawHTML = gRows.map(r => `
+         <tr style="border-bottom:1px solid var(--border2)">
+           <td style="padding:8px">${r.ym}</td>
+           <td style="padding:8px;font-family:monospace">${r.revenue != null ? fmt(r.revenue) : '-'}</td>
+           <td style="padding:8px;font-family:monospace">${r.vngProfit != null ? fmt(r.vngProfit) : '-'}</td>
+           <td style="padding:8px;font-family:monospace">${r.cr != null ? (r.cr*100).toFixed(2)+'%' : '-'}</td>
+           <td style="padding:8px;font-family:monospace">${r.arppu != null ? '$'+parseFloat(r.arppu).toFixed(1) : '-'}</td>
+           <td style="padding:8px;font-family:monospace">${r.dau != null ? fmtN(r.dau) : '-'}</td>
+           <td style="padding:8px;font-family:monospace">${r.mau != null ? fmtN(r.mau) : '-'}</td>
+           <td style="padding:8px;font-family:monospace">${r.mkt_cost != null ? fmt(r.mkt_cost) : '-'}</td>
+         </tr>`).join('');
+      document.getElementById('game-raw-tbody').innerHTML = rawHTML || `<tr><td colspan="8" style="padding:8px;text-align:center;color:var(--text3)">No data available for the selected period</td></tr>`;
+
       document.querySelectorAll('#game-tabs .tab').forEach((el, i) => el.classList.toggle('active', ['revenue', 'cr_arppu', 'dau_mau', 'mkt'][i] === currentGameTab));
       buildGameChart(game, currentGameTab);
     }
@@ -1744,8 +1775,9 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
         gameChart1 = new Chart(document.getElementById('gameChart1').getContext('2d'), { type: 'line', data: { labels, datasets: [{ label: 'DAU', data: gRows.map(r => r.dau), borderColor: c, backgroundColor: c + '22', fill: true, borderWidth: 2, pointRadius: 2, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, title: { display: true, text: 'Daily active users', font: { size: 11, weight: '500' }, color: '#888' } }, scales: { x: { ticks: { autoSkip: true, maxRotation: 45, font: { size: 9 }, color: tc }, grid: { color: gc } }, y: { ticks: { callback: v => fmtN(v), font: { size: 10 }, color: tc }, grid: { color: gc } } } } });
         gameChart2 = new Chart(document.getElementById('gameChart2').getContext('2d'), { type: 'line', data: { labels, datasets: [{ label: 'MAU', data: gRows.map(r => r.mau), borderColor: '#2ECC9A', backgroundColor: '#2ECC9A22', fill: true, borderWidth: 2, pointRadius: 2, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, title: { display: true, text: 'Monthly active users', font: { size: 11, weight: '500' }, color: '#888' } }, scales: { x: { ticks: { autoSkip: true, maxRotation: 45, font: { size: 9 }, color: tc }, grid: { color: gc } }, y: { ticks: { callback: v => fmtN(v), font: { size: 10 }, color: tc }, grid: { color: gc } } } } });
       } else {
-        area.innerHTML = `<div class="chart-wrap" style="height:280px"><canvas id="gameChart1"></canvas></div>`;
-        gameChart1 = new Chart(document.getElementById('gameChart1').getContext('2d'), { type: 'line', data: { labels, datasets: [{ label: 'Mkt/Rev %', data: gRows.map(r => r.mkt_cost != null && r.revenue > 0 ? +(r.mkt_cost / r.revenue * 100).toFixed(1) : null), borderColor: '#E06090', backgroundColor: '#E0609022', fill: true, borderWidth: 2, pointRadius: 2, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, title: { display: true, text: 'Marketing cost / Revenue (%)', font: { size: 11, weight: '500' }, color: '#888' } }, scales: { x: { ticks: { autoSkip: true, maxRotation: 45, font: { size: 10 }, color: tc }, grid: { color: gc } }, y: { ticks: { callback: v => v.toFixed(0) + '%', font: { size: 10 }, color: tc }, grid: { color: gc } } } } });
+        area.innerHTML = `<div class="two-col"><div class="chart-wrap" style="height:240px"><canvas id="gameChart1"></canvas></div><div class="chart-wrap" style="height:240px"><canvas id="gameChart2"></canvas></div></div>`;
+        gameChart1 = new Chart(document.getElementById('gameChart1').getContext('2d'), { type: 'bar', data: { labels, datasets: [{ label: 'Mkt Spend', data: gRows.map(r => r.mkt_cost), backgroundColor: '#E06090bb', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, title: { display: true, text: 'Marketing Spend (USD)', font: { size: 11, weight: '500' }, color: '#888' } }, scales: { x: { ticks: { autoSkip: true, maxRotation: 45, font: { size: 9 }, color: tc }, grid: { color: gc } }, y: { ticks: { callback: v => fmt(v), font: { size: 10 }, color: tc }, grid: { color: gc } } } } });
+        gameChart2 = new Chart(document.getElementById('gameChart2').getContext('2d'), { type: 'line', data: { labels, datasets: [{ label: 'Mkt/Rev %', data: gRows.map(r => r.mkt_cost != null && r.revenue > 0 ? +(r.mkt_cost / r.revenue * 100).toFixed(1) : null), borderColor: '#E06090', backgroundColor: '#E0609022', fill: true, borderWidth: 2, pointRadius: 2, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, title: { display: true, text: 'Marketing cost / Revenue (%)', font: { size: 11, weight: '500' }, color: '#888' } }, scales: { x: { ticks: { autoSkip: true, maxRotation: 45, font: { size: 9 }, color: tc }, grid: { color: gc } }, y: { ticks: { callback: v => v.toFixed(0) + '%', font: { size: 10 }, color: tc }, grid: { color: gc } } } } });
       }
     }
 
