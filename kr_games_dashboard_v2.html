@@ -803,14 +803,14 @@
           <table style="width:100%; text-align:left; font-size:12px; border-collapse:collapse;">
             <thead>
               <tr style="border-bottom:1px solid var(--border); color:var(--text2)">
-                <th style="padding:8px">Month</th>
-                <th style="padding:8px">Revenue</th>
-                <th style="padding:8px">Profit</th>
-                <th style="padding:8px">CR (%)</th>
-                <th style="padding:8px">ARPPU ($)</th>
-                <th style="padding:8px">DAU</th>
-                <th style="padding:8px">MAU</th>
-                <th style="padding:8px">Mkt Spend</th>
+                <th style="padding:8px; cursor:pointer; user-select:none" onclick="sortGameRaw('ym')">Month <span id="sort-ind-ym"></span></th>
+                <th style="padding:8px; cursor:pointer; user-select:none" onclick="sortGameRaw('revenue')">Revenue <span id="sort-ind-revenue"></span></th>
+                <th style="padding:8px; cursor:pointer; user-select:none" onclick="sortGameRaw('vngProfit')">Profit <span id="sort-ind-vngProfit"></span></th>
+                <th style="padding:8px; cursor:pointer; user-select:none" onclick="sortGameRaw('cr')">CR (%) <span id="sort-ind-cr"></span></th>
+                <th style="padding:8px; cursor:pointer; user-select:none" onclick="sortGameRaw('arppu')">ARPPU ($) <span id="sort-ind-arppu"></span></th>
+                <th style="padding:8px; cursor:pointer; user-select:none" onclick="sortGameRaw('dau')">DAU <span id="sort-ind-dau"></span></th>
+                <th style="padding:8px; cursor:pointer; user-select:none" onclick="sortGameRaw('mau')">MAU <span id="sort-ind-mau"></span></th>
+                <th style="padding:8px; cursor:pointer; user-select:none" onclick="sortGameRaw('mkt_cost')">Mkt Spend <span id="sort-ind-mkt_cost"></span></th>
               </tr>
             </thead>
             <tbody id="game-raw-tbody"></tbody>
@@ -1142,6 +1142,8 @@
     let overviewStartYM = null, overviewEndYM = null;
     let gameStartYM = null, gameEndYM = null;
     let gameTimeFormat = 'monthly';
+    let currentGameRawSort = 'ym';
+    let currentGameRawAsc = true;
     let insightLang = 'KO';
 
     function getFilteredRAW() {
@@ -1707,7 +1709,18 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
       <div class="game-kpi-sub">Gross Rev × RS / MG</div>
     </div>`;
 
-      const rawHTML = gRows.map(r => `
+      let tableRows = [...gRows];
+      if (currentGameRawSort) {
+         tableRows.sort((a, b) => {
+            let valA = a[currentGameRawSort] != null ? a[currentGameRawSort] : (currentGameRawSort==='ym' ? '' : -Infinity);
+            let valB = b[currentGameRawSort] != null ? b[currentGameRawSort] : (currentGameRawSort==='ym' ? '' : -Infinity);
+            if (valA < valB) return currentGameRawAsc ? -1 : 1;
+            if (valA > valB) return currentGameRawAsc ? 1 : -1;
+            return 0;
+         });
+      }
+
+      const rawHTML = tableRows.map(r => `
          <tr style="border-bottom:1px solid var(--border2)">
            <td style="padding:8px">${r.ym}</td>
            <td style="padding:8px;font-family:monospace">${r.revenue != null ? fmt(r.revenue) : '-'}</td>
@@ -1720,8 +1733,23 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
          </tr>`).join('');
       document.getElementById('game-raw-tbody').innerHTML = rawHTML || `<tr><td colspan="8" style="padding:8px;text-align:center;color:var(--text3)">No data available for the selected period</td></tr>`;
 
+      ['ym', 'revenue', 'vngProfit', 'cr', 'arppu', 'dau', 'mau', 'mkt_cost'].forEach(col => {
+         const ind = document.getElementById(`sort-ind-${col}`);
+         if (ind) ind.textContent = currentGameRawSort === col ? (currentGameRawAsc ? ' ↑' : ' ↓') : '';
+      });
+
       document.querySelectorAll('#game-tabs .tab').forEach((el, i) => el.classList.toggle('active', ['revenue', 'cr_arppu', 'dau_mau', 'mkt'][i] === currentGameTab));
       buildGameChart(game, currentGameTab);
+    }
+
+    function sortGameRaw(col) {
+      if (currentGameRawSort === col) {
+        currentGameRawAsc = !currentGameRawAsc;
+      } else {
+        currentGameRawSort = col;
+        currentGameRawAsc = true;
+      }
+      renderGame(currentGame);
     }
 
     function buildGameChart(game, metric) {
