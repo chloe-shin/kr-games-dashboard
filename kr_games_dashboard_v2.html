@@ -784,11 +784,17 @@
       <div class="page" id="page-game">
         <div class="game-kpi-grid" id="game-kpis"></div>
         <div class="card">
-          <div class="tabs" id="game-tabs">
-            <button class="tab active" onclick="switchGameTab('revenue')">Revenue</button>
-            <button class="tab" onclick="switchGameTab('cr_arppu')">CR &amp; ARPPU</button>
-            <button class="tab" onclick="switchGameTab('dau_mau')">DAU / MAU</button>
-            <button class="tab" onclick="switchGameTab('mkt')">Mkt cost</button>
+          <div class="tabs" id="game-tabs" style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <button class="tab active" onclick="switchGameTab('revenue')">Revenue</button>
+              <button class="tab" onclick="switchGameTab('cr_arppu')">CR &amp; ARPPU</button>
+              <button class="tab" onclick="switchGameTab('dau_mau')">DAU / MAU</button>
+              <button class="tab" onclick="switchGameTab('mkt')">Mkt cost</button>
+            </div>
+            <div style="display:flex; gap: 4px; background:var(--bg3); padding:4px; border-radius:8px">
+               <button id="game-format-monthly" onclick="setGameTimeFormat('monthly')" class="btn" style="padding:4px 10px; font-size:12px; background:var(--bg); border:1px solid var(--border2); color:var(--text)">Monthly</button>
+               <button id="game-format-yearly" onclick="setGameTimeFormat('yearly')" class="btn" style="padding:4px 10px; font-size:12px; background:transparent; border:none; color:var(--text2)">Yearly</button>
+            </div>
           </div>
           <div id="game-chart-area"></div>
         </div>
@@ -1076,7 +1082,12 @@
       return k ? COLORS[k] : '#555'; 
     }
     function getYMs() { return [...new Set(RAW.map(r => r.ym))].sort(); }
-    function getGameData(g) { return RAW.filter(r => r.game === g).sort((a, b) => a.ym.localeCompare(b.ym)); }
+    function getGameData(g) { 
+      let d = RAW.filter(r => r.game === g);
+      if (gameStartYM) d = d.filter(r => r.ym >= gameStartYM);
+      if (gameEndYM) d = d.filter(r => r.ym <= gameEndYM);
+      return d.sort((a, b) => a.ym.localeCompare(b.ym)); 
+    }
 
     // RS rate from DEALS (fallback hardcoded)
     const RS_FALLBACK = { 'Play Together': 0.42, 'CSB M': 0.25, 'Genesis': 0.25, 'Lineage 2M': 0.25, 'Rememento': 0.22 };
@@ -1111,6 +1122,8 @@
     let revChart = null, roiChart = null, gameChart1 = null, gameChart2 = null;
     let currentRevTab = 'stacked', currentOverViewGame = 'All', currentGame = 'Play Together', currentGameTab = 'revenue', currentDataGame = 'All';
     let overviewStartYM = null, overviewEndYM = null;
+    let gameStartYM = null, gameEndYM = null;
+    let gameTimeFormat = 'monthly';
     let insightLang = 'KO';
 
     function getFilteredRAW() {
@@ -1141,6 +1154,20 @@
       }
     }
 
+    function updateGamePeriod() {
+      const startEl = document.getElementById('op-start-game');
+      const endEl = document.getElementById('op-end-game');
+      if (startEl && endEl) {
+        if (startEl.value > endEl.value) {
+          alert('시작 월은 종료 월보다 뒤에 올 수 없습니다.');
+          startEl.value = gameStartYM || endEl.value;
+          return;
+        }
+        gameStartYM = startEl.value;
+        gameEndYM = endEl.value;
+        renderGame(currentGame);
+      }
+    }
 
     // ===== PAGE NAV =====
     function showPage(page, game) {
@@ -1180,7 +1207,25 @@
         document.getElementById('topbar-title').textContent = game;
         const idx = GAMES.indexOf(game);
         if (idx >= 0) navItems[idx + 1].classList.add('active');
-        actions.innerHTML = `<button class="btn btn-primary" onclick="openModal('monthly')">+ Add monthly data</button>`;
+        
+        const allYMs = getYMs();
+        if (!gameStartYM && allYMs.length > 0) gameStartYM = allYMs[0];
+        if (!gameEndYM && allYMs.length > 0) gameEndYM = allYMs[allYMs.length - 1];
+        
+        const opts = allYMs.map(ym => `<option value="${ym}">${ym}</option>`).join('');
+        actions.innerHTML = `
+          <div style="display:flex;gap:8px;align-items:center;background:rgba(255,255,255,0.05);padding:4px 10px;border-radius:6px;margin-right:12px;border:1px solid var(--border2)">
+            <select id="op-start-game" onchange="updateGamePeriod()" style="font-size:13px;padding:2px;border:none;background:transparent;color:var(--text2);cursor:pointer;outline:none">${opts}</select>
+            <span style="color:var(--text3)">~</span>
+            <select id="op-end-game" onchange="updateGamePeriod()" style="font-size:13px;padding:2px;border:none;background:transparent;color:var(--text2);cursor:pointer;outline:none">${opts}</select>
+          </div>
+          <button class="btn btn-primary" onclick="openModal('monthly')">+ Add monthly data</button>`;
+          
+        setTimeout(() => {
+          if (document.getElementById('op-start-game')) document.getElementById('op-start-game').value = gameStartYM;
+          if (document.getElementById('op-end-game')) document.getElementById('op-end-game').value = gameEndYM;
+        }, 0);
+        
         renderGame(game);
       } else if (page === 'deals') {
         document.getElementById('page-deals').classList.add('active');
@@ -1651,7 +1696,36 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
     function buildGameChart(game, metric) {
       if (gameChart1) { gameChart1.destroy(); gameChart1 = null; }
       if (gameChart2) { gameChart2.destroy(); gameChart2 = null; }
-      const gRows = getGameData(game);
+      const rawRows = getGameData(game);
+      
+      const grouped = {};
+      rawRows.forEach(r => {
+        const key = gameTimeFormat === 'yearly' ? r.ym.substring(0,4) : r.ym;
+        if (!grouped[key]) grouped[key] = {
+           ym: key, revenue:0, vngProfit:0,
+           crSum:0, crCnt:0, arppuSum:0, arppuCnt:0,
+           dauSum:0, dauCnt:0, mauSum:0, mauCnt:0, mktSum:0, mktCnt:0
+        };
+        const g = grouped[key];
+        g.revenue += (r.revenue || 0);
+        g.vngProfit += (r.vngProfit || 0);
+        if (r.cr != null) { g.crSum += r.cr; g.crCnt++; }
+        if (r.arppu != null) { g.arppuSum += r.arppu; g.arppuCnt++; }
+        if (r.dau != null) { g.dauSum += r.dau; g.dauCnt++; }
+        if (r.mau != null) { g.mauSum += r.mau; g.mauCnt++; }
+        if (r.mkt_cost != null) { g.mktSum += r.mkt_cost; g.mktCnt++; }
+      });
+      const gRows = Object.values(grouped).sort((a,b) => a.ym.localeCompare(b.ym)).map(g => ({
+         ym: g.ym,
+         revenue: g.revenue,
+         vngProfit: g.vngProfit,
+         cr: g.crCnt > 0 ? g.crSum / g.crCnt : null,
+         arppu: g.arppuCnt > 0 ? g.arppuSum / g.arppuCnt : null,
+         dau: gameTimeFormat === 'yearly' ? (g.dauCnt > 0 ? g.dauSum / g.dauCnt : null) : (g.dauCnt > 0 ? g.dauSum : null),
+         mau: gameTimeFormat === 'yearly' ? (g.mauCnt > 0 ? g.mauSum / g.mauCnt : null) : (g.mauCnt > 0 ? g.mauSum : null),
+         mkt_cost: g.mktCnt > 0 ? g.mktSum : null
+      }));
+
       const labels = gRows.map(r => r.ym);
       const c = clr(game);
       const area = document.getElementById('game-chart-area');
@@ -1679,6 +1753,19 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
       currentGameTab = t;
       document.querySelectorAll('#game-tabs .tab').forEach((el, i) => el.classList.toggle('active', ['revenue', 'cr_arppu', 'dau_mau', 'mkt'][i] === t));
       buildGameChart(currentGame, t);
+    }
+
+    function setGameTimeFormat(f) {
+      gameTimeFormat = f;
+      document.getElementById('game-format-monthly').style.background = f==='monthly' ? 'var(--bg)' : 'transparent';
+      document.getElementById('game-format-monthly').style.border = f==='monthly' ? '1px solid var(--border2)' : 'none';
+      document.getElementById('game-format-monthly').style.color = f==='monthly' ? 'var(--text)' : 'var(--text2)';
+      
+      document.getElementById('game-format-yearly').style.background = f==='yearly' ? 'var(--bg)' : 'transparent';
+      document.getElementById('game-format-yearly').style.border = f==='yearly' ? '1px solid var(--border2)' : 'none';
+      document.getElementById('game-format-yearly').style.color = f==='yearly' ? 'var(--text)' : 'var(--text2)';
+      
+      buildGameChart(currentGame, currentGameTab);
     }
 
     // ===== DEALS PAGE =====
