@@ -1674,13 +1674,13 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
       const invest = getLf(game) + getMg(game);
       const totalGrossProfit = gRows.reduce((s, r) => s + (r.vngProfit || 0), 0);
       const netProfit = totalGrossProfit - invest;
-      const roi = invest > 0 ? gameRoi(game, getFilteredRAW()).toFixed(1) + '%' : '-';
+      const roi = invest > 0 ? gameRoi(game, gRows).toFixed(1) + '%' : '-';
       const latestRev = gRows.slice(-1)[0]?.revenue;
       const prevRev = gRows.slice(-2, -1)[0]?.revenue;
       const gameMoM = prevRev > 0 ? ((latestRev - prevRev) / prevRev * 100).toFixed(1) : null;
       const avgArppu = gRows.filter(r => r.arppu != null).reduce((s, r, _, a) => s + r.arppu / a.length, 0);
       const avgCr = gRows.filter(r => r.cr != null).reduce((s, r, _, a) => s + r.cr / a.length, 0);
-      const recoup = mgRecoupPct(game);
+      const recoup = mgRecoupPct(game, gRows);
 
       document.getElementById('game-kpis').innerHTML = `
     <div class="game-kpi" style="border:1px solid rgba(74,158,245,0.4);background:rgba(74,158,245,0.05)">
