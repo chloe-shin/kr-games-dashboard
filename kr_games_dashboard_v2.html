@@ -1338,6 +1338,8 @@
 
       const latestYM = allYMs.length > 0 ? allYMs.slice(-1)[0] : '-';
       const prevYM = allYMs.length > 1 ? allYMs.slice(-2, -1)[0] : '-';
+      const startYM = allYMs.length > 0 ? allYMs[0] : '-';
+      const periodStr = startYM !== '-' ? `${startYM.slice(2)} ~ ${latestYM.slice(2)}` : 'No data';
       const latestTotal = dataToUse.filter(r => r.ym === latestYM).reduce((s, r) => s + (r.revenue || 0), 0);
       const prevTotal = dataToUse.filter(r => r.ym === prevYM).reduce((s, r) => s + (r.revenue || 0), 0);
       const mom = prevTotal > 0 ? ((latestTotal - prevTotal) / prevTotal * 100).toFixed(1) : 0;
@@ -1351,17 +1353,19 @@
     <div class="kpi-card kpi-primary" style="border:1px solid rgba(224,96,144,0.4);background:rgba(224,96,144,0.05)">
       <div class="kpi-label has-tooltip" style="color:#E06090;font-weight:700;display:flex;align-items:center;gap:4px;cursor:help" data-tooltip="(RS Profit) / (LF+MG) * 100%">Portfolio ROI <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></div>
       <div class="kpi-val">${portfolioRoi.toFixed(1)}%</div>
-      <div style="margin-top:8px"><span class="disclaimer"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg> Excludes OPEX · For BD review</span></div>
+      <div class="kpi-sub">${periodStr}</div>
+      <div style="margin-top:6px"><span class="disclaimer"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg> Excludes OPEX · For BD review</span></div>
     </div>
     <div class="kpi-card kpi-secondary" style="border:1px solid rgba(74,158,245,0.4);background:rgba(74,158,245,0.05)">
       <div class="kpi-label" style="color:#4A9EF5;font-weight:700">Gross Rev (Cumulative)</div>
       <div class="kpi-val">${fmt(totalRev)}</div>
-      <div class="kpi-sub">All games combined</div>
+      <div class="kpi-sub">All games · ${periodStr}</div>
     </div>
     <div class="kpi-card kpi-secondary" style="border:1px solid rgba(232,160,48,0.4);background:rgba(232,160,48,0.05)">
       <div class="kpi-label has-tooltip" style="color:#E8A030;font-weight:700;display:flex;align-items:center;gap:4px;cursor:help" data-tooltip="{Total Gross Rev * (1-RS)} - LF - MG">RS Profit (Cumulative) <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></div>
       <div class="kpi-val">${fmt(totalOurNetProfit)}</div>
-      <div style="margin-top:8px"><span class="disclaimer"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg> Excludes OPEX · For BD review</span></div>
+      <div class="kpi-sub">${periodStr}</div>
+      <div style="margin-top:6px"><span class="disclaimer"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg> Excludes OPEX · For BD review</span></div>
     </div>`;
 
       buildRevChart(currentRevTab);
@@ -1728,12 +1732,16 @@ Rules:
       const avgArppu = gRows.filter(r => r.arppu != null).reduce((s, r, _, a) => s + r.arppu / a.length, 0);
       const avgCr = gRows.filter(r => r.cr != null).reduce((s, r, _, a) => s + r.cr / a.length, 0);
       const recoup = mgRecoupPct(game, gRows);
+      const gYMs = [...new Set(gRows.map(r => r.ym))].sort();
+      const gStartYM = gYMs.length > 0 ? gYMs[0] : '-';
+      const gLatestYM = gYMs.length > 0 ? gYMs.slice(-1)[0] : '-';
+      const gamePeriodStr = gStartYM !== '-' ? `${gStartYM.slice(2)} ~ ${gLatestYM.slice(2)}` : 'No data';
 
       document.getElementById('game-kpis').innerHTML = `
     <div class="game-kpi" style="border:1px solid rgba(74,158,245,0.4);background:rgba(74,158,245,0.05)">
       <div class="game-kpi-label" style="color:#4A9EF5;font-weight:700">Accum revenue</div>
       <div class="game-kpi-val">${fmt(totalRev)}</div>
-      <div class="game-kpi-sub">Total gross generated</div>
+      <div class="game-kpi-sub">${gamePeriodStr}</div>
     </div>
     <div class="game-kpi" style="border:1px solid rgba(46,204,154,0.4);background:rgba(46,204,154,0.05)">
       <div class="game-kpi-label" style="color:#2ECC9A;font-weight:700">Latest month</div>
@@ -1743,11 +1751,13 @@ Rules:
     <div class="game-kpi" style="border:1px solid rgba(232,160,48,0.4);background:rgba(232,160,48,0.05)">
       <div class="game-kpi-label has-tooltip" style="color:#E8A030;font-weight:700;display:flex;align-items:center;gap:4px;cursor:help" data-tooltip="{Total Gross Rev * (1-RS)} - LF - MG">RS Profit <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></div>
       <div class="game-kpi-val">${fmt(netProfit)}</div>
+      <div class="game-kpi-sub">${gamePeriodStr}</div>
       <div style="margin-top:6px"><span class="disclaimer"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg> Excludes OPEX · For BD review</span></div>
     </div>
     <div class="game-kpi" style="border:1px solid rgba(224,96,144,0.4);background:rgba(224,96,144,0.05)">
       <div class="game-kpi-label has-tooltip" style="color:#E06090;font-weight:700;display:flex;align-items:center;gap:4px;cursor:help" data-tooltip="(RS Profit) / (LF+MG) * 100%">ROI <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></div>
       <div class="game-kpi-val">${roi}</div>
+      <div class="game-kpi-sub">${gamePeriodStr}</div>
       <div style="margin-top:6px"><span class="disclaimer"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg> Excludes OPEX · For BD review</span></div>
     </div>
     <div class="game-kpi" style="border:1px solid rgba(168,117,255,0.4);background:rgba(168,117,255,0.05)">
