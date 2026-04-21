@@ -1540,12 +1540,12 @@
           games: gameSummary
         }, null, 2);
 
-        const prompt = \`You are a portfolio analyst for a mobile gaming company.
+        const prompt = `You are a portfolio analyst for a mobile gaming company.
 Given the monthly performance data below, produce insights in EXACTLY this format.
 Write in BOTH Korean and English, marking sections with _KO and _EN tags as shown exactly.
 
 Data:
-\${dataStr}
+${dataStr}
 
 [WHAT_CHANGED_KO]
 Identify the single most important shift this month.
@@ -1570,7 +1570,7 @@ Rules:
 - Always name specific games, not "some games"
 - If data is insufficient for a claim, say so explicitly
 - Use standard markdown (-, **, ###) if helpful for bullets or emphasis.
-- Max 150 words per language total.\`;
+- Max 150 words per language total.`;
 
         let GEMINI_KEY = localStorage.getItem('gemini_api_key');
         if (!GEMINI_KEY) {
