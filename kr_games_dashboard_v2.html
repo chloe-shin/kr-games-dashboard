@@ -1004,7 +1004,7 @@
     const COLORS = { 'Play Together': '#4A9EF5', 'CSB M': '#2ECC9A', 'Genesis': '#E8A030', 'Lineage 2M': '#E06090', 'Rememento': '#9090A0' };
 
     // ===== SUPABASE API =====
-    let RAW = [], DEALS = [], LATEST_INSIGHT = null;
+    let RAW = [], DEALS = [], INSIGHTS = [], LATEST_INSIGHT = null;
     let editingDealId = null;
 
     async function api(table, method = 'GET', body = null, filter = '', upsert = false) {
@@ -1056,11 +1056,12 @@
         const [monthly, deals, insightsRes] = await Promise.all([
           api('monthly_data', 'GET', null, 'order=ym.asc'),
           api('deal_terms', 'GET', null, 'order=created_at.asc'),
-          api('insights', 'GET', null, 'order=year_month.desc&limit=1')
+          api('insights', 'GET', null, 'order=year_month.desc')
         ]);
         DEALS = deals || [];
         RAW = enrichRAWData(monthly || []);
-        LATEST_INSIGHT = insightsRes && insightsRes.length > 0 ? insightsRes[0] : null;
+        INSIGHTS = insightsRes || [];
+        // LATEST_INSIGHT will be set in renderOverview
 
         // Populate Overview Game Select
         const ovSelect = document.getElementById('ov-game-select');
@@ -1144,7 +1145,8 @@
     let gameTimeFormat = 'monthly';
     let currentGameRawSort = 'ym';
     let currentGameRawAsc = true;
-    let insightLang = 'KO';
+    let insightLang = 'EN';
+    let insightDetailsOpen = false;
 
     function getFilteredRAW() {
       let data = RAW;
@@ -1272,6 +1274,9 @@
       const dataToUse = getFilteredRAW();
       const allYMs = [...new Set(dataToUse.map(r => r.ym))].sort();
       const totalRev = dataToUse.reduce((s, r) => s + (r.revenue || 0), 0);
+      
+      const latestYMForInsight = allYMs.length > 0 ? allYMs.slice(-1)[0] : '-';
+      LATEST_INSIGHT = INSIGHTS.find(i => i.year_month === (overviewEndYM || latestYMForInsight)) || INSIGHTS[0] || null;
       
       const targetGames = currentOverViewGame === 'All' ? GAMES : [currentOverViewGame];
       
@@ -1431,8 +1436,8 @@
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
         <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:6px;overflow:hidden;display:flex;font-size:11px;">
-          <button onclick="insightLang='KO'; buildInsights()" style="padding:4px 10px;cursor:pointer;border:none;background:${insightLang==='KO'?'var(--primary)':'transparent'};color:${insightLang==='KO'?'#fff':'var(--text2)'}">Korean</button>
-          <button onclick="insightLang='EN'; buildInsights()" style="padding:4px 10px;cursor:pointer;border:none;background:${insightLang==='EN'?'var(--primary)':'transparent'};color:${insightLang==='EN'?'#fff':'var(--text2)'}">English</button>
+          <button onclick="insightLang='KO'; buildInsights()" style="padding:4px 10px;cursor:pointer;border:none;background:${insightLang==='KO'?'var(--accent)':'transparent'};color:${insightLang==='KO'?'#fff':'var(--text2)'}">Korean</button>
+          <button onclick="insightLang='EN'; buildInsights()" style="padding:4px 10px;cursor:pointer;border:none;background:${insightLang==='EN'?'var(--accent)':'transparent'};color:${insightLang==='EN'?'#fff':'var(--text2)'}">English</button>
         </div>
         <button class="btn" onclick="generateInsightsNow()" id="gen-btn">
           <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
@@ -1441,7 +1446,7 @@
       </div>
     </div>
     ${renderInsightBlock('포트폴리오 전체 (Portfolio)', parseInsightSection(c, 'PORTFOLIO_' + insightLang) || parseInsightSection(c, 'PORTFOLIO'), '#4A9EF5')}
-    <details style="margin-bottom:16px;">
+    <details id="insight-details" ${insightDetailsOpen ? 'open' : ''} ontoggle="insightDetailsOpen = this.open" style="margin-bottom:16px;">
       <summary style="cursor:pointer; font-size:12px; font-weight:600; color:var(--text); margin-bottom:12px; padding:10px 14px; background:var(--bg3); border-radius:6px; border:1px solid var(--border); list-style:none; display:flex; justify-content:space-between; align-items:center;">
           <span>📊 게임별 상세 분석 펼쳐보기 (Breakdown)</span>
           <span style="font-size:10px; color:var(--text3)">▼ 펼치기</span>
@@ -1655,7 +1660,14 @@ Rememento 최종 성과 요약. 1-2문장. (한국어)
           await api('insights', 'POST', { year_month: ym, content });
         }
 
-        LATEST_INSIGHT = { year_month: ym, content, generated_at: now.toISOString() };
+        const newInsight = { year_month: ym, content, generated_at: now.toISOString() };
+        const existingIdx = INSIGHTS.findIndex(i => i.year_month === ym);
+        if (existingIdx >= 0) {
+          INSIGHTS[existingIdx] = newInsight;
+        } else {
+          INSIGHTS.unshift(newInsight);
+        }
+        LATEST_INSIGHT = newInsight;
         buildInsights();
 
       } catch (e) {
