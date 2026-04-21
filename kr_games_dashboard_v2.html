@@ -1326,7 +1326,7 @@
       <div class="kpi-sub"><span class="${parseFloat(mom) >= 0 ? 'up' : 'down'}">${mom}%</span> vs prev month</div>
     </div>
     <div class="kpi-card kpi-primary" style="border:1px solid rgba(224,96,144,0.4);background:rgba(224,96,144,0.05)">
-      <div class="kpi-label" style="color:#E06090;font-weight:700">Portfolio ROI</div>
+      <div class="kpi-label" style="color:#E06090;font-weight:700;display:flex;align-items:center;gap:4px;cursor:help" title="(RS Profit) / (LF+MG) * 100%">Portfolio ROI <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></div>
       <div class="kpi-val">${portfolioRoi.toFixed(1)}%</div>
       <div style="margin-top:8px"><span class="disclaimer"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg> Excludes OPEX · BD review pending</span></div>
     </div>
@@ -1336,7 +1336,7 @@
       <div class="kpi-sub">All games combined</div>
     </div>
     <div class="kpi-card kpi-secondary" style="border:1px solid rgba(232,160,48,0.4);background:rgba(232,160,48,0.05)">
-      <div class="kpi-label" style="color:#E8A030;font-weight:700">RS Profit (Cumulative)</div>
+      <div class="kpi-label" style="color:#E8A030;font-weight:700;display:flex;align-items:center;gap:4px;cursor:help" title="{Total Gross Rev * (1-RS)} - LF - MG">RS Profit (Cumulative) <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></div>
       <div class="kpi-val">${fmt(totalOurNetProfit)}</div>
       <div style="margin-top:8px"><span class="disclaimer"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg> Excludes OPEX · BD review pending</span></div>
     </div>`;
