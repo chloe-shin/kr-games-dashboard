@@ -459,7 +459,7 @@
 
     .game-kpi-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(5, 1fr);
       gap: 10px;
       margin-bottom: 18px;
     }
@@ -1351,7 +1351,7 @@
     <div class="kpi-card kpi-primary" style="border:1px solid rgba(224,96,144,0.4);background:rgba(224,96,144,0.05)">
       <div class="kpi-label has-tooltip" style="color:#E06090;font-weight:700;display:flex;align-items:center;gap:4px;cursor:help" data-tooltip="(RS Profit) / (LF+MG) * 100%">Portfolio ROI <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></div>
       <div class="kpi-val">${portfolioRoi.toFixed(1)}%</div>
-      <div style="margin-top:8px"><span class="disclaimer"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg> Excludes OPEX · BD review pending</span></div>
+      <div style="margin-top:8px"><span class="disclaimer"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg> Excludes OPEX · For BD review</span></div>
     </div>
     <div class="kpi-card kpi-secondary" style="border:1px solid rgba(74,158,245,0.4);background:rgba(74,158,245,0.05)">
       <div class="kpi-label" style="color:#4A9EF5;font-weight:700">Gross Rev (Cumulative)</div>
@@ -1361,7 +1361,7 @@
     <div class="kpi-card kpi-secondary" style="border:1px solid rgba(232,160,48,0.4);background:rgba(232,160,48,0.05)">
       <div class="kpi-label has-tooltip" style="color:#E8A030;font-weight:700;display:flex;align-items:center;gap:4px;cursor:help" data-tooltip="{Total Gross Rev * (1-RS)} - LF - MG">RS Profit (Cumulative) <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></div>
       <div class="kpi-val">${fmt(totalOurNetProfit)}</div>
-      <div style="margin-top:8px"><span class="disclaimer"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg> Excludes OPEX · BD review pending</span></div>
+      <div style="margin-top:8px"><span class="disclaimer"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg> Excludes OPEX · For BD review</span></div>
     </div>`;
 
       buildRevChart(currentRevTab);
@@ -1741,19 +1741,18 @@ Rules:
       <div class="game-kpi-sub">${gameMoM != null ? `<span class="${parseFloat(gameMoM) >= 0 ? 'up' : 'down'}">${gameMoM}%</span> MoM` : '-'}</div>
     </div>
     <div class="game-kpi" style="border:1px solid rgba(232,160,48,0.4);background:rgba(232,160,48,0.05)">
-      <div class="game-kpi-label" style="color:#E8A030;font-weight:700">RS Profit</div>
+      <div class="game-kpi-label has-tooltip" style="color:#E8A030;font-weight:700;display:flex;align-items:center;gap:4px;cursor:help" data-tooltip="{Total Gross Rev * (1-RS)} - LF - MG">RS Profit <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></div>
       <div class="game-kpi-val">${fmt(netProfit)}</div>
-      <div style="font-size:10px;color:var(--text3);margin-top:4px">{Total Gross Rev * (1-RS)} - LF - MG<br><span style="color:#E05555;font-weight:500;">*Excl. OPEX (BD review)</span></div>
+      <div style="margin-top:6px"><span class="disclaimer"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg> Excludes OPEX · For BD review</span></div>
     </div>
     <div class="game-kpi" style="border:1px solid rgba(224,96,144,0.4);background:rgba(224,96,144,0.05)">
-      <div class="game-kpi-label" style="color:#E06090;font-weight:700">ROI</div>
+      <div class="game-kpi-label has-tooltip" style="color:#E06090;font-weight:700;display:flex;align-items:center;gap:4px;cursor:help" data-tooltip="(RS Profit) / (LF+MG) * 100%">ROI <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></div>
       <div class="game-kpi-val">${roi}</div>
-      <div style="font-size:10px;color:var(--text3);margin-top:4px">(RS Profit) / (LF+MG) x 100%<br><span style="color:#E05555;font-weight:500;">*Excl. OPEX (BD review)</span></div>
+      <div style="margin-top:6px"><span class="disclaimer"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg> Excludes OPEX · For BD review</span></div>
     </div>
     <div class="game-kpi" style="border:1px solid rgba(168,117,255,0.4);background:rgba(168,117,255,0.05)">
-      <div class="game-kpi-label" style="color:#A875FF;font-weight:700">MG recoup</div>
+      <div class="game-kpi-label has-tooltip" style="color:#A875FF;font-weight:700;display:flex;align-items:center;gap:4px;cursor:help" data-tooltip="Gross Rev × RS / MG">MG recoup <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></div>
       <div class="game-kpi-val">${recoup.toFixed(0)}%</div>
-      <div class="game-kpi-sub">Gross Rev × RS / MG</div>
     </div>`;
 
       let tableRows = [...gRows];
