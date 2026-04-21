@@ -503,6 +503,29 @@
     .md-content li { margin-bottom: 4px; }
     .md-content strong { color: var(--text); font-weight: 600; }
     .md-content h1, .md-content h2, .md-content h3 { font-size: 13px; margin: 8px 0 4px; color: var(--text); }
+    
+    .has-tooltip {
+      position: relative;
+    }
+    
+    .has-tooltip:hover::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: 100%;
+      left: 0;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      white-space: nowrap;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      z-index: 100;
+      margin-bottom: 6px;
+      font-weight: normal;
+      pointer-events: none;
+    }
 
     .page {
       display: none;
@@ -1326,7 +1349,7 @@
       <div class="kpi-sub"><span class="${parseFloat(mom) >= 0 ? 'up' : 'down'}">${mom}%</span> vs prev month</div>
     </div>
     <div class="kpi-card kpi-primary" style="border:1px solid rgba(224,96,144,0.4);background:rgba(224,96,144,0.05)">
-      <div class="kpi-label" style="color:#E06090;font-weight:700;display:flex;align-items:center;gap:4px;cursor:help" title="(RS Profit) / (LF+MG) * 100%">Portfolio ROI <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></div>
+      <div class="kpi-label has-tooltip" style="color:#E06090;font-weight:700;display:flex;align-items:center;gap:4px;cursor:help" data-tooltip="(RS Profit) / (LF+MG) * 100%">Portfolio ROI <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></div>
       <div class="kpi-val">${portfolioRoi.toFixed(1)}%</div>
       <div style="margin-top:8px"><span class="disclaimer"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg> Excludes OPEX · BD review pending</span></div>
     </div>
@@ -1336,7 +1359,7 @@
       <div class="kpi-sub">All games combined</div>
     </div>
     <div class="kpi-card kpi-secondary" style="border:1px solid rgba(232,160,48,0.4);background:rgba(232,160,48,0.05)">
-      <div class="kpi-label" style="color:#E8A030;font-weight:700;display:flex;align-items:center;gap:4px;cursor:help" title="{Total Gross Rev * (1-RS)} - LF - MG">RS Profit (Cumulative) <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></div>
+      <div class="kpi-label has-tooltip" style="color:#E8A030;font-weight:700;display:flex;align-items:center;gap:4px;cursor:help" data-tooltip="{Total Gross Rev * (1-RS)} - LF - MG">RS Profit (Cumulative) <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></div>
       <div class="kpi-val">${fmt(totalOurNetProfit)}</div>
       <div style="margin-top:8px"><span class="disclaimer"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg> Excludes OPEX · BD review pending</span></div>
     </div>`;
