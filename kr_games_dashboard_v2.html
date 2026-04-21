@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>KR Games Performance Dashboard</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <link
     href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap"
     rel="stylesheet">
@@ -219,8 +220,8 @@
 
     .kpi-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 14px;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
       margin-bottom: 24px;
     }
 
@@ -229,6 +230,31 @@
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
       padding: 18px 20px;
+    }
+
+    .kpi-primary {
+      padding: 32px;
+    }
+
+    .kpi-primary .kpi-val {
+      font-size: 3rem;
+    }
+
+    .kpi-secondary {
+      padding: 20px;
+      opacity: 0.85;
+    }
+
+    .kpi-secondary .kpi-val {
+      font-size: 1.8rem;
+    }
+
+    .disclaimer {
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 0.75rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
     }
 
     .kpi-label {
@@ -471,16 +497,12 @@
       margin-bottom: 10px;
     }
 
-    .insight p {
-      font-size: 12px;
-      color: var(--text2);
-      line-height: 1.7;
-    }
-
-    .insight strong {
-      color: var(--text);
-      font-weight: 500;
-    }
+    .md-content { font-size: 12px; color: var(--text); line-height: 1.6; }
+    .md-content p { margin-bottom: 6px; color: var(--text2); }
+    .md-content ul { padding-left: 20px; margin-bottom: 6px; color: var(--text2); }
+    .md-content li { margin-bottom: 4px; }
+    .md-content strong { color: var(--text); font-weight: 600; }
+    .md-content h1, .md-content h2, .md-content h3 { font-size: 13px; margin: 8px 0 4px; color: var(--text); }
 
     .page {
       display: none;
@@ -754,8 +776,8 @@
           <div class="card">
             <div class="tabs" id="rev-tabs" style="display:flex; justify-content:space-between; align-items:center;">
               <div style="display:flex; gap:4px">
-                <button class="tab active" onclick="switchRevTab('stacked')">Stacked</button>
-                <button class="tab" onclick="switchRevTab('line')">By game</button>
+                <button class="tab" onclick="switchRevTab('stacked')">Stacked</button>
+                <button class="tab active" onclick="switchRevTab('line')">By game</button>
                 <button class="tab" onclick="switchRevTab('mom')">MoM growth</button>
               </div>
               <select id="ov-game-select" onchange="switchOverviewGame(this.value)" style="background:var(--bg3); border:1px solid var(--border); color:var(--text); font-size:12px; padding:4px 8px; border-radius:4px; cursor:pointer;">
@@ -1139,7 +1161,7 @@
 
     // ===== CHARTS STATE =====
     let revChart = null, roiChart = null, gameChart1 = null, gameChart2 = null;
-    let currentRevTab = 'stacked', currentOverViewGame = 'All', currentGame = 'Play Together', currentGameTab = 'revenue', currentDataGame = 'All';
+    let currentRevTab = 'line', currentOverViewGame = 'All', currentGame = 'Play Together', currentGameTab = 'revenue', currentDataGame = 'All';
     let overviewStartYM = null, overviewEndYM = null;
     let gameStartYM = null, gameEndYM = null;
     let gameTimeFormat = 'monthly';
@@ -1205,8 +1227,10 @@
         navItems[0].classList.add('active');
         
         const allYMs = getYMs();
-        if (!overviewStartYM && allYMs.length > 0) overviewStartYM = allYMs[0];
         if (!overviewEndYM && allYMs.length > 0) overviewEndYM = allYMs[allYMs.length - 1];
+        if (!overviewStartYM && allYMs.length > 0) {
+            overviewStartYM = allYMs.length > 12 ? allYMs[allYMs.length - 12] : allYMs[0];
+        }
         
         const opts = allYMs.map(ym => `<option value="${ym}">${ym}</option>`).join('');
         actions.innerHTML = `
@@ -1231,8 +1255,10 @@
         if (idx >= 0) navItems[idx + 1].classList.add('active');
         
         const allYMs = getYMs();
-        if (!gameStartYM && allYMs.length > 0) gameStartYM = allYMs[0];
         if (!gameEndYM && allYMs.length > 0) gameEndYM = allYMs[allYMs.length - 1];
+        if (!gameStartYM && allYMs.length > 0) {
+            gameStartYM = allYMs.length > 12 ? allYMs[allYMs.length - 12] : allYMs[0];
+        }
         
         const opts = allYMs.map(ym => `<option value="${ym}">${ym}</option>`).join('');
         actions.innerHTML = `
@@ -1294,25 +1320,25 @@
       const mom = prevTotal > 0 ? ((latestTotal - prevTotal) / prevTotal * 100).toFixed(1) : 0;
 
       document.getElementById('kpi-grid').innerHTML = `
-    <div class="kpi-card" style="border:1px solid rgba(74,158,245,0.4);background:rgba(74,158,245,0.05)">
-      <div class="kpi-label" style="color:#4A9EF5;font-weight:700">Gross Rev</div>
-      <div class="kpi-val">${fmt(totalRev)}</div>
-      <div class="kpi-sub">All games combined</div>
-    </div>
-    <div class="kpi-card" style="border:1px solid rgba(46,204,154,0.4);background:rgba(46,204,154,0.05)">
-      <div class="kpi-label" style="color:#2ECC9A;font-weight:700">Latest month (${latestYM})</div>
+    <div class="kpi-card kpi-primary" style="border:1px solid rgba(46,204,154,0.4);background:rgba(46,204,154,0.05)">
+      <div class="kpi-label" style="color:#2ECC9A;font-weight:700">Latest Month Revenue (${latestYM})</div>
       <div class="kpi-val">${fmt(latestTotal)}</div>
       <div class="kpi-sub"><span class="${parseFloat(mom) >= 0 ? 'up' : 'down'}">${mom}%</span> vs prev month</div>
     </div>
-    <div class="kpi-card" style="border:1px solid rgba(232,160,48,0.4);background:rgba(232,160,48,0.05)">
-      <div class="kpi-label" style="color:#E8A030;font-weight:700">RS Profit</div>
-      <div class="kpi-val">${fmt(totalOurNetProfit)}</div>
-      <div style="font-size:10px;color:var(--text3);margin-top:4px">{Total Gross Rev * (1-RS)} - LF - MG<br><span style="color:#E05555;font-weight:500;">*Excl. OPEX (BD review)</span></div>
-    </div>
-    <div class="kpi-card" style="border:1px solid rgba(224,96,144,0.4);background:rgba(224,96,144,0.05)">
+    <div class="kpi-card kpi-primary" style="border:1px solid rgba(224,96,144,0.4);background:rgba(224,96,144,0.05)">
       <div class="kpi-label" style="color:#E06090;font-weight:700">Portfolio ROI</div>
       <div class="kpi-val">${portfolioRoi.toFixed(1)}%</div>
-      <div style="font-size:10px;color:var(--text3);margin-top:4px">(RS Profit) / (LF+MG) x 100%<br><span style="color:#E05555;font-weight:500;">*Excl. OPEX (BD review)</span></div>
+      <div style="margin-top:8px"><span class="disclaimer"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg> Excludes OPEX · BD review pending</span></div>
+    </div>
+    <div class="kpi-card kpi-secondary" style="border:1px solid rgba(74,158,245,0.4);background:rgba(74,158,245,0.05)">
+      <div class="kpi-label" style="color:#4A9EF5;font-weight:700">Gross Rev (Cumulative)</div>
+      <div class="kpi-val">${fmt(totalRev)}</div>
+      <div class="kpi-sub">All games combined</div>
+    </div>
+    <div class="kpi-card kpi-secondary" style="border:1px solid rgba(232,160,48,0.4);background:rgba(232,160,48,0.05)">
+      <div class="kpi-label" style="color:#E8A030;font-weight:700">RS Profit (Cumulative)</div>
+      <div class="kpi-val">${fmt(totalOurNetProfit)}</div>
+      <div style="margin-top:8px"><span class="disclaimer"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg> Excludes OPEX · BD review pending</span></div>
     </div>`;
 
       buildRevChart(currentRevTab);
@@ -1386,25 +1412,12 @@
 
     function renderInsightBlock(title, text, color) {
       if (!text) return '';
-      const lines = text.split('\n').filter(l => l.trim());
-      const body = lines.map(l => {
-        // Escape HTML to prevent cutoff from < characters
-        let safe = l.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        // Parse markdown bold
-        safe = safe.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-        
-        if (safe.trim().startsWith('•') || safe.trim().startsWith('-') || safe.trim().startsWith('*')) {
-          return `<li style="margin-bottom:4px">${safe.replace(/^[•\-*]\s*/, '')}</li>`;
-        }
-        return `<p style="margin-bottom:4px">${safe}</p>`;
-      });
-      const hasLi = body.some(b => b.startsWith('<li'));
-      const inner = hasLi
-        ? `<ul style="padding-left:16px;margin:0">${body.join('')}</ul>`
-        : body.join('');
+      // Parse markdown correctly with marked.js
+      const rawHTML = typeof marked !== 'undefined' ? marked.parse(text) : text;
+      
       return `<div class="insight" style="border-left-color:${color}">
     <div style="font-size:11px;font-weight:600;color:${color};margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">${title}</div>
-    <div style="font-size:12px;color:var(--text);line-height:1.7">${inner}</div>
+    <div class="md-content">${rawHTML}</div>
   </div>`;
     }
 
@@ -1427,6 +1440,35 @@
 
       const c = LATEST_INSIGHT.content;
       const genDate = new Date(LATEST_INSIGHT.generated_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
+      
+      // Fallback for old formatting vs new formatting
+      let isOldFormat = c.includes('[PORTFOLIO_KO]') || c.includes('[PORTFOLIO]');
+      let innerInsightHTML = '';
+      
+      if (isOldFormat) {
+          innerInsightHTML = `
+            ${renderInsightBlock(insightLang === 'EN' ? 'Portfolio Overview' : '포트폴리오 전체 (Portfolio)', parseInsightSection(c, 'PORTFOLIO_' + insightLang) || parseInsightSection(c, 'PORTFOLIO'), '#4A9EF5')}
+            <details id="insight-details" ${insightDetailsOpen ? 'open' : ''} ontoggle="insightDetailsOpen = this.open" style="margin-bottom:16px;">
+              <summary style="cursor:pointer; font-size:12px; font-weight:600; color:var(--text); margin-bottom:12px; padding:10px 14px; background:var(--bg3); border-radius:6px; border:1px solid var(--border); list-style:none; display:flex; justify-content:space-between; align-items:center;">
+                  <span>${insightLang === 'EN' ? '📊 Game Breakdown' : '📊 게임별 상세 분석 펼쳐보기'}</span>
+                  <span style="font-size:10px; color:var(--text3)">${insightLang === 'EN' ? '▼ Expand' : '▼ 펼치기'}</span>
+              </summary>
+              <div style="padding-top:4px; padding-left:8px;">
+                ${renderInsightBlock('Play Together', parseInsightSection(c, 'PTG_' + insightLang) || parseInsightSection(c, 'PTG'), '#4A9EF5')}
+                ${renderInsightBlock('CSB M', parseInsightSection(c, 'CSB_' + insightLang) || parseInsightSection(c, 'CSB'), '#2ECC9A')}
+                ${renderInsightBlock('Genesis', parseInsightSection(c, 'GEN_' + insightLang) || parseInsightSection(c, 'GEN'), '#E8A030')}
+                ${renderInsightBlock('Lineage 2M', parseInsightSection(c, 'L2M_' + insightLang) || parseInsightSection(c, 'L2M'), '#E06090')}
+                ${renderInsightBlock('Rememento', parseInsightSection(c, 'REM_' + insightLang) || parseInsightSection(c, 'REM'), '#9090A0')}
+                ${renderInsightBlock('Action items', parseInsightSection(c, 'ACTION_' + insightLang) || parseInsightSection(c, 'ACTION'), '#4A9EF5')}
+              </div>
+            </details>`;
+      } else {
+          innerInsightHTML = `
+            ${renderInsightBlock(insightLang === 'EN' ? '1. What changed' : '1. 주요 변화', parseInsightSection(c, 'WHAT_CHANGED_' + insightLang), '#4A9EF5')}
+            ${renderInsightBlock(insightLang === 'EN' ? '2. Why it likely happened' : '2. 원인 가설', parseInsightSection(c, 'WHY_' + insightLang), '#E8A030')}
+            ${renderInsightBlock(insightLang === 'EN' ? '3. What to do next' : '3. 넥스트 액션', parseInsightSection(c, 'ACTION_' + insightLang), '#2ECC9A')}
+          `;
+      }
 
       el.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
@@ -1445,21 +1487,7 @@
         </button>
       </div>
     </div>
-    ${renderInsightBlock(insightLang === 'EN' ? 'Portfolio Overview' : '포트폴리오 전체 (Portfolio)', parseInsightSection(c, 'PORTFOLIO_' + insightLang) || parseInsightSection(c, 'PORTFOLIO'), '#4A9EF5')}
-    <details id="insight-details" ${insightDetailsOpen ? 'open' : ''} ontoggle="insightDetailsOpen = this.open" style="margin-bottom:16px;">
-      <summary style="cursor:pointer; font-size:12px; font-weight:600; color:var(--text); margin-bottom:12px; padding:10px 14px; background:var(--bg3); border-radius:6px; border:1px solid var(--border); list-style:none; display:flex; justify-content:space-between; align-items:center;">
-          <span>${insightLang === 'EN' ? '📊 Game Breakdown' : '📊 게임별 상세 분석 펼쳐보기'}</span>
-          <span style="font-size:10px; color:var(--text3)">${insightLang === 'EN' ? '▼ Expand' : '▼ 펼치기'}</span>
-      </summary>
-      <div style="padding-top:4px; padding-left:8px;">
-        ${renderInsightBlock('Play Together', parseInsightSection(c, 'PTG_' + insightLang) || parseInsightSection(c, 'PTG'), '#4A9EF5')}
-        ${renderInsightBlock('CSB M', parseInsightSection(c, 'CSB_' + insightLang) || parseInsightSection(c, 'CSB'), '#2ECC9A')}
-        ${renderInsightBlock('Genesis', parseInsightSection(c, 'GEN_' + insightLang) || parseInsightSection(c, 'GEN'), '#E8A030')}
-        ${renderInsightBlock('Lineage 2M', parseInsightSection(c, 'L2M_' + insightLang) || parseInsightSection(c, 'L2M'), '#E06090')}
-        ${renderInsightBlock('Rememento', parseInsightSection(c, 'REM_' + insightLang) || parseInsightSection(c, 'REM'), '#9090A0')}
-        ${renderInsightBlock('Action items', parseInsightSection(c, 'ACTION_' + insightLang) || parseInsightSection(c, 'ACTION'), '#4A9EF5')}
-      </div>
-    </details>
+    ${innerInsightHTML}
   `;
     }
 
@@ -1512,53 +1540,37 @@
           games: gameSummary
         }, null, 2);
 
-        const prompt = `당신은 15년 차 시니어 게임 사업 디렉터(Business Analyst)입니다. 제공된 실적 데이터를 바탕으로, 핵심을 찌르는 날카로운 비즈니스 인사이트와 전략적 조언을 작성하세요.
-반드시 한국어와 영어 두 가지 버전으로 모두 작성해야 합니다. (Write in BOTH Korean and English)
+        const prompt = \`You are a portfolio analyst for a mobile gaming company.
+Given the monthly performance data below, produce insights in EXACTLY this format.
+Write in BOTH Korean and English, marking sections with _KO and _EN tags as shown exactly.
 
-Here is our data:
-${dataStr}
+Data:
+\${dataStr}
 
-지표 설명:
-- total_revenue: 누적수익, mom_pct: 전월대비성장, avg_arppu: 객단가(수익성 지표), avg_cr_pct: 결제전환율(구매 유도력), roi: 마케팅/선급투자 대비 수익배수, mg_recoup_pct: 선급금 방어율
-
-다음 형식으로 작성하세요. 긍정적인 부분은 물론, 마케팅 낭비, 전환율 하락, 수익성 악화 등 부정적인 위험(Risk) 요인을 반드시 날카롭게 짚어주세요.
-
-[PORTFOLIO_KO]
-포트폴리오 전체의 건강 상태에 대한 3-4문장 요약. (마케팅 효율 및 수익성 중심) (한국어)
-[PORTFOLIO_EN]
+[WHAT_CHANGED_KO]
+Identify the single most important shift this month.
+Do NOT restate headline numbers already visible in KPI cards.
+Focus on patterns across games, not portfolio totals. (1-2 sentences in Korean)
+[WHAT_CHANGED_EN]
 (English translation of the above)
 
-[PTG_KO]
-Play Together 인사이트. 2-3문장. (한국어)
-[PTG_EN]
-(English translation of the above)
-
-[CSB_KO]
-CSB M 인사이트. 2-3문장. (한국어)
-[CSB_EN]
-(English translation of the above)
-
-[GEN_KO]
-Genesis 인사이트. 2-3문장. (한국어)
-[GEN_EN]
-(English translation of the above)
-
-[L2M_KO]
-Lineage 2M 인사이트. 2-3문장. (한국어)
-[L2M_EN]
-(English translation of the above)
-
-[REM_KO]
-Rememento 최종 성과 요약. 1-2문장. (한국어)
-[REM_EN]
+[WHY_KO]
+Propose 1-2 hypotheses grounded in the data. Compare games to isolate whether the cause is game-specific or portfolio-wide. (2-3 sentences in Korean)
+[WHY_EN]
 (English translation of the above)
 
 [ACTION_KO]
-이번 달 액션 아이템 3가지를 bullet point로. (한국어)
+Concrete actions with owners. Format: "[Team] should [action] to [outcome]"
+Example: "- BD team should review Lineage 2M's RS terms given 3-month margin compression" (2-3 bullets in Korean)
 [ACTION_EN]
 (English translation of the above)
 
-숫자를 구체적으로 인용하고 비즈니스 인사이트를 제공하세요.`;
+Rules:
+- Never repeat numbers from KPI cards
+- Always name specific games, not "some games"
+- If data is insufficient for a claim, say so explicitly
+- Use standard markdown (-, **, ###) if helpful for bullets or emphasis.
+- Max 150 words per language total.\`;
 
         let GEMINI_KEY = localStorage.getItem('gemini_api_key');
         if (!GEMINI_KEY) {
