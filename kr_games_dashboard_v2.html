@@ -1445,11 +1445,11 @@
         </button>
       </div>
     </div>
-    ${renderInsightBlock('포트폴리오 전체 (Portfolio)', parseInsightSection(c, 'PORTFOLIO_' + insightLang) || parseInsightSection(c, 'PORTFOLIO'), '#4A9EF5')}
+    ${renderInsightBlock(insightLang === 'EN' ? 'Portfolio Overview' : '포트폴리오 전체 (Portfolio)', parseInsightSection(c, 'PORTFOLIO_' + insightLang) || parseInsightSection(c, 'PORTFOLIO'), '#4A9EF5')}
     <details id="insight-details" ${insightDetailsOpen ? 'open' : ''} ontoggle="insightDetailsOpen = this.open" style="margin-bottom:16px;">
       <summary style="cursor:pointer; font-size:12px; font-weight:600; color:var(--text); margin-bottom:12px; padding:10px 14px; background:var(--bg3); border-radius:6px; border:1px solid var(--border); list-style:none; display:flex; justify-content:space-between; align-items:center;">
-          <span>📊 게임별 상세 분석 펼쳐보기 (Breakdown)</span>
-          <span style="font-size:10px; color:var(--text3)">▼ 펼치기</span>
+          <span>${insightLang === 'EN' ? '📊 Game Breakdown' : '📊 게임별 상세 분석 펼쳐보기'}</span>
+          <span style="font-size:10px; color:var(--text3)">${insightLang === 'EN' ? '▼ Expand' : '▼ 펼치기'}</span>
       </summary>
       <div style="padding-top:4px; padding-left:8px;">
         ${renderInsightBlock('Play Together', parseInsightSection(c, 'PTG_' + insightLang) || parseInsightSection(c, 'PTG'), '#4A9EF5')}
