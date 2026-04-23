@@ -7,6 +7,8 @@
   <title>KR Games Performance Dashboard</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/libs/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.min.js"></script>
   <link
     href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap"
     rel="stylesheet">
@@ -1262,6 +1264,7 @@
             <span style="color:var(--text3)">~</span>
             <select id="op-end" onchange="updateOverviewPeriod()" style="font-size:13px;padding:2px;border:none;background:transparent;color:var(--text2);cursor:pointer;outline:none">${opts}</select>
           </div>
+          <button class="btn" id="btn-pptx" onclick="exportPPTX()" style="background:var(--bg2);border:1px solid var(--border2);color:var(--text);margin-right:8px;"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> PPTX</button>
           <button class="btn btn-primary" onclick="openModal('monthly')">+ Add monthly data</button>`;
           
         setTimeout(() => {
@@ -1290,6 +1293,7 @@
             <span style="color:var(--text3)">~</span>
             <select id="op-end-game" onchange="updateGamePeriod()" style="font-size:13px;padding:2px;border:none;background:transparent;color:var(--text2);cursor:pointer;outline:none">${opts}</select>
           </div>
+          <button class="btn" id="btn-pptx" onclick="exportPPTX()" style="background:var(--bg2);border:1px solid var(--border2);color:var(--text);margin-right:8px;"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> PPTX</button>
           <button class="btn btn-primary" onclick="openModal('monthly')">+ Add monthly data</button>`;
           
         setTimeout(() => {
@@ -1343,10 +1347,15 @@
       const latestTotal = dataToUse.filter(r => r.ym === latestYM).reduce((s, r) => s + (r.revenue || 0), 0);
       const prevTotal = dataToUse.filter(r => r.ym === prevYM).reduce((s, r) => s + (r.revenue || 0), 0);
       const mom = prevTotal > 0 ? ((latestTotal - prevTotal) / prevTotal * 100).toFixed(1) : 0;
+      
+      let anomalyBadge = '';
+      if (parseFloat(mom) <= -20) {
+        anomalyBadge = `<span style="background:var(--red);color:#fff;padding:2px 6px;border-radius:4px;font-size:10px;margin-left:8px;font-weight:600" class="has-tooltip" data-tooltip="Significant revenue drop detected (>20%)">! Anomaly</span>`;
+      }
 
       document.getElementById('kpi-grid').innerHTML = `
     <div class="kpi-card kpi-primary" style="border:1px solid rgba(46,204,154,0.4);background:rgba(46,204,154,0.05)">
-      <div class="kpi-label" style="color:#2ECC9A;font-weight:700">Latest Month Revenue (${latestYM})</div>
+      <div class="kpi-label" style="color:#2ECC9A;font-weight:700">Latest Month Revenue (${latestYM})${anomalyBadge}</div>
       <div class="kpi-val">${fmt(latestTotal)}</div>
       <div class="kpi-sub"><span class="${parseFloat(mom) >= 0 ? 'up' : 'down'}">${mom}%</span> vs prev month</div>
     </div>
@@ -1395,6 +1404,64 @@
         revChart = new Chart(ctx, { type: 'line', data: { labels: allYMs, datasets: targetGames.map(g => ({ label: g, data: allYMs.map(ym => byGY[g][ym] || null), borderColor: clr(g), backgroundColor: 'transparent', borderWidth: 2, pointRadius: 2, tension: 0.3, spanGaps: false })) }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${c.dataset.label}: ${fmt(c.raw)}` } } }, scales: { x: { ticks: { autoSkip: true, maxRotation: 45, font: { size: 10 }, color: tc }, grid: { color: gc } }, y: { ticks: { callback: v => fmt(v), font: { size: 10 }, color: tc }, grid: { color: gc } } } } });
       } else {
         revChart = new Chart(ctx, { type: 'line', data: { labels: allYMs, datasets: targetGames.map(g => { const yms = allYMs.filter(ym => byGY[g][ym] > 0); const vals = yms.slice(1).map((ym, i) => { const p = byGY[g][yms[i]]; return p > 0 ? ((byGY[g][ym] - p) / p * 100) : null; }); return { label: g, data: allYMs.map(ym => { const i = yms.slice(1).indexOf(ym); return i >= 0 ? vals[i] : null; }), borderColor: clr(g), backgroundColor: 'transparent', borderWidth: 2, pointRadius: 2, tension: 0.3, spanGaps: false }; }) }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.raw != null ? c.raw.toFixed(1) + '%' : 'N/A'}` } } }, scales: { x: { ticks: { autoSkip: true, maxRotation: 45, font: { size: 10 }, color: tc }, grid: { color: gc } }, y: { ticks: { callback: v => v.toFixed(0) + '%', font: { size: 10 }, color: tc }, grid: { color: gc } } } } });
+      }
+    }
+
+    async function exportPPTX() {
+      if (typeof pptxgen === 'undefined') {
+        alert('PPTX Generator library is not loaded yet. Please wait a moment.');
+        return;
+      }
+      
+      const btn = document.getElementById('btn-pptx');
+      if (btn) btn.textContent = 'Exporting...';
+      
+      try {
+        let pptx = new pptxgen();
+        let slide = pptx.addSlide();
+        slide.background = { color: "1e1e21" }; // Match dark theme
+        
+        let targetTitle = document.getElementById('topbar-title').innerText;
+        
+        slide.addText(`KR Games Dashboard - ${targetTitle}`, {
+            x: 0.5, y: 0.3, w: '90%', fontSize: 24, fontFace: 'Arial', color: "4A9EF5", bold: true
+        });
+        
+        let kpiLabels = document.querySelectorAll('.page.active .kpi-label, .page.active .game-kpi-label');
+        let kpiVals = document.querySelectorAll('.page.active .kpi-val, .page.active .game-kpi-val');
+        
+        let startX = 0.5;
+        for (let i = 0; i < Math.min(kpiLabels.length, 5); i++) {
+            // Very basic text cleaning to strip anomaly text if present
+            let rawLabel = kpiLabels[i].innerText || "";
+            if (rawLabel.includes("! Anomaly")) {
+              rawLabel = rawLabel.replace("! Anomaly", "").trim();
+            }
+            
+            slide.addText(rawLabel, { x: startX + (i*1.8), y: 1.0, w: 1.6, fontSize: 12, color: "888888", fontFace: 'Arial' });
+            slide.addText(kpiVals[i].innerText, { x: startX + (i*1.8), y: 1.3, w: 1.6, fontSize: 18, color: "FFFFFF", fontFace: 'Arial', bold: true });
+        }
+        
+        // Find visible chart canvas
+        const chartCanvas = document.querySelector('.page.active canvas');
+        if (chartCanvas) {
+            const base64 = chartCanvas.toDataURL("image/png");
+            slide.addImage({ data: base64, x: 0.5, y: 2.2, w: 5, h: 3 });
+        }
+        
+        // Optionally grab insights if we are on the main page
+        const insightBlock = document.querySelector('.page.active .md-content');
+        if (insightBlock) {
+            let txt = insightBlock.innerText.substring(0, 300) + '...';
+            slide.addText(txt, { x: 5.8, y: 2.2, w: 3.8, h: 3, fontSize: 11, color: "E0E0E0", valign: 'top' });
+        }
+        
+        await pptx.writeFile({ fileName: `KR_Games_${targetTitle}_Report.pptx` });
+      } catch (e) {
+        console.error(e);
+        alert('Failed to export PPTX');
+      } finally {
+        if (btn) btn.innerHTML = `<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> PPTX`;
       }
     }
 
@@ -1736,6 +1803,11 @@ Rules:
       const gStartYM = gYMs.length > 0 ? gYMs[0] : '-';
       const gLatestYM = gYMs.length > 0 ? gYMs.slice(-1)[0] : '-';
       const gamePeriodStr = gStartYM !== '-' ? `${gStartYM.slice(2)} ~ ${gLatestYM.slice(2)}` : 'No data';
+      
+      let gameAnomalyBadge = '';
+      if (gameMoM != null && parseFloat(gameMoM) <= -20) {
+        gameAnomalyBadge = `<span style="background:var(--red);color:#fff;padding:2px 6px;border-radius:4px;font-size:10px;margin-left:8px;font-weight:600" class="has-tooltip" data-tooltip="Significant revenue drop detected (>20%)">! Anomaly</span>`;
+      }
 
       document.getElementById('game-kpis').innerHTML = `
     <div class="game-kpi" style="border:1px solid rgba(74,158,245,0.4);background:rgba(74,158,245,0.05)">
@@ -1744,7 +1816,7 @@ Rules:
       <div class="game-kpi-sub">${gamePeriodStr}</div>
     </div>
     <div class="game-kpi" style="border:1px solid rgba(46,204,154,0.4);background:rgba(46,204,154,0.05)">
-      <div class="game-kpi-label" style="color:#2ECC9A;font-weight:700">Latest month</div>
+      <div class="game-kpi-label" style="color:#2ECC9A;font-weight:700">Latest month${gameAnomalyBadge}</div>
       <div class="game-kpi-val">${fmt(latestRev)}</div>
       <div class="game-kpi-sub">${gameMoM != null ? `<span class="${parseFloat(gameMoM) >= 0 ? 'up' : 'down'}">${gameMoM}%</span> MoM` : '-'}</div>
     </div>
