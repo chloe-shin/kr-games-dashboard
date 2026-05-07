@@ -699,6 +699,80 @@
         transform: rotate(360deg);
       }
     }
+
+    /* AUTO-calculated field styles */
+    .input-auto {
+      background: rgba(255,255,255,0.03);
+      border-color: rgba(255,255,255,0.08) !important;
+      color: rgba(255,255,255,0.7);
+      cursor: not-allowed;
+    }
+    .label-auto::after {
+      content: 'AUTO';
+      margin-left: 8px;
+      padding: 2px 6px;
+      background: rgba(96,165,250,0.15);
+      color: rgb(96,165,250);
+      border-radius: 4px;
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: .04em;
+    }
+    .auto-section-label {
+      grid-column: 1 / -1;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text3);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      padding-top: 6px;
+      border-top: 1px solid var(--border);
+      margin-top: 4px;
+    }
+    .auto-warning {
+      grid-column: 1 / -1;
+      color: var(--amber);
+      font-size: 12px;
+      background: rgba(232,160,48,0.08);
+      border: 1px solid rgba(232,160,48,0.2);
+      border-radius: 7px;
+      padding: 8px 12px;
+      display: none;
+    }
+
+    /* Archive / status badge */
+    .badge-restore {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 500;
+      background: rgba(46,204,154,0.1);
+      color: #2ECC9A;
+      border: 1px solid rgba(46,204,154,0.3);
+      cursor: pointer;
+    }
+    .badge-restore:hover { background: rgba(46,204,154,0.2); }
+
+    /* Color swatch picker in deal modal */
+    .color-swatch-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .color-swatch {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: transform .15s, border-color .15s;
+    }
+    .color-swatch:hover { transform: scale(1.15); }
+    .color-swatch.selected { border-color: #fff; transform: scale(1.15); }
   </style>
 </head>
 
@@ -733,7 +807,7 @@
     </div>
     <div class="sidebar-nav">
       <div class="nav-label">Overview</div>
-      <div class="nav-item active" onclick="showPage('overview')">
+      <div class="nav-item active" id="nav-overview" onclick="showPage('overview')">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <rect x="3" y="3" width="7" height="7" />
           <rect x="14" y="3" width="7" height="7" />
@@ -743,25 +817,24 @@
         <span>Overview</span>
       </div>
       <div class="nav-label">Games</div>
-      <div class="nav-item" onclick="showPage('game','Play Together')"><span class="nav-dot"
-          style="background:var(--ptg)"></span><span>Play Together</span></div>
-      <div class="nav-item" onclick="showPage('game','CSB M')"><span class="nav-dot"
-          style="background:var(--csb)"></span><span>CSB M</span></div>
-      <div class="nav-item" onclick="showPage('game','Genesis')"><span class="nav-dot"
-          style="background:var(--gen)"></span><span>Genesis</span></div>
-      <div class="nav-item" onclick="showPage('game','Lineage 2M')"><span class="nav-dot"
-          style="background:var(--l2m)"></span><span>Lineage 2M</span></div>
-      <div class="nav-item" onclick="showPage('game','Rememento')"><span class="nav-dot"
-          style="background:var(--rem)"></span><span>Rememento</span></div>
+      <div id="sidebar-games"></div>
       <div class="nav-label">Management</div>
-      <div class="nav-item" onclick="showPage('deals')">
+      <div class="nav-item" id="nav-deals" onclick="showPage('deals')">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
           <polyline points="14 2 14 8 20 8" />
         </svg>
         <span>Deal Terms</span>
       </div>
-      <div class="nav-item" onclick="showPage('data')">
+      <div class="nav-item" id="nav-archive" onclick="showPage('archive')">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <polyline points="21 8 21 21 3 21 3 8" />
+          <rect x="1" y="3" width="22" height="5" />
+          <line x1="10" y1="12" x2="14" y2="12" />
+        </svg>
+        <span>Archive</span>
+      </div>
+      <div class="nav-item" id="nav-data" onclick="showPage('data')">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <line x1="8" y1="6" x2="21" y2="6" />
           <line x1="8" y1="12" x2="21" y2="12" />
@@ -908,6 +981,39 @@
         </div>
       </div>
 
+      <!-- ARCHIVE -->
+      <div class="page" id="page-archive">
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+            <div>
+              <div style="font-size:15px;font-weight:600">Terminated Games</div>
+              <div style="font-size:12px;color:var(--text2);margin-top:3px">과거 계약 종료 게임 목록. Restore 버튼으로 재계약 시 복원 가능.</div>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Game</th>
+                  <th>Developer</th>
+                  <th>Region</th>
+                  <th>LF ($)</th>
+                  <th>MG ($)</th>
+                  <th>RS (%)</th>
+                  <th>Start date</th>
+                  <th>End date</th>
+                  <th>Total Revenue</th>
+                  <th>Final ROI</th>
+                  <th>Termination Note</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="archive-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <!-- RAW DATA -->
       <div class="page" id="page-data">
         <div class="card">
@@ -921,6 +1027,28 @@
         </div>
       </div>
 
+    </div>
+  </div>
+
+  <!-- Status Change Confirmation Modal -->
+  <div class="modal-overlay" id="modal-status-confirm">
+    <div class="modal" style="width:460px">
+      <div class="modal-header">
+        <h2 id="status-confirm-title">Status 변경 확인</h2>
+        <button class="modal-close" onclick="closeModal('status-confirm')">×</button>
+      </div>
+      <div class="modal-body">
+        <p id="status-confirm-msg" style="font-size:13px;color:var(--text2);line-height:1.7"></p>
+        <div id="status-confirm-note-wrap" style="margin-top:16px;display:none">
+          <label style="display:block;margin-bottom:6px">종료 사유 메모 <span style="color:var(--text3);font-weight:400;text-transform:none">(선택)</span></label>
+          <textarea id="status-confirm-note" placeholder="계약 종료 이유, 협상 결렬 원인, 향후 참고사항 등..." style="width:100%"></textarea>
+        </div>
+        <div class="form-error" id="status-confirm-error"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeModal('status-confirm')">취소</button>
+        <button class="btn btn-primary" id="status-confirm-ok" onclick="confirmStatusChange()">확인</button>
+      </div>
     </div>
   </div>
 
@@ -950,7 +1078,7 @@
           </div>
           <div class="form-group">
             <label>Revenue (USD) *</label>
-            <input type="number" id="f-revenue" placeholder="e.g. 1500000">
+            <input type="number" id="f-revenue" placeholder="e.g. 1500000" oninput="calcAutoMetrics()">
           </div>
           <div class="form-group">
             <label>Avg DAU</label>
@@ -958,7 +1086,7 @@
           </div>
           <div class="form-group">
             <label>MAU</label>
-            <input type="number" id="f-mau" placeholder="e.g. 2000000">
+            <input type="number" id="f-mau" placeholder="e.g. 2000000" oninput="calcAutoMetrics()">
           </div>
           <div class="form-group">
             <label>NRU</label>
@@ -966,21 +1094,22 @@
           </div>
           <div class="form-group">
             <label>MPU</label>
-            <input type="number" id="f-mpu" placeholder="e.g. 50000">
-          </div>
-          <div class="form-group">
-            <label>ARPPU (USD)</label>
-            <input type="number" id="f-arppu" placeholder="e.g. 25.5" step="0.01">
-          </div>
-          <div class="form-group">
-            <label>CR (%)</label>
-            <input type="number" id="f-cr" placeholder="e.g. 2.5" step="0.01">
-            <span class="form-hint">퍼센트로 입력 (2.5 = 2.5%)</span>
+            <input type="number" id="f-mpu" placeholder="e.g. 50000" oninput="calcAutoMetrics()">
           </div>
           <div class="form-group">
             <label>Mkt Cost (USD)</label>
             <input type="number" id="f-mkt" placeholder="e.g. 50000">
           </div>
+          <div class="auto-section-label">Auto-calculated metrics</div>
+          <div class="form-group">
+            <label class="label-auto">ARPPU (USD)</label>
+            <input type="number" id="f-arppu" class="input-auto" readonly tabindex="-1" placeholder="—">
+          </div>
+          <div class="form-group">
+            <label class="label-auto">CR (%)</label>
+            <input type="number" id="f-cr" class="input-auto" readonly tabindex="-1" placeholder="—">
+          </div>
+          <div class="auto-warning" id="auto-warn"></div>
         </div>
         <div class="form-error" id="monthly-error"></div>
       </div>
@@ -1041,6 +1170,11 @@
             <label>End date</label>
             <input type="date" id="d-end">
           </div>
+          <div class="form-group">
+            <label>Game color</label>
+            <div class="color-swatch-row" id="d-color-swatches"></div>
+            <input type="hidden" id="d-color" value="">
+          </div>
           <div class="form-group full">
             <label>Special conditions</label>
             <textarea id="d-special" placeholder="특이 계약 조건 입력..."></textarea>
@@ -1068,6 +1202,47 @@
 
     const GAMES = ['Play Together', 'CSB M', 'Genesis', 'Lineage 2M', 'Rememento'];
     const COLORS = { 'Play Together': '#4A9EF5', 'CSB M': '#2ECC9A', 'Genesis': '#E8A030', 'Lineage 2M': '#E06090', 'Rememento': '#9090A0' };
+
+    // ===== COLOR SYSTEM =====
+    const GAME_PALETTE = [
+      '#3B82F6', // blue
+      '#10B981', // emerald
+      '#F59E0B', // amber
+      '#EC4899', // pink
+      '#8B5CF6', // violet
+      '#06B6D4', // cyan
+      '#EAB308', // yellow
+      '#F97316', // orange
+      '#14B8A6', // teal
+      '#A855F7'  // purple
+    ];
+
+    // Load persisted colors from localStorage
+    let _gameColors = {};
+    try { _gameColors = JSON.parse(localStorage.getItem('game_colors') || '{}'); } catch(e) {}
+
+    function saveGameColors() {
+      localStorage.setItem('game_colors', JSON.stringify(_gameColors));
+    }
+
+    function getGameColor(title) {
+      // 1. Check in-memory (from localStorage)
+      if (_gameColors[title]) return _gameColors[title];
+      // 2. Fallback: legacy COLORS map
+      const k = Object.keys(COLORS).find(key => title === key || title.startsWith(key));
+      if (k) return COLORS[k];
+      // 3. Auto-assign from palette
+      const used = new Set(Object.values(_gameColors));
+      const free = GAME_PALETTE.find(c => !used.has(c)) || GAME_PALETTE[Object.keys(_gameColors).length % GAME_PALETTE.length];
+      _gameColors[title] = free;
+      saveGameColors();
+      return free;
+    }
+
+    function setGameColor(title, color) {
+      _gameColors[title] = color;
+      saveGameColors();
+    }
 
     // ===== SUPABASE API =====
     let RAW = [], DEALS = [], INSIGHTS = [], LATEST_INSIGHT = null;
@@ -1129,9 +1304,10 @@
         INSIGHTS = insightsRes || [];
         // LATEST_INSIGHT will be set in renderOverview
 
-        // Populate Overview Game Select
+        // Populate Overview Game Select (Launched games only)
         const ovSelect = document.getElementById('ov-game-select');
-        ovSelect.innerHTML = '<option value="All">All Games</option>' + GAMES.map(g => `<option value="${g}">${g}</option>`).join('');
+        const launchedForOv = DEALS.filter(d => d.status === 'Launched').map(d => d.title);
+        ovSelect.innerHTML = '<option value="All">All Games</option>' + launchedForOv.map(g => `<option value="${g}">${g}</option>`).join('');
       } catch (e) {
         console.error('Init error:', e);
         alert('데이터를 불러오지 못했어요. 네트워크를 확인해주세요.');
@@ -1145,6 +1321,10 @@
       gameSelect.innerHTML = '<option value="">Select game</option>' +
         launchedGames.map(t => `<option value="${t}">${t}</option>`).join('');
 
+      // Pre-assign colors for existing games
+      DEALS.forEach(d => { if (d.title) getGameColor(d.title); });
+
+      renderSidebar();
       showPage('overview');
     }
 
@@ -1162,9 +1342,8 @@
       return Math.round(n).toLocaleString();
     }
     function pct(n) { if (n == null || isNaN(n)) return '-'; return (n * 100).toFixed(1) + '%'; }
-    function clr(g) { 
-      const k = Object.keys(COLORS).find(key => g === key || g.startsWith(key));
-      return k ? COLORS[k] : '#555'; 
+    function clr(g) {
+      return getGameColor(g) || '#555';
     }
     function getYMs() { return [...new Set(RAW.map(r => r.ym))].sort(); }
     function getGameData(g) { 
@@ -1201,6 +1380,25 @@
       const invest = getLf(game) + getMg(game);
       if (invest <= 0) return 0;
       return ((profit - invest) / invest) * 100;
+    }
+
+    // ===== SIDEBAR =====
+    function renderSidebar() {
+      const launched = DEALS.filter(d => d.status === 'Launched');
+      const container = document.getElementById('sidebar-games');
+      if (!container) return;
+      if (launched.length === 0) {
+        container.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:4px 10px 8px">No launched games</div>';
+        return;
+      }
+      container.innerHTML = launched.map(d => {
+        const color = getGameColor(d.title);
+        const slug = d.title.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
+        return `<div class="nav-item" id="nav-game-${slug}" onclick="showPage('game',${JSON.stringify(d.title)})">
+          <span class="nav-dot" style="background:${color}"></span>
+          <span>${d.title}</span>
+        </div>`;
+      }).join('');
     }
 
     // ===== CHARTS STATE =====
@@ -1258,17 +1456,21 @@
     }
 
     // ===== PAGE NAV =====
+    function setActiveNav(id) {
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      const el = document.getElementById(id);
+      if (el) el.classList.add('active');
+    }
+
     function showPage(page, game) {
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-      const navItems = document.querySelectorAll('.nav-item');
 
       const actions = document.getElementById('topbar-actions');
 
       if (page === 'overview') {
         document.getElementById('page-overview').classList.add('active');
         document.getElementById('topbar-title').textContent = 'Overview';
-        navItems[0].classList.add('active');
+        setActiveNav('nav-overview');
         
         const allYMs = getYMs();
         if (!overviewEndYM && allYMs.length > 0) overviewEndYM = allYMs[allYMs.length - 1];
@@ -1296,15 +1498,15 @@
         currentGame = game;
         document.getElementById('page-game').classList.add('active');
         document.getElementById('topbar-title').textContent = game;
-        const idx = GAMES.indexOf(game);
-        if (idx >= 0) navItems[idx + 1].classList.add('active');
-        
+        const slug = game.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
+        setActiveNav(`nav-game-${slug}`);
+
         const allYMs = getYMs();
         if (!gameEndYM && allYMs.length > 0) gameEndYM = allYMs[allYMs.length - 1];
         if (!gameStartYM && allYMs.length > 0) {
             gameStartYM = allYMs.length > 12 ? allYMs[allYMs.length - 12] : allYMs[0];
         }
-        
+
         const opts = allYMs.map(ym => `<option value="${ym}">${ym}</option>`).join('');
         actions.innerHTML = `
           <div style="display:flex;gap:8px;align-items:center;background:rgba(255,255,255,0.05);padding:4px 10px;border-radius:6px;margin-right:12px;border:1px solid var(--border2)">
@@ -1314,23 +1516,29 @@
           </div>
           <button class="btn" id="btn-pptx" onclick="exportPPTX()" style="background:var(--bg2);border:1px solid var(--border2);color:var(--text);margin-right:8px;"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> PPTX</button>
           <button class="btn btn-primary" onclick="openModal('monthly')">+ Add monthly data</button>`;
-          
+
         setTimeout(() => {
           if (document.getElementById('op-start-game')) document.getElementById('op-start-game').value = gameStartYM;
           if (document.getElementById('op-end-game')) document.getElementById('op-end-game').value = gameEndYM;
         }, 0);
-        
+
         renderGame(game);
       } else if (page === 'deals') {
         document.getElementById('page-deals').classList.add('active');
         document.getElementById('topbar-title').textContent = 'Deal Terms';
-        navItems[6].classList.add('active');
-        actions.innerHTML = `<button class="btn btn-primary" onclick="openModal('deal')">+ Add deal</button>`;
+        setActiveNav('nav-deals');
+        actions.innerHTML = `<button class="btn btn-primary" onclick="openAddDeal()">+ Add deal</button>`;
         renderDeals();
+      } else if (page === 'archive') {
+        document.getElementById('page-archive').classList.add('active');
+        document.getElementById('topbar-title').textContent = 'Archive';
+        setActiveNav('nav-archive');
+        actions.innerHTML = '';
+        renderArchive();
       } else if (page === 'data') {
         document.getElementById('page-data').classList.add('active');
         document.getElementById('topbar-title').textContent = 'Raw Data';
-        navItems[7].classList.add('active');
+        setActiveNav('nav-data');
         actions.innerHTML = `<button class="btn btn-primary" onclick="openModal('monthly')">+ Add monthly data</button>`;
         renderDataPage();
       }
@@ -1349,8 +1557,9 @@
       
       const latestYMForInsight = allYMs.length > 0 ? allYMs.slice(-1)[0] : '-';
       LATEST_INSIGHT = INSIGHTS.find(i => i.year_month === (overviewEndYM || latestYMForInsight)) || INSIGHTS[0] || null;
-      
-      const targetGames = currentOverViewGame === 'All' ? GAMES : [currentOverViewGame];
+
+      const activeGames = DEALS.filter(d => d.status === 'Launched').map(d => d.title);
+      const targetGames = currentOverViewGame === 'All' ? activeGames : [currentOverViewGame];
       
       const totalInvest = targetGames.reduce((s, g) => s + getLf(g) + getMg(g), 0);
       const totalOurGrossProfit = targetGames.reduce((s, g) => {
@@ -1411,7 +1620,8 @@
       if (revChart) { revChart.destroy(); revChart = null; }
       const dataToUse = getFilteredRAW();
       const allYMs = [...new Set(dataToUse.map(r => r.ym))].sort();
-      const targetGames = currentOverViewGame === 'All' ? GAMES : [currentOverViewGame];
+      const activeGames = DEALS.filter(d => d.status === 'Launched').map(d => d.title);
+      const targetGames = currentOverViewGame === 'All' ? activeGames : [currentOverViewGame];
       buildLegend('rev-legend', targetGames);
       const byGY = {};
       targetGames.forEach(g => { byGY[g] = {}; allYMs.forEach(ym => { byGY[g][ym] = dataToUse.filter(r => r.game === g && r.ym === ym).reduce((s, r) => s + (r.revenue || 0), 0); }); });
@@ -1652,8 +1862,8 @@
 
       try {
         const dataToUse = getFilteredRAW();
-        // 데이터 집계
-        const games = ['Play Together', 'CSB M', 'Genesis', 'Lineage 2M', 'Rememento'];
+        // Active 게임만 AI 인사이트 대상 (Terminated 제외)
+        const games = DEALS.filter(d => d.status === 'Launched').map(d => d.title);
         const allYMs = [...new Set(dataToUse.map(r => r.ym))].sort();
         const latestYM = allYMs.length > 0 ? allYMs.slice(-1)[0] : '-';
         const prevYM = allYMs.length > 1 ? allYMs.slice(-2, -1)[0] : '-';
@@ -1693,37 +1903,59 @@
           games: gameSummary
         }, null, 2);
 
-        const prompt = `You are a portfolio analyst for a mobile gaming company.
-Given the monthly performance data below, produce insights in EXACTLY this format.
-Write in BOTH Korean and English, marking sections with _KO and _EN tags as shown exactly.
+        const prompt = `You are a portfolio analyst for VNGGames KR's BD (Business Development) team.
 
-Data:
-${dataStr}
+## Company Context
+This dashboard is used by the BD team at VNGGames KR, which publishes mobile games sourced from external developers.
+Our teams and their responsibilities:
+- **BD (Business Development)**: Sources NEW games from external developers. Negotiates publishing/licensing contracts. Does NOT manage existing live games operationally.
+- **Publishing / Live Ops**: Manages day-to-day operations of live games, content updates, events, player retention.
+- **Marketing / UA**: User acquisition, ad spend optimization.
+- **Analytics**: Data analysis, performance investigation.
+- **Product / Game Team**: Works with developers on game improvements, feature requests, localization.
+
+## Our Role & Why This Matters
+Our BD team's primary job is sourcing. However, since the commercial success of our sourced games directly reflects on our team's performance, we also act as strategic partners to the Live Ops / Publishing teams.
+
+## Output Structure (STRICT)
+Write in BOTH Korean and English using the section tags below.
 
 [WHAT_CHANGED_KO]
-Identify the single most important shift this month.
-Do NOT restate headline numbers already visible in KPI cards.
-Focus on patterns across games, not portfolio totals. (1-2 sentences in Korean)
+이번 달 가장 중요한 단일 변화 (1-2문장). KPI 카드에 이미 표시된 수치를 반복하지 말 것. 포트폴리오 합계가 아닌 게임 간 패턴에 집중.
 [WHAT_CHANGED_EN]
-(English translation of the above)
+(English version of the above)
 
 [WHY_KO]
-Propose 1-2 hypotheses grounded in the data. Compare games to isolate whether the cause is game-specific or portfolio-wide. (2-3 sentences in Korean)
+데이터에 근거한 1-2가지 가설 제시 (2-3문장). 게임을 비교하여 원인이 게임별인지 포트폴리오 전체인지 구분.
 [WHY_EN]
-(English translation of the above)
+(English version of the above)
 
 [ACTION_KO]
-Concrete actions with owners. Format: "[Team] should [action] to [outcome]"
-Example: "- BD team should review Lineage 2M's RS terms given 3-month margin compression" (2-3 bullets in Korean)
-[ACTION_EN]
-(English translation of the above)
+아래 두 카테고리로 구분하여 작성. 레이블 명시 필수.
 
-Rules:
-- Never repeat numbers from KPI cards
-- Always name specific games, not "some games"
-- If data is insufficient for a claim, say so explicitly
-- Use standard markdown (-, **, ###) if helpful for bullets or emphasis.
-- Max 150 words per language total.`;
+**[BD — 소싱]** BD가 직접 실행 가능한 액션:
+- 포트폴리오 장르/인구 통계 커버리지 분석
+- 하락 타이틀 대체 후보 소싱
+- 성공 퍼블리셔 후속 타이틀 발굴
+- 신규 장르 또는 플랫폼 기회
+
+**[BD → Live Ops: 제안]** 데이터 관찰을 바탕으로 BD가 Live Ops에 제안할 수 있는 사항. 제안으로 프레이밍, 지시 아님.
+- 반드시 "제안", "검토 가능성", "논의 가치" 등 헤징 언어 사용
+- 가설 또는 질문 형태로 표현
+- 눈에 보이는 데이터 패턴에 근거
+
+[ACTION_EN]
+(English version of the above, with same BD — Sourcing / BD → Live Ops: Suggested structure)
+
+## Hard Rules
+- NEVER assign operational actions (live game management) to BD
+- NEVER repeat numbers already in KPI cards
+- ALWAYS name specific games, not "some games"
+- If data is insufficient, say so explicitly
+- Max 200 words per language total
+
+Data:
+${dataStr}`;
 
         let GEMINI_KEY = localStorage.getItem('gemini_api_key');
         if (!GEMINI_KEY) {
@@ -2093,12 +2325,86 @@ Rules:
       }).join('');
     }
 
+    function renderArchive() {
+      const terminated = DEALS.filter(d => d.status === 'Terminated');
+      const tbody = document.getElementById('archive-tbody');
+      if (!tbody) return;
+      if (terminated.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;color:var(--text3);padding:40px">Terminated 게임이 없습니다.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = terminated.map((d, idx) => {
+        const key = d.id || idx;
+        const totalRev = RAW.filter(r => r.game === d.title).reduce((s, r) => s + (r.revenue || 0), 0);
+        const roi = gameRoi(d.title);
+        const note = d.termination_note || '-';
+        return `<tr>
+          <td><span class="gdot" style="background:${clr(d.title)}"></span>${d.title}</td>
+          <td style="color:var(--text2)">${d.developer || '-'}</td>
+          <td style="color:var(--text2)">${d.region || '-'}</td>
+          <td class="mono">${fmt(d.lf)}</td>
+          <td class="mono">${fmt(d.mg)}</td>
+          <td class="mono">${d.rs != null ? (d.rs * 100).toFixed(0) + '%' : '-'}</td>
+          <td class="mono" style="color:var(--text2)">${d.start_date || '-'}</td>
+          <td class="mono" style="color:var(--text2)">${d.end_date || '-'}</td>
+          <td class="mono">${fmt(totalRev)}</td>
+          <td class="mono ${roi >= 0 ? 'up' : 'down'}">${roi.toFixed(0)}%</td>
+          <td style="font-size:11px;color:var(--text2);max-width:180px;line-height:1.5">${note}</td>
+          <td>
+            <button class="badge-restore" onclick='restoreGame(${JSON.stringify(key)})'>↩ Restore</button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    async function restoreGame(key) {
+      const d = typeof key === 'number'
+        ? DEALS.find((x,i) => i === key)
+        : DEALS.find(x => x.id === key);
+      if (!d) return;
+      if (!confirm(`"${d.title}"을 Launched 상태로 복원하시겠습니까?\n복원 후 사이드바에 다시 표시됩니다.`)) return;
+      const row = { status: 'Launched' };
+      try {
+        if (d.id) await api('deal_terms', 'PATCH', row, `id=eq.${d.id}`);
+        d.status = 'Launched';
+        renderSidebar();
+        renderArchive();
+        // Refresh monthly data modal game select
+        const launchedGames = DEALS.filter(x => x.status === 'Launched').map(x => x.title);
+        const gs = document.getElementById('f-game');
+        if (gs) gs.innerHTML = '<option value="">Select game</option>' + launchedGames.map(t => `<option value="${t}">${t}</option>`).join('');
+        showToast(`"${d.title}" 복원 완료. 사이드바에서 확인하세요.`);
+        updateLastUpdated();
+      } catch(e) {
+        alert('복원 실패: ' + e.message);
+      }
+    }
+
+    function initColorSwatches(selectedColor) {
+      const container = document.getElementById('d-color-swatches');
+      if (!container) return;
+      container.innerHTML = GAME_PALETTE.map(c =>
+        `<div class="color-swatch${c === selectedColor ? ' selected' : ''}" style="background:${c}" title="${c}" onclick="selectColorSwatch('${c}')"></div>`
+      ).join('');
+      document.getElementById('d-color').value = selectedColor || '';
+    }
+
+    function selectColorSwatch(color) {
+      document.getElementById('d-color').value = color;
+      document.querySelectorAll('.color-swatch').forEach(s => {
+        s.classList.toggle('selected', s.title === color);
+      });
+    }
+
+    let _editingDealOrigStatus = null;
+
     function editDeal(key) {
       const d = typeof key === 'number'
         ? DEALS[key]
         : DEALS.find(d => d.id === key);
       if (!d) { alert('Deal not found'); return; }
       editingDealId = d.id !== undefined ? d.id : key;
+      _editingDealOrigStatus = d.status;
       document.getElementById('deal-modal-title').textContent = 'Edit deal';
       document.getElementById('d-title').value = d.title || '';
       document.getElementById('d-developer').value = d.developer || '';
@@ -2110,6 +2416,25 @@ Rules:
       document.getElementById('d-start').value = d.start_date || '';
       document.getElementById('d-end').value = d.end_date || '';
       document.getElementById('d-special').value = d.special_condition || '';
+      initColorSwatches(getGameColor(d.title));
+      openModal('deal');
+    }
+
+    // Called when "Add deal" button is clicked — reset form & swatches
+    function openAddDeal() {
+      editingDealId = null;
+      _editingDealOrigStatus = null;
+      document.getElementById('deal-modal-title').textContent = 'Add deal';
+      ['d-title','d-developer','d-region','d-lf','d-mg','d-rs','d-start','d-end','d-special'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+      document.getElementById('d-status').value = 'Not Launched';
+      document.getElementById('deal-error').style.display = 'none';
+      // Auto-pick first unused palette color
+      const used = new Set(Object.values(_gameColors));
+      const free = GAME_PALETTE.find(c => !used.has(c)) || GAME_PALETTE[0];
+      initColorSwatches(free);
       openModal('deal');
     }
 
@@ -2232,22 +2557,66 @@ Rules:
     // ===== MODALS =====
     function openModal(type) {
       if (type === 'deal') {
-        if (editingDealId === null) {
-          document.getElementById('deal-modal-title').textContent = 'Add deal';
-          ['d-title', 'd-developer', 'd-region', 'd-lf', 'd-mg', 'd-rs', 'd-start', 'd-end', 'd-special'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-          document.getElementById('d-status').value = 'Not Launched';
-        }
         document.getElementById('deal-error').style.display = 'none';
         document.getElementById('modal-deal').classList.add('open');
-      } else {
+      } else if (type === 'monthly') {
         document.getElementById('monthly-error').style.display = 'none';
+        // Reset auto-calc fields
+        const ae = document.getElementById('f-arppu');
+        const ce = document.getElementById('f-cr');
+        const we = document.getElementById('auto-warn');
+        if (ae) ae.value = '';
+        if (ce) ce.value = '';
+        if (we) we.style.display = 'none';
         document.getElementById('modal-monthly').classList.add('open');
+      } else {
+        const el = document.getElementById(`modal-${type}`);
+        if (el) el.classList.add('open');
       }
     }
 
     function closeModal(type) {
-      document.getElementById(`modal-${type}`).classList.remove('open');
-      if (type === 'deal') editingDealId = null;
+      const el = document.getElementById(`modal-${type}`);
+      if (el) el.classList.remove('open');
+      if (type === 'deal') { editingDealId = null; _editingDealOrigStatus = null; }
+      if (type === 'status-confirm') _pendingDealRow = null;
+    }
+
+    function calcAutoMetrics() {
+      const revenue = parseFloat(document.getElementById('f-revenue').value);
+      const mpu = parseFloat(document.getElementById('f-mpu').value);
+      const mau = parseFloat(document.getElementById('f-mau').value);
+      const arppuEl = document.getElementById('f-arppu');
+      const crEl = document.getElementById('f-cr');
+      const warnEl = document.getElementById('auto-warn');
+
+      let arppu = null, cr = null;
+      if (!isNaN(revenue) && !isNaN(mpu) && mpu > 0) arppu = revenue / mpu;
+      if (!isNaN(mpu) && !isNaN(mau) && mau > 0) cr = (mpu / mau) * 100;
+
+      arppuEl.value = arppu !== null ? arppu.toFixed(2) : '';
+      crEl.value = cr !== null ? cr.toFixed(2) : '';
+
+      const warnings = arppu !== null || cr !== null ? validateMetrics(arppu, cr) : [];
+      if (warnings.length > 0) {
+        warnEl.textContent = warnings.join('\n');
+        warnEl.style.display = 'block';
+      } else {
+        warnEl.style.display = 'none';
+      }
+    }
+
+    function validateMetrics(arppu, cr) {
+      const w = [];
+      if (arppu !== null) {
+        if (arppu > 100) w.push('⚠️ ARPPU가 $100을 초과합니다. Revenue/MPU 단위 확인 필요.');
+        if (arppu > 0 && arppu < 1) w.push('⚠️ ARPPU가 $1 미만입니다. 데이터 확인 필요.');
+      }
+      if (cr !== null) {
+        if (cr > 30) w.push('⚠️ CR이 30%를 초과합니다. MPU/MAU 단위 확인 필요.');
+        if (cr > 0 && cr < 0.1) w.push('⚠️ CR이 0.1% 미만입니다. 데이터 확인 필요.');
+      }
+      return w;
     }
 
     async function submitMonthly() {
@@ -2264,15 +2633,19 @@ Rules:
         errEl.textContent = `${game} ${ym} 데이터가 이미 존재합니다. Raw Data에서 삭제 후 다시 입력하세요.`;
         errEl.style.display = 'block'; return;
       }
-      const crRaw = parseFloat(document.getElementById('f-cr').value);
+      const mpu = parseFloat(document.getElementById('f-mpu').value) || null;
+      const mau = parseFloat(document.getElementById('f-mau').value) || null;
+      // ARPPU and CR are auto-calculated — read from readonly fields
+      const arppuVal = parseFloat(document.getElementById('f-arppu').value);
+      const crVal = parseFloat(document.getElementById('f-cr').value);
       const row = {
         game, ym, revenue,
         dau: parseFloat(document.getElementById('f-dau').value) || null,
-        mau: parseFloat(document.getElementById('f-mau').value) || null,
+        mau: mau,
         nru: parseFloat(document.getElementById('f-nru').value) || null,
-        mpu: parseFloat(document.getElementById('f-mpu').value) || null,
-        arppu: parseFloat(document.getElementById('f-arppu').value) || null,
-        cr: !isNaN(crRaw) ? crRaw / 100 : null,
+        mpu: mpu,
+        arppu: !isNaN(arppuVal) ? arppuVal : null,
+        cr: !isNaN(crVal) ? crVal / 100 : null,
         mkt_cost: parseFloat(document.getElementById('f-mkt').value) || null,
       };
       const btn = document.getElementById('monthly-submit-btn');
@@ -2296,16 +2669,20 @@ Rules:
       }
     }
 
+    let _pendingDealRow = null;
+    let _pendingTerminationNote = '';
+
     async function submitDeal() {
       const title = document.getElementById('d-title').value.trim();
       const errEl = document.getElementById('deal-error');
       if (!title) { errEl.textContent = 'Game title은 필수입니다.'; errEl.style.display = 'block'; return; }
       const rsRaw = parseFloat(document.getElementById('d-rs').value);
+      const newStatus = document.getElementById('d-status').value;
       const row = {
         title,
         developer: document.getElementById('d-developer').value.trim() || null,
         region: document.getElementById('d-region').value.trim() || null,
-        status: document.getElementById('d-status').value,
+        status: newStatus,
         lf: parseFloat(document.getElementById('d-lf').value) || null,
         mg: parseFloat(document.getElementById('d-mg').value) || null,
         rs: !isNaN(rsRaw) ? rsRaw / 100 : null,
@@ -2313,7 +2690,56 @@ Rules:
         end_date: document.getElementById('d-end').value || null,
         special_condition: document.getElementById('d-special').value.trim() || null,
       };
+
+      // Save color choice
+      const chosenColor = document.getElementById('d-color').value;
+      if (chosenColor) setGameColor(title, chosenColor);
+
+      // Check if status change needs confirmation
+      const origStatus = _editingDealOrigStatus;
+      const needsConfirm = editingDealId !== null && origStatus && origStatus !== newStatus;
+      if (needsConfirm) {
+        const isTerminating = newStatus === 'Terminated';
+        const isDeactivating = origStatus === 'Launched' && newStatus === 'Not Launched';
+        if (isTerminating || isDeactivating) {
+          _pendingDealRow = row;
+          const msgEl = document.getElementById('status-confirm-msg');
+          const noteWrap = document.getElementById('status-confirm-note-wrap');
+          const noteEl = document.getElementById('status-confirm-note');
+          const titleEl = document.getElementById('status-confirm-title');
+          if (isTerminating) {
+            titleEl.textContent = '⚠️ 게임 종료 확인';
+            msgEl.innerHTML = `<strong>${title}</strong>의 Status를 <span style="color:var(--red)">Terminated</span>로 변경합니다.<br><br>
+              이 게임은 사이드바에서 제거되고 Archive로 이동합니다.<br>
+              과거 데이터는 보존되며, Archive에서 복원할 수 있습니다.`;
+            noteWrap.style.display = 'block';
+            noteEl.value = '';
+          } else {
+            titleEl.textContent = 'Status 변경 확인';
+            msgEl.innerHTML = `<strong>${title}</strong>의 Status를 <span style="color:var(--amber)">Not Launched</span>로 변경합니다.<br><br>
+              이 게임은 사이드바에서 제거됩니다. 다시 Launched로 변경하면 복원됩니다.`;
+            noteWrap.style.display = 'none';
+          }
+          document.getElementById('status-confirm-error').style.display = 'none';
+          openModal('status-confirm');
+          return;
+        }
+      }
+      await _executeDealSave(row, '');
+    }
+
+    async function confirmStatusChange() {
+      if (!_pendingDealRow) return;
+      const note = document.getElementById('status-confirm-note').value.trim();
+      closeModal('status-confirm');
+      await _executeDealSave(_pendingDealRow, note);
+      _pendingDealRow = null;
+    }
+
+    async function _executeDealSave(row, terminationNote) {
+      if (terminationNote) row.termination_note = terminationNote;
       const btn = document.getElementById('deal-submit-btn');
+      const errEl = document.getElementById('deal-error');
       btn.textContent = 'Saving...'; btn.disabled = true;
       try {
         if (editingDealId !== null) {
@@ -2332,6 +2758,11 @@ Rules:
         closeModal('deal');
         updateLastUpdated();
         renderDeals();
+        renderSidebar();
+        // Refresh monthly modal game select
+        const launchedGames = DEALS.filter(d => d.status === 'Launched').map(d => d.title);
+        const gs = document.getElementById('f-game');
+        if (gs) gs.innerHTML = '<option value="">Select game</option>' + launchedGames.map(t => `<option value="${t}">${t}</option>`).join('');
         btn.textContent = 'Saved!'; btn.style.background = '#2ECC9A';
         setTimeout(() => { btn.textContent = 'Save'; btn.style.background = ''; btn.disabled = false; }, 1500);
       } catch (e) {
@@ -2346,8 +2777,9 @@ Rules:
     }
 
     // Close modal on overlay click
-    ['modal-monthly', 'modal-deal'].forEach(id => {
-      document.getElementById(id).addEventListener('click', function (e) {
+    ['modal-monthly', 'modal-deal', 'modal-status-confirm'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('click', function (e) {
         if (e.target === this) closeModal(id.replace('modal-', ''));
       });
     });
