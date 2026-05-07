@@ -1304,10 +1304,9 @@
         INSIGHTS = insightsRes || [];
         // LATEST_INSIGHT will be set in renderOverview
 
-        // Populate Overview Game Select (Launched games only)
+        // Populate Overview Game Select
         const ovSelect = document.getElementById('ov-game-select');
-        const launchedForOv = DEALS.filter(d => d.status === 'Launched').map(d => d.title);
-        ovSelect.innerHTML = '<option value="All">All Games</option>' + launchedForOv.map(g => `<option value="${g}">${g}</option>`).join('');
+        ovSelect.innerHTML = '<option value="All">All Games</option>' + getActiveGames().map(g => `<option value="${g}">${g}</option>`).join('');
       } catch (e) {
         console.error('Init error:', e);
         alert('데이터를 불러오지 못했어요. 네트워크를 확인해주세요.');
@@ -1315,11 +1314,10 @@
       document.getElementById('loading-overlay').style.display = 'none';
       updateLastUpdated();
 
-      // 게임 select를 DEALS 기반으로 동적 생성 (Launched 게임만)
-      const launchedGames = DEALS.filter(d => d.status === 'Launched').map(d => d.title);
+      // 게임 select를 active 게임 기반으로 동적 생성 (Terminated 제외)
       const gameSelect = document.getElementById('f-game');
       gameSelect.innerHTML = '<option value="">Select game</option>' +
-        launchedGames.map(t => `<option value="${t}">${t}</option>`).join('');
+        getActiveGames().map(t => `<option value="${t}">${t}</option>`).join('');
 
       // Pre-assign colors for existing games
       DEALS.forEach(d => { if (d.title) getGameColor(d.title); });
@@ -1382,9 +1380,24 @@
       return ((profit - invest) / invest) * 100;
     }
 
+    // ===== ACTIVE GAMES HELPER =====
+    // Returns games to show in sidebar/charts:
+    // - DEALS with "Launched" status
+    // - PLUS any game in RAW that isn't explicitly "Terminated" in DEALS
+    function getActiveGames() {
+      const launchedFromDeals = DEALS.filter(d => d.status === 'Launched').map(d => d.title);
+      const terminatedSet = new Set(DEALS.filter(d => d.status === 'Terminated').map(d => d.title));
+      const rawGames = [...new Set(RAW.map(r => r.game))].filter(g => !terminatedSet.has(g));
+      return [...new Set([...launchedFromDeals, ...rawGames])];
+    }
+
     // ===== SIDEBAR =====
     function renderSidebar() {
-      const launched = DEALS.filter(d => d.status === 'Launched');
+      const activeGames = getActiveGames();
+      const launched = activeGames.map(title => {
+        const deal = DEALS.find(d => d.title === title);
+        return deal || { title };
+      });
       const container = document.getElementById('sidebar-games');
       if (!container) return;
       if (launched.length === 0) {
@@ -1558,8 +1571,7 @@
       const latestYMForInsight = allYMs.length > 0 ? allYMs.slice(-1)[0] : '-';
       LATEST_INSIGHT = INSIGHTS.find(i => i.year_month === (overviewEndYM || latestYMForInsight)) || INSIGHTS[0] || null;
 
-      const activeGames = DEALS.filter(d => d.status === 'Launched').map(d => d.title);
-      const targetGames = currentOverViewGame === 'All' ? activeGames : [currentOverViewGame];
+      const targetGames = currentOverViewGame === 'All' ? getActiveGames() : [currentOverViewGame];
       
       const totalInvest = targetGames.reduce((s, g) => s + getLf(g) + getMg(g), 0);
       const totalOurGrossProfit = targetGames.reduce((s, g) => {
@@ -1620,8 +1632,7 @@
       if (revChart) { revChart.destroy(); revChart = null; }
       const dataToUse = getFilteredRAW();
       const allYMs = [...new Set(dataToUse.map(r => r.ym))].sort();
-      const activeGames = DEALS.filter(d => d.status === 'Launched').map(d => d.title);
-      const targetGames = currentOverViewGame === 'All' ? activeGames : [currentOverViewGame];
+      const targetGames = currentOverViewGame === 'All' ? getActiveGames() : [currentOverViewGame];
       buildLegend('rev-legend', targetGames);
       const byGY = {};
       targetGames.forEach(g => { byGY[g] = {}; allYMs.forEach(ym => { byGY[g][ym] = dataToUse.filter(r => r.game === g && r.ym === ym).reduce((s, r) => s + (r.revenue || 0), 0); }); });
@@ -1863,7 +1874,7 @@
       try {
         const dataToUse = getFilteredRAW();
         // Active 게임만 AI 인사이트 대상 (Terminated 제외)
-        const games = DEALS.filter(d => d.status === 'Launched').map(d => d.title);
+        const games = getActiveGames();
         const allYMs = [...new Set(dataToUse.map(r => r.ym))].sort();
         const latestYM = allYMs.length > 0 ? allYMs.slice(-1)[0] : '-';
         const prevYM = allYMs.length > 1 ? allYMs.slice(-2, -1)[0] : '-';
@@ -2760,9 +2771,8 @@ ${dataStr}`;
         renderDeals();
         renderSidebar();
         // Refresh monthly modal game select
-        const launchedGames = DEALS.filter(d => d.status === 'Launched').map(d => d.title);
         const gs = document.getElementById('f-game');
-        if (gs) gs.innerHTML = '<option value="">Select game</option>' + launchedGames.map(t => `<option value="${t}">${t}</option>`).join('');
+        if (gs) gs.innerHTML = '<option value="">Select game</option>' + getActiveGames().map(t => `<option value="${t}">${t}</option>`).join('');
         btn.textContent = 'Saved!'; btn.style.background = '#2ECC9A';
         setTimeout(() => { btn.textContent = 'Save'; btn.style.background = ''; btn.disabled = false; }, 1500);
       } catch (e) {
