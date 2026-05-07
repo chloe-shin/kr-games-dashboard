@@ -1394,7 +1394,7 @@
       container.innerHTML = launched.map(d => {
         const color = getGameColor(d.title);
         const slug = d.title.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
-        return `<div class="nav-item" id="nav-game-${slug}" onclick="showPage('game',${JSON.stringify(d.title)})">
+        return `<div class="nav-item" id="nav-game-${slug}" onclick='showPage("game",${JSON.stringify(d.title)})'>
           <span class="nav-dot" style="background:${color}"></span>
           <span>${d.title}</span>
         </div>`;
