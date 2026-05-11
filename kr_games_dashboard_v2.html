@@ -1386,9 +1386,13 @@
     // so we match using startsWith (same as getRs/getLf/getMg).
     function getActiveGames() {
       const rawGames = [...new Set(RAW.map(r => r.game))];
-      const terminatedTitles = DEALS.filter(d => d.status === 'Terminated').map(d => d.title);
-      return rawGames.filter(g =>
-        !terminatedTitles.some(t => t === g || t.startsWith(g) || g.startsWith(t))
+      const launchedDeals = DEALS.filter(d => d.status === 'Launched').map(d => d.title);
+      const excludedDeals = DEALS.filter(d => d.status === 'Terminated' || d.status === 'Not Launched').map(d => d.title);
+      
+      const allGames = [...new Set([...rawGames, ...launchedDeals])];
+      
+      return allGames.filter(g =>
+        !excludedDeals.some(t => t === g || t.startsWith(g) || g.startsWith(t))
       );
     }
 
