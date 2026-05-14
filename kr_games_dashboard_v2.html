@@ -1381,19 +1381,31 @@
     }
 
     // ===== ACTIVE GAMES HELPER =====
-    // RAW game names are the source of truth for display.
-    // DEAL titles may differ (e.g. "Genesis: Asura Project" vs "Genesis"),
-    // so we match using startsWith (same as getRs/getLf/getMg).
+    // Returns active games for sidebar/charts/insights.
+    // Rule: union of (DEALS Launched + RAW games), minus Terminated.
+    // Name matching uses startsWith to handle titles like "Genesis: Asura Project" vs "Genesis".
+    function matchesGame(a, b) {
+      return a === b || a.startsWith(b) || b.startsWith(a);
+    }
+
     function getActiveGames() {
-      const rawGames = [...new Set(RAW.map(r => r.game))];
-      const launchedDeals = DEALS.filter(d => d.status === 'Launched').map(d => d.title);
-      const excludedDeals = DEALS.filter(d => d.status === 'Terminated' || d.status === 'Not Launched').map(d => d.title);
-      
-      const allGames = [...new Set([...rawGames, ...launchedDeals])];
-      
-      return allGames.filter(g =>
-        !excludedDeals.some(t => t === g || t.startsWith(g) || g.startsWith(t))
-      );
+      // Excluded: Terminated OR Not Launched deals
+      const excludedTitles = DEALS
+        .filter(d => d.status === 'Terminated' || d.status === 'Not Launched')
+        .map(d => d.title);
+      const isExcluded = g => excludedTitles.some(t => matchesGame(t, g));
+
+      // 1. RAW game names (not excluded)
+      const rawGames = [...new Set(RAW.map(r => r.game))].filter(g => !isExcluded(g));
+
+      // 2. DEALS Launched games with no matching RAW entry yet
+      //    (e.g. new deal added before any data is entered)
+      const launchedDealNames = DEALS
+        .filter(d => d.status === 'Launched')
+        .map(d => d.title)
+        .filter(t => !rawGames.some(g => matchesGame(g, t)));
+
+      return [...rawGames, ...launchedDealNames];
     }
 
     // ===== SIDEBAR =====
