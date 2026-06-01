@@ -1468,7 +1468,7 @@
     function renderSidebar() {
       const activeGames = getActiveGames();
       _sidebarGames = getOrderedGames(activeGames);
-      const launched = _sidebarGames.map(title => DEALS.find(d => d.title === title) || { title });
+      const launched = _sidebarGames.map(title => DEALS.find(d => matchesGame(d.title, title)) || { title });
       const container = document.getElementById('sidebar-games');
       if (!container) return;
       if (launched.length === 0) {
