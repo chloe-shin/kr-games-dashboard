@@ -154,6 +154,19 @@
       border-radius: 7px;
     }
 
+    .nav-new-badge {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      color: #10B981;
+      background: rgba(16, 185, 129, .12);
+      border: 1px solid rgba(16, 185, 129, .3);
+      border-radius: 4px;
+      padding: 1px 5px;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+
     .sidebar-footer {
       padding: 16px 20px;
       border-top: 1px solid var(--border);
@@ -1462,13 +1475,17 @@
         container.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:4px 10px 8px">No launched games</div>';
         return;
       }
+      const now = new Date();
+      const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
       container.innerHTML = launched.map((d, idx) => {
         const color = getGameColor(d.title);
         const slug = d.title.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
+        const isNew = d.start_date && new Date(d.start_date) >= threeMonthsAgo;
         return `<div class="nav-item" id="nav-game-${slug}" draggable="true" data-idx="${idx}" onclick='showPage("game",${JSON.stringify(d.title)})'>
           <span class="nav-drag-handle">⠿</span>
           <span class="nav-dot" style="background:${color}"></span>
           <span>${d.title}</span>
+          ${isNew ? '<span class="nav-new-badge">NEW</span>' : ''}
         </div>`;
       }).join('');
 
