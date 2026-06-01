@@ -129,6 +129,31 @@
       flex-shrink: 0;
     }
 
+    .nav-drag-handle {
+      opacity: 0;
+      color: var(--text3);
+      font-size: 14px;
+      cursor: grab;
+      flex-shrink: 0;
+      line-height: 1;
+      transition: opacity .15s;
+      margin-right: -2px;
+    }
+
+    .nav-item:hover .nav-drag-handle {
+      opacity: 1;
+    }
+
+    .nav-item.dragging {
+      opacity: 0.35;
+    }
+
+    .nav-item.drag-over {
+      background: var(--bg3);
+      outline: 1px dashed var(--accent);
+      border-radius: 7px;
+    }
+
     .sidebar-footer {
       padding: 16px 20px;
       border-top: 1px solid var(--border);
@@ -1221,6 +1246,24 @@
     let _gameColors = {};
     try { _gameColors = JSON.parse(localStorage.getItem('game_colors') || '{}'); } catch(e) {}
 
+    // Game list order (persisted)
+    let _gameOrder = null;
+    try { _gameOrder = JSON.parse(localStorage.getItem('game_order') || 'null'); } catch(e) {}
+    let _draggedGameIdx = -1;
+    let _sidebarGames = [];
+
+    function saveGameOrder(order) {
+      _gameOrder = order;
+      localStorage.setItem('game_order', JSON.stringify(order));
+    }
+
+    function getOrderedGames(games) {
+      if (!_gameOrder) return games;
+      const ordered = _gameOrder.filter(g => games.includes(g));
+      const newGames = games.filter(g => !_gameOrder.includes(g));
+      return [...ordered, ...newGames];
+    }
+
     function saveGameColors() {
       localStorage.setItem('game_colors', JSON.stringify(_gameColors));
     }
@@ -1411,24 +1454,56 @@
     // ===== SIDEBAR =====
     function renderSidebar() {
       const activeGames = getActiveGames();
-      const launched = activeGames.map(title => {
-        const deal = DEALS.find(d => d.title === title);
-        return deal || { title };
-      });
+      _sidebarGames = getOrderedGames(activeGames);
+      const launched = _sidebarGames.map(title => DEALS.find(d => d.title === title) || { title });
       const container = document.getElementById('sidebar-games');
       if (!container) return;
       if (launched.length === 0) {
         container.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:4px 10px 8px">No launched games</div>';
         return;
       }
-      container.innerHTML = launched.map(d => {
+      container.innerHTML = launched.map((d, idx) => {
         const color = getGameColor(d.title);
         const slug = d.title.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
-        return `<div class="nav-item" id="nav-game-${slug}" onclick='showPage("game",${JSON.stringify(d.title)})'>
+        return `<div class="nav-item" id="nav-game-${slug}" draggable="true" data-idx="${idx}" onclick='showPage("game",${JSON.stringify(d.title)})'>
+          <span class="nav-drag-handle">⠿</span>
           <span class="nav-dot" style="background:${color}"></span>
           <span>${d.title}</span>
         </div>`;
       }).join('');
+
+      container.querySelectorAll('.nav-item[data-idx]').forEach(el => {
+        const idx = +el.dataset.idx;
+        el.addEventListener('dragstart', e => {
+          _draggedGameIdx = idx;
+          setTimeout(() => el.classList.add('dragging'), 0);
+          e.dataTransfer.effectAllowed = 'move';
+        });
+        el.addEventListener('dragover', e => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          el.classList.add('drag-over');
+        });
+        el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
+        el.addEventListener('drop', e => {
+          e.preventDefault();
+          el.classList.remove('drag-over');
+          const toIdx = +el.dataset.idx;
+          if (_draggedGameIdx < 0 || _draggedGameIdx === toIdx) return;
+          const newOrder = [..._sidebarGames];
+          const [moved] = newOrder.splice(_draggedGameIdx, 1);
+          newOrder.splice(toIdx, 0, moved);
+          saveGameOrder(newOrder);
+          renderSidebar();
+          const activeSlug = currentGame.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
+          document.getElementById('nav-game-' + activeSlug)?.classList.add('active');
+        });
+        el.addEventListener('dragend', () => {
+          _draggedGameIdx = -1;
+          el.classList.remove('dragging');
+          container.querySelectorAll('.drag-over').forEach(x => x.classList.remove('drag-over'));
+        });
+      });
     }
 
     // ===== CHARTS STATE =====
