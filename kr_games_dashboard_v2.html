@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>KR Games Performance Dashboard</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/libs/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.min.js"></script>
@@ -1156,6 +1157,42 @@
     </div>
   </div>
 
+  <!-- Excel Upload Modal -->
+  <div class="modal-overlay" id="modal-excel-upload">
+    <div class="modal" style="max-width:560px">
+      <div class="modal-header">
+        <div class="modal-title">📂 Upload Daily Report Excel</div>
+        <button class="modal-close" onclick="closeModal('excel-upload')">×</button>
+      </div>
+      <div style="padding:20px 24px;display:flex;flex-direction:column;gap:16px">
+        <div style="font-size:12px;color:var(--text2);line-height:1.6;background:var(--bg3);border-radius:8px;padding:12px 14px">
+          Daily Report (USD) 포맷의 엑셀 파일을 올려주세요.<br>
+          월간 합계/평균으로 자동 집계해서 Supabase에 저장합니다.
+        </div>
+        <div>
+          <label class="form-label">Game</label>
+          <select id="xu-game" class="form-input">
+            <option value="">Select game...</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Excel File (Daily Report)</label>
+          <input type="file" id="xu-file" accept=".xlsx,.xls" class="form-input" style="cursor:pointer" onchange="previewExcelUpload()">
+        </div>
+        <div id="xu-preview" style="display:none">
+          <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Preview (집계 결과)</div>
+          <div id="xu-preview-table"></div>
+          <div id="xu-warn" style="font-size:11px;color:#F59E0B;margin-top:8px;display:none"></div>
+        </div>
+        <div class="form-error" id="xu-error"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn" onclick="closeModal('excel-upload')">Cancel</button>
+          <button class="btn btn-primary" id="xu-submit-btn" onclick="submitExcelUpload()" disabled>Save to DB</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Deal Terms Modal -->
   <div class="modal-overlay" id="modal-deal">
     <div class="modal">
@@ -1659,7 +1696,7 @@
         document.getElementById('page-data').classList.add('active');
         document.getElementById('topbar-title').textContent = 'Raw Data';
         setActiveNav('nav-data');
-        actions.innerHTML = `<button class="btn btn-primary" onclick="openModal('monthly')">+ Add monthly data</button>`;
+        actions.innerHTML = `<button class="btn" onclick="openModal('excel-upload')" style="gap:6px">📂 Upload Excel</button><button class="btn btn-primary" onclick="openModal('monthly')">+ Add monthly data</button>`;
         renderDataPage();
       }
     }
@@ -2687,6 +2724,16 @@ ${dataStr}`;
         if (ce) ce.value = '';
         if (we) we.style.display = 'none';
         document.getElementById('modal-monthly').classList.add('open');
+      } else if (type === 'excel-upload') {
+        // Populate game select
+        const sel = document.getElementById('xu-game');
+        sel.innerHTML = '<option value="">Select game...</option>' +
+          getActiveGames().map(g => `<option value="${g}">${g}</option>`).join('');
+        document.getElementById('xu-file').value = '';
+        document.getElementById('xu-preview').style.display = 'none';
+        document.getElementById('xu-error').textContent = '';
+        document.getElementById('xu-submit-btn').disabled = true;
+        document.getElementById('modal-excel-upload').classList.add('open');
       } else {
         const el = document.getElementById(`modal-${type}`);
         if (el) el.classList.add('open');
@@ -2784,6 +2831,139 @@ ${dataStr}`;
       } catch (e) {
         errEl.textContent = '저장 실패: ' + e.message; errEl.style.display = 'block';
         btn.textContent = 'Save'; btn.disabled = false;
+      }
+    }
+
+    // ===== EXCEL UPLOAD =====
+    let _xuParsedRow = null;
+
+    function previewExcelUpload() {
+      const errEl = document.getElementById('xu-error');
+      const previewDiv = document.getElementById('xu-preview');
+      const submitBtn = document.getElementById('xu-submit-btn');
+      errEl.textContent = '';
+      previewDiv.style.display = 'none';
+      submitBtn.disabled = true;
+      _xuParsedRow = null;
+
+      const file = document.getElementById('xu-file').files[0];
+      if (!file) return;
+      if (typeof XLSX === 'undefined') { errEl.textContent = 'SheetJS 라이브러리 로드 실패. 인터넷 연결을 확인해주세요.'; return; }
+
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const wb = XLSX.read(e.target.result, { type: 'array' });
+          const sheet = wb.Sheets[wb.SheetNames[0]];
+          const rows = XLSX.utils.sheet_to_json(sheet, { defval: null });
+
+          if (!rows.length) { errEl.textContent = '파일에 데이터가 없어요.'; return; }
+
+          // Detect header — find the date column
+          const firstRow = rows[0];
+          const dateCol = Object.keys(firstRow).find(k => k === 'KPI Metrics' || /date|day/i.test(k)) || Object.keys(firstRow)[0];
+
+          // Parse dates and filter valid rows
+          const dataRows = rows.filter(r => {
+            const v = r[dateCol];
+            return v && !isNaN(Date.parse(String(v)));
+          });
+          if (!dataRows.length) { errEl.textContent = '날짜 데이터를 찾을 수 없어요. KPI Metrics 컬럼을 확인해주세요.'; return; }
+
+          // Detect the year-month (all rows should be same month)
+          const months = [...new Set(dataRows.map(r => String(r[dateCol]).slice(0, 7)))];
+          if (months.length > 1) {
+            document.getElementById('xu-warn').textContent = `⚠️ 여러 월 데이터 감지됨 (${months.join(', ')}). 첫 번째 월(${months[0]})만 집계합니다.`;
+            document.getElementById('xu-warn').style.display = 'block';
+          } else {
+            document.getElementById('xu-warn').style.display = 'none';
+          }
+          const ym = months[0];
+          const monthRows = dataRows.filter(r => String(r[dateCol]).startsWith(ym));
+
+          // Sort ascending by date (last day = last row)
+          monthRows.sort((a, b) => String(a[dateCol]).localeCompare(String(b[dateCol])));
+          const lastRow = monthRows[monthRows.length - 1];
+
+          // Helper: column lookup (case-insensitive, partial match)
+          const col = (...names) => {
+            for (const name of names) {
+              const k = Object.keys(firstRow).find(k => k.toLowerCase().replace(/\s+/g,'') === name.toLowerCase().replace(/\s+/g,''));
+              if (k !== undefined) return k;
+            }
+            return null;
+          };
+          const sum = k => { const c = col(k); return c ? monthRows.reduce((a, r) => a + (parseFloat(r[c]) || 0), 0) : null; };
+          const avg = k => { const c = col(k); if (!c) return null; const vals = monthRows.map(r => parseFloat(r[c])).filter(v => !isNaN(v)); return vals.length ? vals.reduce((a,b) => a+b,0)/vals.length : null; };
+          const last = k => { const c = col(k); return c ? (parseFloat(lastRow[c]) || null) : null; };
+
+          const revenue = sum('DailyGameRevenue') ?? sum('Revenue') ?? sum('GameRevenue');
+          const dau = avg('DAU');
+          const mau = last('A30') ?? avg('MAU');
+          const nru = sum('NRU');
+          const mpu = last('PU30') ?? last('MPU');
+          const mkt_cost = sum('DailyMarketingCost') ?? sum('MarketingCost') ?? sum('MktCost');
+          const arppu = (revenue && mpu && mpu > 0) ? revenue / mpu : null;
+          const cr = (mpu && mau && mau > 0) ? mpu / mau : null;
+
+          _xuParsedRow = { ym, revenue, dau, mau, nru, mpu, arppu, cr, mkt_cost };
+
+          // Render preview table
+          const fmt = (v, dec=0) => v == null ? '<span style="color:var(--text3)">-</span>' : (dec > 0 ? v.toFixed(dec) : Math.round(v).toLocaleString());
+          document.getElementById('xu-preview-table').innerHTML = `
+            <table style="width:100%;font-size:12px;border-collapse:collapse">
+              <tr style="border-bottom:1px solid var(--border)">
+                <th style="text-align:left;padding:6px 8px;color:var(--text3);font-weight:500">항목</th>
+                <th style="text-align:right;padding:6px 8px;color:var(--text3);font-weight:500">집계값</th>
+              </tr>
+              <tr><td style="padding:5px 8px;color:var(--text2)">Year-Month</td><td style="text-align:right;padding:5px 8px;font-family:monospace">${ym}</td></tr>
+              <tr><td style="padding:5px 8px;color:var(--text2)">Revenue (합계)</td><td style="text-align:right;padding:5px 8px;font-family:monospace">$${fmt(revenue, 2)}</td></tr>
+              <tr><td style="padding:5px 8px;color:var(--text2)">DAU (평균)</td><td style="text-align:right;padding:5px 8px;font-family:monospace">${fmt(dau)}</td></tr>
+              <tr><td style="padding:5px 8px;color:var(--text2)">MAU / A30 (말일)</td><td style="text-align:right;padding:5px 8px;font-family:monospace">${fmt(mau)}</td></tr>
+              <tr><td style="padding:5px 8px;color:var(--text2)">NRU (합계)</td><td style="text-align:right;padding:5px 8px;font-family:monospace">${fmt(nru)}</td></tr>
+              <tr><td style="padding:5px 8px;color:var(--text2)">MPU / PU30 (말일)</td><td style="text-align:right;padding:5px 8px;font-family:monospace">${fmt(mpu)}</td></tr>
+              <tr><td style="padding:5px 8px;color:var(--text2)">ARPPU (계산값)</td><td style="text-align:right;padding:5px 8px;font-family:monospace">$${fmt(arppu, 2)}</td></tr>
+              <tr><td style="padding:5px 8px;color:var(--text2)">CR (계산값)</td><td style="text-align:right;padding:5px 8px;font-family:monospace">${cr != null ? (cr*100).toFixed(2)+'%' : '-'}</td></tr>
+              <tr><td style="padding:5px 8px;color:var(--text2)">Marketing Cost (합계)</td><td style="text-align:right;padding:5px 8px;font-family:monospace">$${fmt(mkt_cost, 2)}</td></tr>
+            </table>`;
+          previewDiv.style.display = 'block';
+          submitBtn.disabled = false;
+        } catch (err) {
+          errEl.textContent = '파일 파싱 오류: ' + err.message;
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    async function submitExcelUpload() {
+      const errEl = document.getElementById('xu-error');
+      const game = document.getElementById('xu-game').value;
+      if (!game) { errEl.textContent = 'Game을 선택해주세요.'; return; }
+      if (!_xuParsedRow) { errEl.textContent = '파일을 먼저 업로드해주세요.'; return; }
+
+      const { ym, revenue, dau, mau, nru, mpu, arppu, cr, mkt_cost } = _xuParsedRow;
+      if (RAW.find(r => r.game === game && r.ym === ym)) {
+        errEl.textContent = `${game} ${ym} 데이터가 이미 존재합니다. Raw Data에서 삭제 후 다시 업로드하세요.`;
+        return;
+      }
+
+      const row = { game, ym, revenue, dau, mau, nru, mpu, arppu, cr, mkt_cost };
+      const btn = document.getElementById('xu-submit-btn');
+      btn.textContent = 'Saving...'; btn.disabled = true;
+      try {
+        const saved = await api('monthly_data', 'POST', row);
+        RAW.push(Array.isArray(saved) ? saved[0] : saved || row);
+        RAW = enrichRAWData(RAW);
+        closeModal('excel-upload');
+        updateLastUpdated();
+        const ap = document.querySelector('.page.active').id;
+        if (ap === 'page-overview') renderOverview();
+        else if (ap === 'page-game') renderGame(currentGame);
+        else if (ap === 'page-data') renderDataPage();
+        _xuParsedRow = null;
+      } catch (err) {
+        errEl.textContent = '저장 실패: ' + err.message;
+        btn.textContent = 'Save to DB'; btn.disabled = false;
       }
     }
 
@@ -2894,7 +3074,7 @@ ${dataStr}`;
     }
 
     // Close modal on overlay click
-    ['modal-monthly', 'modal-deal', 'modal-status-confirm'].forEach(id => {
+    ['modal-monthly', 'modal-deal', 'modal-status-confirm', 'modal-excel-upload'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.addEventListener('click', function (e) {
         if (e.target === this) closeModal(id.replace('modal-', ''));
