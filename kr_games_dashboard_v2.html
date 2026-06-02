@@ -810,6 +810,92 @@
     }
     .color-swatch:hover { transform: scale(1.15); }
     .color-swatch.selected { border-color: #fff; transform: scale(1.15); }
+
+    /* ===== HAMBURGER BUTTON ===== */
+    .hamburger {
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      gap: 5px;
+      width: 36px;
+      height: 36px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 8px;
+      flex-shrink: 0;
+    }
+    .hamburger:hover { background: var(--bg3); }
+    .hamburger span {
+      display: block;
+      width: 18px;
+      height: 2px;
+      background: var(--text);
+      border-radius: 2px;
+      transition: all .2s;
+    }
+
+    /* Sidebar mobile overlay */
+    .sidebar-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.6);
+      z-index: 99;
+    }
+    .sidebar-backdrop.open { display: block; }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 768px) {
+      .hamburger { display: flex; }
+
+      .sidebar {
+        transform: translateX(-100%);
+        transition: transform .25s ease;
+        z-index: 200;
+      }
+      .sidebar.mobile-open { transform: translateX(0); }
+
+      .main { margin-left: 0; }
+
+      .topbar { padding: 0 16px; }
+
+      .content { padding: 16px; }
+
+      .kpi-grid { grid-template-columns: 1fr 1fr; }
+
+      .two-col { grid-template-columns: 1fr; }
+
+      .game-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+
+      .form-grid { grid-template-columns: 1fr; }
+
+      .topbar-actions {
+        gap: 6px;
+      }
+      .topbar-actions .btn {
+        font-size: 11px;
+        padding: 5px 10px;
+      }
+      /* Hide label text on small buttons in topbar */
+      .topbar-actions .btn-label-hide {
+        display: none;
+      }
+
+      .card { padding: 16px; }
+
+      /* Insight cards */
+      .insight { padding: 8px 12px; }
+    }
+
+    @media (max-width: 480px) {
+      .kpi-grid { grid-template-columns: 1fr; }
+      .game-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+      .kpi-val { font-size: 1.8rem; }
+      .kpi-primary .kpi-val, .kpi-secondary .kpi-val { font-size: 1.8rem; }
+      .content { padding: 12px; }
+    }
   </style>
 </head>
 
@@ -888,10 +974,18 @@
     </div>
   </nav>
 
+  <!-- Sidebar backdrop (mobile) -->
+  <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeMobileSidebar()"></div>
+
   <!-- Main -->
   <div class="main">
     <div class="topbar">
-      <div class="topbar-title" id="topbar-title">Overview</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="hamburger" id="hamburger-btn" onclick="toggleMobileSidebar()" aria-label="메뉴">
+          <span></span><span></span><span></span>
+        </button>
+        <div class="topbar-title" id="topbar-title">Overview</div>
+      </div>
       <div class="topbar-actions" id="topbar-actions">
         <button class="btn btn-primary" onclick="openModal('monthly')">+ Add monthly data</button>
       </div>
@@ -1619,7 +1713,18 @@
       if (el) el.classList.add('active');
     }
 
+    function toggleMobileSidebar() {
+      document.querySelector('.sidebar').classList.toggle('mobile-open');
+      document.getElementById('sidebar-backdrop').classList.toggle('open');
+    }
+
+    function closeMobileSidebar() {
+      document.querySelector('.sidebar').classList.remove('mobile-open');
+      document.getElementById('sidebar-backdrop').classList.remove('open');
+    }
+
     function showPage(page, game) {
+      closeMobileSidebar();
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
 
       const actions = document.getElementById('topbar-actions');
