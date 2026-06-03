@@ -3076,8 +3076,8 @@ ${dataStr}`;
           if (r.revenue  != null) a.rev += r.revenue;
           if (r.nru      != null) a.nru += r.nru;
           if (r.mkt_cost != null) a.mkt += r.mkt_cost;
-          if (r.dau      != null) a.dau.push(r.dau);
-          if (r.d1_ret   != null) a.d1.push(r.d1_ret);
+          if (r.dau      != null && r.dau !== undefined) a.dau.push(Number(r.dau));
+          if (r.d1_ret   != null && r.d1_ret !== undefined) a.d1.push(Number(r.d1_ret));
         });
         const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : null;
         const ctryRows = SEA_COUNTRIES.filter(c => c !== 'Total' && countryAgg[c]).map(c => {
@@ -3098,11 +3098,13 @@ ${dataStr}`;
             </div>
           </div>` : '';
 
+        const launchStr = launchDate ? launchDate.toISOString().slice(0, 10) : null;
         return `<div class="monitor-card" style="margin-bottom:20px">
           <div class="monitor-card-header">
             <div class="monitor-card-title">
               <span style="width:10px;height:10px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0"></span>
               <span>${game}</span><span class="nav-new-badge" style="margin-left:6px">NEW</span>
+              ${launchStr ? `<span style="font-size:11px;color:var(--text3);margin-left:8px">🚀 ${launchStr}</span>` : ''}
             </div>
             <span class="monitor-days-badge">${daysSince != null ? `D+${daysSince}` : ''}</span>
           </div>
