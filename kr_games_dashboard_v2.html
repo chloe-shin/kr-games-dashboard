@@ -3413,8 +3413,8 @@ ${dataStr}`;
           });
           if (!dataRows.length) { errEl.textContent = '날짜 데이터를 찾을 수 없어요. report_date 또는 KPI Metrics 컬럼을 확인해주세요.'; return; }
 
-          // Detect the year-month (all rows should be same month)
-          const months = [...new Set(dataRows.map(r => String(r[dateCol]).slice(0, 7)))];
+          // Detect the year-month — sort so [last] is always the most recent
+          const months = [...new Set(dataRows.map(r => String(r[dateCol]).slice(0, 7)))].sort();
           if (months.length > 1) {
             document.getElementById('xu-warn').textContent = `⚠️ 여러 월 데이터 감지됨 (${months.join(', ')}). 최신 월(${months[months.length-1]})만 집계합니다.`;
             document.getElementById('xu-warn').style.display = 'block';
@@ -3428,16 +3428,27 @@ ${dataStr}`;
           monthRows.sort((a, b) => String(a[dateCol]).localeCompare(String(b[dateCol])));
           const lastRow = monthRows[monthRows.length - 1];
 
-          // Helper: column lookup (case-insensitive, strips spaces)
+          // Helper: exact column lookup (case-insensitive, strips spaces)
+          const allKeys = Object.keys(firstRow);
           const col = (...names) => {
             for (const name of names) {
-              const k = Object.keys(firstRow).find(k => k.trim().toLowerCase().replace(/\s+/g,'') === name.toLowerCase().replace(/\s+/g,''));
+              const k = allKeys.find(k => k.trim().toLowerCase().replace(/\s+/g,'') === name.toLowerCase().replace(/\s+/g,''));
               if (k !== undefined) return k;
             }
             return null;
           };
+          // Helper: regex column lookup (fallback for fuzzy matching)
+          const colRx = (...patterns) => {
+            for (const p of patterns) {
+              const k = allKeys.find(k => new RegExp(p, 'i').test(k.trim()));
+              if (k !== undefined) return k;
+            }
+            return null;
+          };
+
           // Detect View By column for country breakdown
-          const viewByCol = col('ViewBy') || col('View By') || col('Country') || col('country');
+          const viewByCol = col('ViewBy', 'View By', 'Country', 'country', 'Region')
+                         || colRx('^view.?by$', '^country$', '^region$');
 
           // For monthly aggregate: use only "Total" rows (or all rows if no View By column)
           const totalRows = viewByCol
@@ -3445,29 +3456,41 @@ ${dataStr}`;
             : monthRows;
           const totalLastRow = totalRows[totalRows.length - 1] || lastRow;
 
-          const sum = k => { const c = col(k); return c ? totalRows.reduce((a, r) => a + (parseFloat(r[c]) || 0), 0) : null; };
-          const avg = k => { const c = col(k); if (!c) return null; const vals = totalRows.map(r => parseFloat(r[c])).filter(v => !isNaN(v)); return vals.length ? vals.reduce((a,b) => a+b,0)/vals.length : null; };
-          const last = k => { const c = col(k); return c ? (parseFloat(totalLastRow[c]) || null) : null; };
+          const sumC = c => c ? totalRows.reduce((a, r) => a + (parseFloat(r[c]) || 0), 0) : null;
+          const avgC = c => { if (!c) return null; const vals = totalRows.map(r => parseFloat(r[c])).filter(v => !isNaN(v)); return vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null; };
+          const lastC = c => c ? (parseFloat(totalLastRow[c]) || null) : null;
 
-          // Column mappings — supports both old format (KPI Metrics) and new format (report_date)
-          const revenue = sum('Revenue') ?? sum('DailyGameRevenue') ?? sum('GameRevenue');
-          const dau = avg('DAU');
-          const mau = last('TrailingMAU') ?? last('A30') ?? avg('MAU');
-          const nru = sum('NRU');
-          const mpu = last('TrailingMPU') ?? last('PU30') ?? last('MPU');
-          const mkt_cost = sum('Cost') ?? sum('DailyMarketingCost') ?? sum('MarketingCost') ?? sum('MktCost');
-          const arppu = (revenue && mpu && mpu > 0) ? revenue / mpu : null;
+          // Column detection — exact match first, then regex fallback
+          const revCol    = col('Revenue', 'DailyGameRevenue', 'GameRevenue', 'Daily Revenue', 'Game Revenue')
+                         || colRx('^revenue$', 'game.?rev', 'daily.?rev', 'rev.*usd');
+          const dauCol    = col('DAU', 'Daily Active Users', 'ActiveUsers')
+                         || colRx('^dau$', 'daily.?active', 'active.?user');
+          const mauCol    = col('TrailingMAU', 'A30', 'MAU', 'Monthly Active Users')
+                         || colRx('^mau$', '^a30$', 'trailing.?mau', 'monthly.?active');
+          const nruCol    = col('NRU', 'New Registered Users', 'NewUsers', 'New User')
+                         || colRx('^nru$', 'new.?reg', 'new.?user');
+          const mpuCol    = col('TrailingMPU', 'PU30', 'MPU', 'Monthly Paying Users', 'PayingUsers')
+                         || colRx('^mpu$', '^pu30$', 'trailing.?mpu', 'paying.?user', 'monthly.?pay');
+          const mktCol    = col('Cost', 'DailyMarketingCost', 'MarketingCost', 'MktCost', 'Marketing Cost', 'Ad Cost', 'AdCost')
+                         || colRx('^cost$', 'marketing.?cost', 'mkt.?cost', 'ad.?cost', 'daily.?cost');
+          const arppuCol  = col('ARPPU', 'DailyARPPU', 'Daily ARPPU')
+                         || colRx('^arppu$', 'daily.?arppu');
+          const dpuCol    = col('DPU', 'Daily Paying Users', 'DailyPayingUsers')
+                         || colRx('^dpu$', 'daily.?pay');
+          const d1RetCol  = col('RR01', 'rRR1(%)', 'nRR1', 'D1Retention', 'd1_ret', 'D1 Retention', 'D1 Ret', 'D1')
+                         || colRx('^d1', 'day.?1.?ret', 'd1.?ret', 'rr0?1');
+
+          const revenue  = sumC(revCol);
+          const dau      = avgC(dauCol);
+          const mau      = lastC(mauCol);
+          const nru      = sumC(nruCol);
+          const mpu      = lastC(mpuCol);
+          const mkt_cost = sumC(mktCol);
+          const arppu    = (revenue && mpu && mpu > 0) ? revenue / mpu
+                         : lastC(arppuCol);
           const cr = (mpu && mau && mau > 0) ? mpu / mau : null;
 
-          // Build daily rows — ALL rows including country breakdown
-          const revCol   = col('Revenue') || col('DailyGameRevenue') || col('GameRevenue');
-          const dauCol   = col('DAU');
-          const nruCol   = col('NRU');
-          const mktCol   = col('Cost') || col('DailyMarketingCost') || col('MarketingCost') || col('MktCost');
-          const arppuCol = col('ARPPU') || col('DailyARPPU');
-          const dpuCol   = col('DPU');
-          const d1RetCol = col('RR01') || col('rRR1(%)') || col('nRR1') || col('D1Retention') || col('d1_ret');
-
+          // Build daily rows — ALL rows including country breakdown (reuse detected col vars)
           const dailyRows = monthRows.map(r => {
             const dateStr = String(r[dateCol]).slice(0, 10);
             const country = viewByCol ? (String(r[viewByCol]).trim() || 'Total') : 'Total';
@@ -3494,6 +3517,13 @@ ${dataStr}`;
           const countriesStr = detectedCountries.length > 0
             ? `<span style="color:var(--green)">${detectedCountries.join(', ')}</span>`
             : '<span style="color:var(--text3)">없음 (Total only)</span>';
+
+          // Show which actual column names were matched (for debugging misses)
+          const colMap = { Revenue: revCol, DAU: dauCol, MAU: mauCol, NRU: nruCol, MPU: mpuCol, 'Mkt Cost': mktCol, ARPPU: arppuCol, DPU: dpuCol, 'D1 Ret': d1RetCol };
+          const colDebug = Object.entries(colMap)
+            .map(([k, v]) => `<span style="${v ? 'color:var(--green)' : 'color:var(--red)'}">${k}${v ? `→<em>${v}</em>` : '✗'}</span>`)
+            .join(' &nbsp;');
+
           document.getElementById('xu-preview-table').innerHTML = `
             <table style="width:100%;font-size:12px;border-collapse:collapse">
               <tr style="border-bottom:1px solid var(--border)">
@@ -3511,6 +3541,10 @@ ${dataStr}`;
               <tr><td style="padding:5px 8px;color:var(--text2)">Marketing Cost (합계)</td><td style="text-align:right;padding:5px 8px;font-family:monospace">$${fmt(mkt_cost, 2)}</td></tr>
               <tr><td style="padding:5px 8px;color:var(--text2)">일별 데이터 행 수</td><td style="text-align:right;padding:5px 8px;font-family:monospace">${dailyRows.length}행</td></tr>
               <tr><td style="padding:5px 8px;color:var(--text2)">국가 breakdown</td><td style="text-align:right;padding:5px 8px">${countriesStr}</td></tr>
+              <tr><td colspan="2" style="padding:8px 8px 4px;border-top:1px solid var(--border)">
+                <div style="font-size:10px;color:var(--text3);margin-bottom:4px">감지된 컬럼 매핑</div>
+                <div style="font-size:10px;line-height:1.8;font-family:monospace">${colDebug}</div>
+              </td></tr>
             </table>`;
           previewDiv.style.display = 'block';
           submitBtn.disabled = false;
