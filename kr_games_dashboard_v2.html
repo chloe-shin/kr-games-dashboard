@@ -61,27 +61,48 @@
       display: flex;
       flex-direction: column;
       z-index: 100;
+      transition: transform .25s cubic-bezier(.4,0,.2,1);
     }
 
     .sidebar-logo {
-      padding: 20px 20px 16px;
+      padding: 18px 16px 14px;
       border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
 
-    .sidebar-logo h1 {
+    .sidebar-logo-text h1 {
       font-size: 13px;
       font-weight: 600;
       letter-spacing: .04em;
     }
 
-    .sidebar-logo p {
+    .sidebar-logo-text p {
       font-size: 11px;
       color: var(--text2);
       margin-top: 2px;
     }
 
+    .sidebar-close {
+      display: none;
+      background: none;
+      border: none;
+      color: var(--text3);
+      font-size: 20px;
+      cursor: pointer;
+      width: 28px;
+      height: 28px;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .sidebar-close:hover { background: var(--bg3); color: var(--text); }
+
     .sidebar-nav {
-      padding: 12px 10px;
+      padding: 10px 10px;
       flex: 1;
       overflow-y: auto;
     }
@@ -93,7 +114,7 @@
       letter-spacing: .08em;
       text-transform: uppercase;
       padding: 0 10px;
-      margin: 16px 0 6px;
+      margin: 16px 0 4px;
     }
 
     .nav-label:first-child {
@@ -104,8 +125,8 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 7px 10px;
-      border-radius: 7px;
+      padding: 8px 10px;
+      border-radius: 8px;
       cursor: pointer;
       color: var(--text2);
       font-size: 13px;
@@ -816,85 +837,89 @@
       display: none;
       flex-direction: column;
       justify-content: center;
+      align-items: center;
       gap: 5px;
-      width: 36px;
-      height: 36px;
+      width: 34px;
+      height: 34px;
       background: none;
-      border: none;
+      border: 1px solid var(--border2);
       cursor: pointer;
-      padding: 6px;
+      padding: 0;
       border-radius: 8px;
       flex-shrink: 0;
+      transition: background .15s;
     }
     .hamburger:hover { background: var(--bg3); }
     .hamburger span {
       display: block;
-      width: 18px;
-      height: 2px;
-      background: var(--text);
+      width: 16px;
+      height: 1.5px;
+      background: var(--text2);
       border-radius: 2px;
-      transition: all .2s;
+      transition: all .22s cubic-bezier(.4,0,.2,1);
+      transform-origin: center;
     }
+    /* Animate to X when open */
+    .hamburger.is-open span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
+    .hamburger.is-open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+    .hamburger.is-open span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
 
     /* Sidebar mobile overlay */
     .sidebar-backdrop {
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,.6);
-      z-index: 99;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(2px);
+      z-index: 150;
+      opacity: 0;
+      transition: opacity .25s;
     }
-    .sidebar-backdrop.open { display: block; }
+    .sidebar-backdrop.open {
+      display: block;
+      opacity: 1;
+    }
 
     /* ===== RESPONSIVE ===== */
     @media (max-width: 768px) {
       .hamburger { display: flex; }
+      .sidebar-close { display: flex; }
 
       .sidebar {
         transform: translateX(-100%);
-        transition: transform .25s ease;
         z-index: 200;
+        width: 260px;
+        box-shadow: none;
       }
-      .sidebar.mobile-open { transform: translateX(0); }
+      .sidebar.mobile-open {
+        transform: translateX(0);
+        box-shadow: 8px 0 32px rgba(0,0,0,.5);
+      }
 
       .main { margin-left: 0; }
 
-      .topbar { padding: 0 16px; }
+      .topbar { padding: 0 14px; gap: 0; }
+      .topbar-title { font-size: 13px; }
 
       .content { padding: 16px; }
 
       .kpi-grid { grid-template-columns: 1fr 1fr; }
-
       .two-col { grid-template-columns: 1fr; }
-
       .game-kpi-grid { grid-template-columns: repeat(2, 1fr); }
-
       .form-grid { grid-template-columns: 1fr; }
 
-      .topbar-actions {
-        gap: 6px;
-      }
-      .topbar-actions .btn {
-        font-size: 11px;
-        padding: 5px 10px;
-      }
-      /* Hide label text on small buttons in topbar */
-      .topbar-actions .btn-label-hide {
-        display: none;
-      }
+      .topbar-actions { gap: 6px; }
+      .topbar-actions .btn { font-size: 11px; padding: 5px 10px; }
 
-      .card { padding: 16px; }
-
-      /* Insight cards */
       .insight { padding: 8px 12px; }
     }
 
     @media (max-width: 480px) {
-      .kpi-grid { grid-template-columns: 1fr; }
+      .kpi-grid { grid-template-columns: 1fr 1fr; }
       .game-kpi-grid { grid-template-columns: repeat(2, 1fr); }
-      .kpi-val { font-size: 1.8rem; }
-      .kpi-primary .kpi-val, .kpi-secondary .kpi-val { font-size: 1.8rem; }
+      .kpi-val, .kpi-primary .kpi-val, .kpi-secondary .kpi-val { font-size: 1.6rem; }
       .content { padding: 12px; }
+      .topbar-actions .btn span { display: none; }
     }
   </style>
 </head>
@@ -925,8 +950,11 @@
   <!-- Sidebar -->
   <nav class="sidebar">
     <div class="sidebar-logo">
-      <h1>KR Games</h1>
-      <p>Performance Dashboard</p>
+      <div class="sidebar-logo-text">
+        <h1>KR Games</h1>
+        <p>Performance Dashboard</p>
+      </div>
+      <button class="sidebar-close" id="sidebar-close-btn" onclick="closeMobileSidebar()">×</button>
     </div>
     <div class="sidebar-nav">
       <div class="nav-label">Overview</div>
@@ -1714,13 +1742,15 @@
     }
 
     function toggleMobileSidebar() {
-      document.querySelector('.sidebar').classList.toggle('mobile-open');
-      document.getElementById('sidebar-backdrop').classList.toggle('open');
+      const isOpen = document.querySelector('.sidebar').classList.toggle('mobile-open');
+      document.getElementById('sidebar-backdrop').classList.toggle('open', isOpen);
+      document.getElementById('hamburger-btn').classList.toggle('is-open', isOpen);
     }
 
     function closeMobileSidebar() {
       document.querySelector('.sidebar').classList.remove('mobile-open');
       document.getElementById('sidebar-backdrop').classList.remove('open');
+      document.getElementById('hamburger-btn').classList.remove('is-open');
     }
 
     function showPage(page, game) {
