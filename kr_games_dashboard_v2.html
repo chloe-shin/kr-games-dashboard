@@ -3416,12 +3416,12 @@ ${dataStr}`;
           // Detect the year-month — sort so [last] is always the most recent
           const months = [...new Set(dataRows.map(r => String(r[dateCol]).slice(0, 7)))].sort();
           if (months.length > 1) {
-            document.getElementById('xu-warn').textContent = `⚠️ 여러 월 데이터 감지됨 (${months.join(', ')}). 최신 월(${months[months.length-1]})만 집계합니다.`;
+            document.getElementById('xu-warn').textContent = `ℹ️ ${months.length}개월치 일별 데이터 감지 (${months.join(', ')}). 전체 저장됩니다. 월간 집계는 최신 월(${months[months.length-1]}) 기준.`;
             document.getElementById('xu-warn').style.display = 'block';
           } else {
             document.getElementById('xu-warn').style.display = 'none';
           }
-          const ym = months[months.length - 1]; // 최신 월 기준
+          const ym = months[months.length - 1]; // 최신 월 기준 (월간 aggregate용)
           const monthRows = dataRows.filter(r => String(r[dateCol]).startsWith(ym));
 
           // Sort ascending by date (last day = last row)
@@ -3490,8 +3490,8 @@ ${dataStr}`;
                          : lastC(arppuCol);
           const cr = (mpu && mau && mau > 0) ? mpu / mau : null;
 
-          // Build daily rows — ALL rows including country breakdown (reuse detected col vars)
-          const dailyRows = monthRows.map(r => {
+          // Build daily rows — use ALL dataRows (all months), not just latest month
+          const dailyRows = dataRows.map(r => {
             const dateStr = String(r[dateCol]).slice(0, 10);
             const country = viewByCol ? (String(r[viewByCol]).trim() || 'Total') : 'Total';
             return {
@@ -3509,8 +3509,9 @@ ${dataStr}`;
 
           // Preview: show detected countries
           const detectedCountries = [...new Set(dailyRows.map(r => r.country))].filter(c => c !== 'Total');
+          const dailyMonths = [...new Set(dailyRows.map(r => r.date.slice(0, 7)))].sort();
 
-          _xuParsedRow = { ym, revenue, dau, mau, nru, mpu, arppu, cr, mkt_cost, _dailyRows: dailyRows, _countries: detectedCountries };
+          _xuParsedRow = { ym, revenue, dau, mau, nru, mpu, arppu, cr, mkt_cost, _dailyRows: dailyRows, _countries: detectedCountries, _dailyMonths: dailyMonths };
 
           // Render preview table
           const fmt = (v, dec=0) => v == null ? '<span style="color:var(--text3)">-</span>' : (dec > 0 ? v.toFixed(dec) : Math.round(v).toLocaleString());
@@ -3539,7 +3540,7 @@ ${dataStr}`;
               <tr><td style="padding:5px 8px;color:var(--text2)">ARPPU (계산값)</td><td style="text-align:right;padding:5px 8px;font-family:monospace">$${fmt(arppu, 2)}</td></tr>
               <tr><td style="padding:5px 8px;color:var(--text2)">CR (계산값)</td><td style="text-align:right;padding:5px 8px;font-family:monospace">${cr != null ? (cr*100).toFixed(2)+'%' : '-'}</td></tr>
               <tr><td style="padding:5px 8px;color:var(--text2)">Marketing Cost (합계)</td><td style="text-align:right;padding:5px 8px;font-family:monospace">$${fmt(mkt_cost, 2)}</td></tr>
-              <tr><td style="padding:5px 8px;color:var(--text2)">일별 데이터 행 수</td><td style="text-align:right;padding:5px 8px;font-family:monospace">${dailyRows.length}행</td></tr>
+              <tr><td style="padding:5px 8px;color:var(--text2)">일별 데이터</td><td style="text-align:right;padding:5px 8px;font-family:monospace">${dailyRows.length}행 (${dailyMonths[0]}${dailyMonths.length > 1 ? ' ~ ' + dailyMonths[dailyMonths.length-1] : ''})</td></tr>
               <tr><td style="padding:5px 8px;color:var(--text2)">국가 breakdown</td><td style="text-align:right;padding:5px 8px">${countriesStr}</td></tr>
               <tr><td colspan="2" style="padding:8px 8px 4px;border-top:1px solid var(--border)">
                 <div style="font-size:10px;color:var(--text3);margin-bottom:4px">감지된 컬럼 매핑</div>
@@ -3576,14 +3577,15 @@ ${dataStr}`;
         RAW.push(Array.isArray(saved) ? saved[0] : saved || row);
         RAW = enrichRAWData(RAW);
 
-        // 2. Save daily rows if game is new (< 3 months)
+        // 2. Save daily rows if present
         if (_dailyRows && _dailyRows.length > 0) {
           const dailyWithGame = _dailyRows.map(r => ({ ...r, game }));
           try {
             const savedDaily = await api('daily_data', 'POST', dailyWithGame, '', true);
             const newDaily = Array.isArray(savedDaily) ? savedDaily : dailyWithGame;
-            // Remove existing daily rows for this game+month, then add new ones
-            DAILY = DAILY.filter(d => !(matchesGame(d.game, game) && d.date.startsWith(ym)));
+            // Remove existing daily rows for all uploaded months, then add new ones
+            const uploadedMonths = [...new Set(dailyWithGame.map(r => r.date.slice(0, 7)))];
+            DAILY = DAILY.filter(d => !(matchesGame(d.game, game) && uploadedMonths.includes(d.date.slice(0, 7))));
             DAILY.push(...newDaily);
           } catch(de) {
             console.warn('daily_data 저장 실패 (테이블 없을 수 있음):', de.message);
