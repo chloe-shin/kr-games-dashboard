@@ -4,7 +4,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>KR Games Performance Dashboard</title>
+  <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="pragma" content="no-cache">
+  <meta http-equiv="expires" content="0">
+  <title>KR Games Dashboard v2.6</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -1479,7 +1482,7 @@
     // ===== SUPABASE API =====
     let RAW = [], DEALS = [], INSIGHTS = [], LATEST_INSIGHT = null;
     let DAILY = []; // daily_data rows: { game, date, country, dau, revenue, nru, mkt_cost, arppu, dpu, d1_ret }
-    const SEA_COUNTRIES = ['Total', 'VN', 'TH', 'ID', 'PH', 'MY', 'SG', 'Others'];
+    const SEA_COUNTRIES = ['Total', 'VN', 'TH', 'ID', 'PH', 'MY', 'SG', 'TWHK', 'Others'];
 
     function isNewGame(game) {
       const now = new Date();
@@ -1510,6 +1513,7 @@
       const url = `${SUPABASE_URL}/rest/v1/${table}${filter ? '?' + filter : ''}`;
       const hdrs = { ...HDRS };
       if (upsert) hdrs['Prefer'] = 'resolution=merge-duplicates,return=representation';
+      else if (method === 'POST') hdrs['Prefer'] = 'return=representation';
       const opts = { method, headers: hdrs };
       if (body) opts.body = JSON.stringify(body);
       const res = await fetch(url, opts);
@@ -3262,29 +3266,19 @@ ${dataStr}`;
           const viewByCol = col('ViewBy', 'View By', 'Country', 'country', 'Region')
                          || colRx('^view.?by$', '^country$', '^region$');
 
-          // For monthly aggregate: use only "Total" rows (or all rows if no View By column)
-          const totalRows = viewByCol
-            ? monthRows.filter(r => !r[viewByCol] || String(r[viewByCol]).trim() === 'Total')
-            : monthRows;
-          const totalLastRow = totalRows[totalRows.length - 1] || lastRow;
-
-          const sumC = c => c ? totalRows.reduce((a, r) => a + (parseFloat(r[c]) || 0), 0) : null;
-          const avgC = c => { if (!c) return null; const vals = totalRows.map(r => parseFloat(r[c])).filter(v => !isNaN(v)); return vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null; };
-          const lastC = c => c ? (parseFloat(totalLastRow[c]) || null) : null;
-
           // Column detection — exact match first, then regex fallback
           const revCol    = col('Revenue', 'DailyGameRevenue', 'GameRevenue', 'Daily Revenue', 'Game Revenue')
                          || colRx('^revenue$', 'game.?rev', 'daily.?rev', 'rev.*usd');
           const dauCol    = col('DAU', 'Daily Active Users', 'ActiveUsers')
                          || colRx('^dau$', 'daily.?active', 'active.?user');
-          const mauCol    = col('TrailingMAU', 'A30', 'MAU', 'Monthly Active Users')
+          const mauCol    = col('TrailingMAU', 'A30', 'MAU', 'Monthly Active Users', 'Trailing MAU')
                          || colRx('^mau$', '^a30$', 'trailing.?mau', 'monthly.?active');
           const nruCol    = col('NRU', 'New Registered Users', 'NewUsers', 'New User')
                          || colRx('^nru$', 'new.?reg', 'new.?user');
-          const mpuCol    = col('TrailingMPU', 'PU30', 'MPU', 'Monthly Paying Users', 'PayingUsers')
+          const mpuCol    = col('TrailingMPU', 'PU30', 'MPU', 'Monthly Paying Users', 'PayingUsers', 'Trailing MPU')
                          || colRx('^mpu$', '^pu30$', 'trailing.?mpu', 'paying.?user', 'monthly.?pay');
-          const mktCol    = col('Cost', 'DailyMarketingCost', 'MarketingCost', 'MktCost', 'Marketing Cost', 'Ad Cost', 'AdCost')
-                         || colRx('^cost$', 'marketing.?cost', 'mkt.?cost', 'ad.?cost', 'daily.?cost');
+          const mktCol    = col('Cost', 'Cost ', 'DailyMarketingCost', 'MarketingCost', 'MktCost', 'Marketing Cost', 'Ad Cost', 'AdCost')
+                         || colRx('^cost\\s*$', 'marketing.?cost', 'mkt.?cost', 'ad.?cost', 'daily.?cost');
           const arppuCol  = col('ARPPU', 'DailyARPPU', 'Daily ARPPU')
                          || colRx('^arppu$', 'daily.?arppu');
           const dpuCol    = col('DPU', 'Daily Paying Users', 'DailyPayingUsers')
@@ -3292,32 +3286,106 @@ ${dataStr}`;
           const d1RetCol  = col('RR01', 'rRR1(%)', 'nRR1', 'D1Retention', 'd1_ret', 'D1 Retention', 'D1 Ret', 'D1')
                          || colRx('^d1', 'day.?1.?ret', 'd1.?ret', 'rr0?1');
 
+          // Country mapping: TW+HK → "TWHK", OTHER/OTHERS → "Others", non-SEA → "Others"
+          const SEA_SET = new Set(['VN', 'TH', 'ID', 'PH', 'MY', 'SG']);
+          const mapCountry = raw => {
+            const cu = String(raw || '').trim().toUpperCase();
+            if (!cu || cu === 'TOTAL') return 'Total';
+            if (cu === 'TW' || cu === 'HK') return 'TWHK';
+            if (cu === 'OTHER' || cu === 'OTHERS') return 'Others';
+            return SEA_SET.has(cu) ? cu : 'Others';
+          };
+
+          // For monthly aggregate: use "Total" rows if present; otherwise
+          // synthesize per-date totals by summing all country sub-rows
+          let totalRows;
+          if (viewByCol) {
+            const directTotals = monthRows.filter(r => !r[viewByCol] || String(r[viewByCol]).trim() === 'Total');
+            if (directTotals.length > 0) {
+              totalRows = directTotals;
+            } else {
+              // No explicit Total rows — aggregate country rows by date
+              const byDate = {};
+              monthRows.forEach(r => {
+                const d = String(r[dateCol]).slice(0, 10);
+                if (!byDate[d]) byDate[d] = [];
+                byDate[d].push(r);
+              });
+              totalRows = Object.entries(byDate).sort(([a],[b]) => a.localeCompare(b)).map(([date, cRows]) => {
+                const synth = { [dateCol]: date };
+                allKeys.forEach(k => {
+                  if (k === dateCol || k === viewByCol) return;
+                  const vals = cRows.map(r => parseFloat(r[k])).filter(v => !isNaN(v));
+                  synth[k] = vals.length ? vals.reduce((a,b) => a+b, 0) : null;
+                });
+                return synth;
+              });
+            }
+          } else {
+            totalRows = monthRows;
+          }
+          const totalLastRow = totalRows[totalRows.length - 1] || lastRow;
+
+          const sumC  = c => c ? totalRows.reduce((a, r) => a + (parseFloat(r[c]) || 0), 0) : null;
+          const avgC  = c => { if (!c) return null; const vals = totalRows.map(r => parseFloat(r[c])).filter(v => !isNaN(v)); return vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null; };
+          const lastC = c => c ? (parseFloat(totalLastRow[c]) || null) : null;
+
           const revenue  = sumC(revCol);
           const dau      = avgC(dauCol);
           const mau      = lastC(mauCol);
           const nru      = sumC(nruCol);
           const mpu      = lastC(mpuCol);
           const mkt_cost = sumC(mktCol);
-          const arppu    = (revenue && mpu && mpu > 0) ? revenue / mpu
-                         : lastC(arppuCol);
-          const cr = (mpu && mau && mau > 0) ? mpu / mau : null;
+          const arppu    = (revenue && mpu && mpu > 0) ? revenue / mpu : lastC(arppuCol);
+          const cr       = (mpu && mau && mau > 0) ? mpu / mau : null;
 
-          // Build daily rows — use ALL dataRows (all months), not just latest month
-          const dailyRows = dataRows.map(r => {
+          // Build daily rows — map non-SEA countries → "Others", add synthetic Total per date
+          // Use all dataRows (all months), not just latest month
+          const sumArr = arr => arr.length ? arr.reduce((a,b)=>a+b,0) : null;
+          const avgArr = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : null;
+          const dailyMap = {}; // key: "date|country"
+          const accumulate = (key, date, country, r) => {
+            if (!dailyMap[key]) dailyMap[key] = { date, country, _rev:[], _dau:[], _nru:[], _mkt:[], _arppu:[], _dpu:[], _d1:[] };
+            const a = dailyMap[key];
+            const pf = (c, arr) => { if (c && r[c] != null) { const v = parseFloat(r[c]); if (!isNaN(v)) arr.push(v); } };
+            pf(revCol, a._rev); pf(dauCol, a._dau); pf(nruCol, a._nru); pf(mktCol, a._mkt);
+            pf(arppuCol, a._arppu); pf(dpuCol, a._dpu); pf(d1RetCol, a._d1);
+          };
+
+          // Pre-scan: does this file have explicit Total rows per date?
+          const hasTotalRows = viewByCol
+            ? dataRows.some(r => !r[viewByCol] || String(r[viewByCol]).trim().toUpperCase() === 'TOTAL')
+            : true;
+
+          dataRows.forEach(r => {
             const dateStr = String(r[dateCol]).slice(0, 10);
-            const country = viewByCol ? (String(r[viewByCol]).trim() || 'Total') : 'Total';
-            return {
-              date: dateStr,
-              country,
-              dau:     dauCol    ? (parseFloat(r[dauCol])    || null) : null,
-              revenue: revCol    ? (parseFloat(r[revCol])    || null) : null,
-              nru:     nruCol    ? (parseFloat(r[nruCol])    || null) : null,
-              mkt_cost:mktCol    ? (parseFloat(r[mktCol])    || null) : null,
-              arppu:   arppuCol  ? (parseFloat(r[arppuCol])  || null) : null,
-              dpu:     dpuCol    ? (parseFloat(r[dpuCol])    || null) : null,
-              d1_ret:  d1RetCol  ? (parseFloat(r[d1RetCol])  || null) : null,
-            };
+            const rawCtry = viewByCol ? String(r[viewByCol]).trim() : 'Total';
+            const cu = rawCtry.toUpperCase();
+            if (!rawCtry || cu === 'TOTAL') {
+              // Explicit Total row → always use
+              accumulate(`${dateStr}|Total`, dateStr, 'Total', r);
+            } else {
+              // Country row → map to SEA or "Others"
+              const mappedCtry = mapCountry(rawCtry);
+              accumulate(`${dateStr}|${mappedCtry}`, dateStr, mappedCtry, r);
+              // Synthesize Total only when file has no explicit Total rows
+              if (!hasTotalRows) {
+                accumulate(`${dateStr}|Total`, dateStr, 'Total', r);
+              }
+            }
           });
+
+          const dailyRows = Object.values(dailyMap).map(a => ({
+            date:     a.date,
+            country:  a.country,
+            revenue:  sumArr(a._rev),
+            dau:      sumArr(a._dau),
+            nru:      sumArr(a._nru),
+            mkt_cost: sumArr(a._mkt),
+            arppu:    avgArr(a._arppu),
+            dpu:      sumArr(a._dpu),
+            d1_ret:   avgArr(a._d1),
+          })).sort((a,b) => a.date.localeCompare(b.date) || a.country.localeCompare(b.country));
 
           // Preview: show detected countries
           const detectedCountries = [...new Set(dailyRows.map(r => r.country))].filter(c => c !== 'Total');
@@ -3483,7 +3551,7 @@ ${dataStr}`;
               </div>`);
 
             // Country colors for stacked charts
-            const cColors = { VN:'#4A9EF5', TH:'#2ECC9A', ID:'#E8A030', PH:'#E06090', MY:'#8B5CF6', SG:'#06B6D4', Others:'#888' };
+            const cColors = { VN:'#4A9EF5', TH:'#2ECC9A', ID:'#E8A030', PH:'#E06090', MY:'#8B5CF6', SG:'#06B6D4', TWHK:'#F97316', Others:'#888' };
             const stackMetrics = new Set(['revenue','dau','nru','mkt_cost']);
             // Pre-group rows by country for stacked charts
             const byCountry = {};
@@ -3631,10 +3699,37 @@ ${dataStr}`;
             errEl.textContent = '일별 데이터가 없어요.';
             btn.textContent = 'Save to Daily DB'; btn.disabled = false; return;
           }
+          // Probe table schema to only send columns that actually exist
           const dailyWithGame = _dailyRows.map(r => ({ ...r, game }));
-          const savedDaily = await api('daily_data', 'POST', dailyWithGame, '', true);
-          const newDaily = Array.isArray(savedDaily) ? savedDaily : dailyWithGame;
+          console.log('[daily upload] sample row:', JSON.stringify(dailyWithGame[0]));
+
           const uploadedMonths = [...new Set(dailyWithGame.map(r => r.date.slice(0, 7)))];
+          // DELETE existing rows for each uploaded month, then INSERT fresh
+          for (const month of uploadedMonths) {
+            const [y, m] = month.split('-').map(Number);
+            const nextDate = new Date(y, m, 1).toISOString().slice(0, 10);
+            await api('daily_data', 'DELETE', null,
+              `game=eq.${encodeURIComponent(game)}&date=gte.${month}-01&date=lt.${nextDate}`);
+          }
+
+          // POST with auto-retry: if Supabase says column doesn't exist, remove it and retry
+          let rowsToPost = dailyWithGame;
+          let savedDaily = null;
+          for (let attempt = 0; attempt < 10; attempt++) {
+            try {
+              savedDaily = await api('daily_data', 'POST', rowsToPost);
+              break;
+            } catch(e) {
+              const match = e.message.match(/Could not find the '(\w+)' column/);
+              if (match) {
+                const badCol = match[1];
+                console.warn('[daily_data] removing unknown column:', badCol);
+                rowsToPost = rowsToPost.map(r => { const c={...r}; delete c[badCol]; return c; });
+              } else { throw e; }
+            }
+          }
+          if (!savedDaily) throw new Error('컬럼 오류로 저장 실패. 콘솔을 확인해주세요.');
+          const newDaily = Array.isArray(savedDaily) ? savedDaily : dailyWithGame;
           DAILY = DAILY.filter(d => !(matchesGame(d.game, game) && uploadedMonths.includes(d.date.slice(0, 7))));
           DAILY.push(...newDaily);
         }
@@ -3650,6 +3745,7 @@ ${dataStr}`;
         _xuParsedRow = null;
 
       } catch (err) {
+        console.error('[upload error]', err.message);
         errEl.textContent = '저장 실패: ' + err.message;
         btn.textContent = _xuMode === 'monthly' ? 'Save to Monthly DB' : 'Save to Daily DB';
         btn.disabled = false;
