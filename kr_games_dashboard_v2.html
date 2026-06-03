@@ -3409,16 +3409,18 @@ ${dataStr}`;
             // Section 1: 날짜별 Total rows (ascending)
             const totalOnly = [...dailyRows].filter(r => r.country === 'Total').sort((a,b) => a.date.localeCompare(b.date));
 
-            // Section 2: 국가별 집계 (sum revenue/nru/mkt_cost, avg dau, last d1_ret)
+            // Section 2: 국가별 집계 (sum/avg per metric)
             const countryAgg = {};
             dailyRows.filter(r => r.country !== 'Total').forEach(r => {
-              if (!countryAgg[r.country]) countryAgg[r.country] = { revenue:0, nru:0, mkt_cost:0, dau:[], d1_ret:[] };
+              if (!countryAgg[r.country]) countryAgg[r.country] = { revenue:0, nru:0, mkt_cost:0, dau:[], arppu:[], dpu:[], d1_ret:[] };
               const a = countryAgg[r.country];
-              if (r.revenue != null) a.revenue += r.revenue;
-              if (r.nru != null) a.nru += r.nru;
+              if (r.revenue  != null) a.revenue  += r.revenue;
+              if (r.nru      != null) a.nru      += r.nru;
               if (r.mkt_cost != null) a.mkt_cost += r.mkt_cost;
-              if (r.dau != null) a.dau.push(r.dau);
-              if (r.d1_ret != null) a.d1_ret.push(r.d1_ret);
+              if (r.dau      != null) a.dau.push(r.dau);
+              if (r.arppu    != null) a.arppu.push(r.arppu);
+              if (r.dpu      != null) a.dpu.push(r.dpu);
+              if (r.d1_ret   != null) a.d1_ret.push(r.d1_ret);
             });
             const cOrder = SEA_COUNTRIES.filter(c => c !== 'Total' && countryAgg[c]);
 
@@ -3433,23 +3435,28 @@ ${dataStr}`;
 
             const headers = `<th style="text-align:left;padding:3px 8px;color:var(--text3);font-weight:500">날짜</th>
               <th style="${thStyle}">Revenue</th><th style="${thStyle}">DAU</th>
-              <th style="${thStyle}">NRU</th><th style="${thStyle}">Mkt Cost</th><th style="${thStyle}">D1 Ret</th>`;
+              <th style="${thStyle}">NRU</th><th style="${thStyle}">Mkt Cost</th>
+              <th style="${thStyle}">ARPPU</th><th style="${thStyle}">DPU</th><th style="${thStyle}">D1 Ret</th>`;
 
             const dateRows = totalOnly.map((r, i) => `<tr style="${i%2===0?'':'background:rgba(255,255,255,.02)'}">
               <td style="padding:2px 8px;font-family:monospace;white-space:nowrap">${r.date.slice(5)}</td>
-              ${tdR(d(r.revenue))}${tdR(n(r.dau))}${tdR(n(r.nru))}${tdR(d(r.mkt_cost))}${tdR(p(r.d1_ret))}
+              ${tdR(d(r.revenue))}${tdR(n(r.dau))}${tdR(n(r.nru))}${tdR(d(r.mkt_cost))}
+              ${tdR(r.arppu!=null?'$'+fmtP(r.arppu,2):'-')}${tdR(n(r.dpu))}${tdR(p(r.d1_ret))}
             </tr>`).join('');
 
+            const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : null;
+
             const cHeaders = `<th style="text-align:left;padding:3px 8px;color:var(--text3);font-weight:500">Country</th>
-              <th style="${thStyle}">Revenue</th><th style="${thStyle}">DAU (avg)</th>
-              <th style="${thStyle}">NRU</th><th style="${thStyle}">Mkt Cost</th>`;
+              <th style="${thStyle}">Revenue</th><th style="${thStyle}">DAU(avg)</th>
+              <th style="${thStyle}">NRU</th><th style="${thStyle}">Mkt Cost</th>
+              <th style="${thStyle}">ARPPU(avg)</th><th style="${thStyle}">DPU(avg)</th><th style="${thStyle}">D1 Ret(avg)</th>`;
 
             const cRows = cOrder.map((c, i) => {
               const a = countryAgg[c];
-              const avgDau = a.dau.length ? a.dau.reduce((x,y)=>x+y,0)/a.dau.length : null;
               return `<tr style="${i%2===0?'':'background:rgba(255,255,255,.02)'}">
                 <td style="padding:2px 8px;font-weight:500">${c}</td>
-                ${tdR(d(a.revenue))}${tdR(n(avgDau))}${tdR(n(a.nru))}${tdR(d(a.mkt_cost))}
+                ${tdR(d(a.revenue))}${tdR(n(avg(a.dau)))}${tdR(n(a.nru))}${tdR(d(a.mkt_cost))}
+                ${tdR(avg(a.arppu)!=null?'$'+fmtP(avg(a.arppu),2):'-')}${tdR(n(avg(a.dpu)))}${tdR(avg(a.d1_ret)!=null?avg(a.d1_ret).toFixed(1)+'%':'-')}
               </tr>`;
             }).join('');
 
@@ -3507,7 +3514,7 @@ ${dataStr}`;
 
             // Country colors for stacked charts
             const cColors = { VN:'#4A9EF5', TH:'#2ECC9A', ID:'#E8A030', PH:'#E06090', MY:'#8B5CF6', SG:'#06B6D4', Others:'#888' };
-            const stackMetrics = new Set(['revenue','dau']);
+            const stackMetrics = new Set(['revenue','dau','nru','mkt_cost']);
             // Pre-group rows by country for stacked charts
             const byCountry = {};
             SEA_COUNTRIES.filter(c=>c!=='Total').forEach(c => {
