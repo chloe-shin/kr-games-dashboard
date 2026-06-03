@@ -1319,85 +1319,15 @@
   </div>
 
   <!-- Monthly Data Modal -->
-  <div class="modal-overlay" id="modal-monthly">
-    <div class="modal">
-      <div class="modal-header">
-        <h2>Add monthly data</h2>
-        <button class="modal-close" onclick="closeModal('monthly')">×</button>
-      </div>
-      <div class="modal-body">
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Game *</label>
-            <select id="f-game">
-              <option value="">Select game</option>
-              <option>Play Together</option>
-              <option>CSB M</option>
-              <option>Genesis</option>
-              <option>Lineage 2M</option>
-              <option>Rememento</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Month (YYYY-MM) *</label>
-            <input type="month" id="f-date">
-          </div>
-          <div class="form-group">
-            <label>Revenue (USD) *</label>
-            <input type="number" id="f-revenue" placeholder="e.g. 1500000" oninput="calcAutoMetrics()">
-          </div>
-          <div class="form-group">
-            <label>Avg DAU</label>
-            <input type="number" id="f-dau" placeholder="e.g. 500000">
-          </div>
-          <div class="form-group">
-            <label>MAU</label>
-            <input type="number" id="f-mau" placeholder="e.g. 2000000" oninput="calcAutoMetrics()">
-          </div>
-          <div class="form-group">
-            <label>NRU</label>
-            <input type="number" id="f-nru" placeholder="e.g. 300000">
-          </div>
-          <div class="form-group">
-            <label>MPU</label>
-            <input type="number" id="f-mpu" placeholder="e.g. 50000" oninput="calcAutoMetrics()">
-          </div>
-          <div class="form-group">
-            <label>Mkt Cost (USD)</label>
-            <input type="number" id="f-mkt" placeholder="e.g. 50000">
-          </div>
-          <div class="auto-section-label">Auto-calculated metrics</div>
-          <div class="form-group">
-            <label class="label-auto">ARPPU (USD)</label>
-            <input type="number" id="f-arppu" class="input-auto" readonly tabindex="-1" placeholder="—">
-          </div>
-          <div class="form-group">
-            <label class="label-auto">CR (%)</label>
-            <input type="number" id="f-cr" class="input-auto" readonly tabindex="-1" placeholder="—">
-          </div>
-          <div class="auto-warning" id="auto-warn"></div>
-        </div>
-        <div class="form-error" id="monthly-error"></div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn" onclick="closeModal('monthly')">Cancel</button>
-        <button class="btn btn-primary" id="monthly-submit-btn" onclick="submitMonthly()">Save</button>
-      </div>
-    </div>
-  </div>
-
   <!-- Excel Upload Modal -->
   <div class="modal-overlay" id="modal-excel-upload">
     <div class="modal" style="max-width:560px">
       <div class="modal-header">
-        <div class="modal-title">📂 Upload Daily Report Excel</div>
+        <div class="modal-title" id="xu-modal-title">📂 Upload Excel</div>
         <button class="modal-close" onclick="closeModal('excel-upload')">×</button>
       </div>
       <div style="padding:20px 24px;display:flex;flex-direction:column;gap:16px">
-        <div style="font-size:12px;color:var(--text2);line-height:1.6;background:var(--bg3);border-radius:8px;padding:12px 14px">
-          Daily Report (USD) 포맷의 엑셀 파일을 올려주세요.<br>
-          월간 합계/평균으로 자동 집계해서 Supabase에 저장합니다.
-        </div>
+        <div id="xu-modal-desc" style="font-size:12px;color:var(--text2);line-height:1.6;background:var(--bg3);border-radius:8px;padding:12px 14px"></div>
         <div>
           <label class="form-label">Game</label>
           <select id="xu-game" class="form-input">
@@ -1405,13 +1335,13 @@
           </select>
         </div>
         <div>
-          <label class="form-label">Excel File (Daily Report)</label>
+          <label class="form-label" id="xu-file-label">Excel File</label>
           <input type="file" id="xu-file" accept=".xlsx,.xls" class="form-input" style="cursor:pointer" onchange="previewExcelUpload()">
         </div>
         <div id="xu-preview" style="display:none">
-          <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Preview (집계 결과)</div>
+          <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Preview</div>
           <div id="xu-preview-table"></div>
-          <div id="xu-warn" style="font-size:11px;color:#F59E0B;margin-top:8px;display:none"></div>
+          <div id="xu-warn" style="font-size:11px;color:#4A9EF5;margin-top:8px;display:none"></div>
         </div>
         <div class="form-error" id="xu-error"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end">
@@ -1979,13 +1909,13 @@
         document.getElementById('page-data').classList.add('active');
         document.getElementById('topbar-title').textContent = 'Raw Data';
         setActiveNav('nav-data');
-        actions.innerHTML = `<button class="btn" onclick="openModal('excel-upload')" style="gap:6px">📂 Upload Excel</button><button class="btn btn-primary" onclick="openModal('monthly')">+ Add monthly data</button>`;
+        actions.innerHTML = `<button class="btn btn-primary" onclick="openModal('excel-monthly')" style="gap:6px">📊 Upload Monthly Excel</button>`;
         renderDataPage();
       } else if (page === 'monitor') {
         document.getElementById('page-monitor').classList.add('active');
         document.getElementById('topbar-title').textContent = 'Daily Monitor';
         setActiveNav('nav-monitor');
-        actions.innerHTML = `<button class="btn" onclick="openModal('excel-upload')" style="gap:6px">📂 Upload Daily Excel</button>`;
+        actions.innerHTML = `<button class="btn btn-primary" onclick="openModal('excel-daily')" style="gap:6px">📡 Upload Daily Excel</button>`;
         renderMonitor();
       }
     }
@@ -3038,25 +2968,30 @@ ${dataStr}`;
       if (type === 'deal') {
         document.getElementById('deal-error').style.display = 'none';
         document.getElementById('modal-deal').classList.add('open');
-      } else if (type === 'monthly') {
-        document.getElementById('monthly-error').style.display = 'none';
-        // Reset auto-calc fields
-        const ae = document.getElementById('f-arppu');
-        const ce = document.getElementById('f-cr');
-        const we = document.getElementById('auto-warn');
-        if (ae) ae.value = '';
-        if (ce) ce.value = '';
-        if (we) we.style.display = 'none';
-        document.getElementById('modal-monthly').classList.add('open');
-      } else if (type === 'excel-upload') {
-        // Populate game select
+      } else if (type === 'excel-monthly' || type === 'excel-daily') {
+        _xuMode = type === 'excel-monthly' ? 'monthly' : 'daily';
+        // Set modal copy based on mode
+        if (_xuMode === 'monthly') {
+          document.getElementById('xu-modal-title').textContent = '📊 Upload Monthly Excel';
+          document.getElementById('xu-modal-desc').innerHTML = 'Monthly Report 엑셀을 올려주세요.<br>월간 합계/평균으로 자동 집계해서 게임 대시보드에 업데이트됩니다.';
+          document.getElementById('xu-file-label').textContent = 'Excel File (Monthly Report)';
+          document.getElementById('xu-submit-btn').textContent = 'Save to Monthly DB';
+        } else {
+          document.getElementById('xu-modal-title').textContent = '📡 Upload Daily Excel';
+          document.getElementById('xu-modal-desc').innerHTML = 'Daily Report 엑셀을 올려주세요.<br>날짜별 데이터가 Daily Monitor와 게임 Daily 탭에 업데이트됩니다.';
+          document.getElementById('xu-file-label').textContent = 'Excel File (Daily Report)';
+          document.getElementById('xu-submit-btn').textContent = 'Save to Daily DB';
+        }
+        // Reset
         const sel = document.getElementById('xu-game');
         sel.innerHTML = '<option value="">Select game...</option>' +
           getActiveGames().map(g => `<option value="${g}">${g}</option>`).join('');
         document.getElementById('xu-file').value = '';
         document.getElementById('xu-preview').style.display = 'none';
+        document.getElementById('xu-warn').style.display = 'none';
         document.getElementById('xu-error').textContent = '';
         document.getElementById('xu-submit-btn').disabled = true;
+        _xuParsedRow = null;
         document.getElementById('modal-excel-upload').classList.add('open');
       } else {
         const el = document.getElementById(`modal-${type}`);
@@ -3071,92 +3006,6 @@ ${dataStr}`;
       if (type === 'status-confirm') _pendingDealRow = null;
     }
 
-    function calcAutoMetrics() {
-      const revenue = parseFloat(document.getElementById('f-revenue').value);
-      const mpu = parseFloat(document.getElementById('f-mpu').value);
-      const mau = parseFloat(document.getElementById('f-mau').value);
-      const arppuEl = document.getElementById('f-arppu');
-      const crEl = document.getElementById('f-cr');
-      const warnEl = document.getElementById('auto-warn');
-
-      let arppu = null, cr = null;
-      if (!isNaN(revenue) && !isNaN(mpu) && mpu > 0) arppu = revenue / mpu;
-      if (!isNaN(mpu) && !isNaN(mau) && mau > 0) cr = (mpu / mau) * 100;
-
-      arppuEl.value = arppu !== null ? arppu.toFixed(2) : '';
-      crEl.value = cr !== null ? cr.toFixed(2) : '';
-
-      const warnings = arppu !== null || cr !== null ? validateMetrics(arppu, cr) : [];
-      if (warnings.length > 0) {
-        warnEl.textContent = warnings.join('\n');
-        warnEl.style.display = 'block';
-      } else {
-        warnEl.style.display = 'none';
-      }
-    }
-
-    function validateMetrics(arppu, cr) {
-      const w = [];
-      if (arppu !== null) {
-        if (arppu > 100) w.push('⚠️ ARPPU가 $100을 초과합니다. Revenue/MPU 단위 확인 필요.');
-        if (arppu > 0 && arppu < 1) w.push('⚠️ ARPPU가 $1 미만입니다. 데이터 확인 필요.');
-      }
-      if (cr !== null) {
-        if (cr > 30) w.push('⚠️ CR이 30%를 초과합니다. MPU/MAU 단위 확인 필요.');
-        if (cr > 0 && cr < 0.1) w.push('⚠️ CR이 0.1% 미만입니다. 데이터 확인 필요.');
-      }
-      return w;
-    }
-
-    async function submitMonthly() {
-      const game = document.getElementById('f-game').value;
-      const dateRaw = document.getElementById('f-date').value;
-      const revenue = parseFloat(document.getElementById('f-revenue').value);
-      const errEl = document.getElementById('monthly-error');
-      if (!game || !dateRaw || isNaN(revenue)) {
-        errEl.textContent = 'Game, month, revenue는 필수입니다.';
-        errEl.style.display = 'block'; return;
-      }
-      const ym = dateRaw.slice(0, 7);
-      if (RAW.find(r => r.game === game && r.ym === ym)) {
-        errEl.textContent = `${game} ${ym} 데이터가 이미 존재합니다. Raw Data에서 삭제 후 다시 입력하세요.`;
-        errEl.style.display = 'block'; return;
-      }
-      const mpu = parseFloat(document.getElementById('f-mpu').value) || null;
-      const mau = parseFloat(document.getElementById('f-mau').value) || null;
-      // ARPPU and CR are auto-calculated — read from readonly fields
-      const arppuVal = parseFloat(document.getElementById('f-arppu').value);
-      const crVal = parseFloat(document.getElementById('f-cr').value);
-      const row = {
-        game, ym, revenue,
-        dau: parseFloat(document.getElementById('f-dau').value) || null,
-        mau: mau,
-        nru: parseFloat(document.getElementById('f-nru').value) || null,
-        mpu: mpu,
-        arppu: !isNaN(arppuVal) ? arppuVal : null,
-        cr: !isNaN(crVal) ? crVal / 100 : null,
-        mkt_cost: parseFloat(document.getElementById('f-mkt').value) || null,
-      };
-      const btn = document.getElementById('monthly-submit-btn');
-      btn.textContent = 'Saving...'; btn.disabled = true;
-      try {
-        const saved = await api('monthly_data', 'POST', row);
-        RAW.push(Array.isArray(saved) ? saved[0] : saved || row);
-        RAW = enrichRAWData(RAW);
-        closeModal('monthly');
-        updateLastUpdated();
-        ['f-game', 'f-date', 'f-revenue', 'f-dau', 'f-mau', 'f-nru', 'f-mpu', 'f-arppu', 'f-cr', 'f-mkt'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-        const ap = document.querySelector('.page.active').id;
-        if (ap === 'page-overview') renderOverview();
-        else if (ap === 'page-game') renderGame(currentGame);
-        else if (ap === 'page-data') renderDataPage();
-        btn.textContent = 'Saved!'; btn.style.background = '#2ECC9A';
-        setTimeout(() => { btn.textContent = 'Save'; btn.style.background = ''; btn.disabled = false; }, 1500);
-      } catch (e) {
-        errEl.textContent = '저장 실패: ' + e.message; errEl.style.display = 'block';
-        btn.textContent = 'Save'; btn.disabled = false;
-      }
-    }
 
     // ===== DAILY MONITOR =====
     function renderMonitor() {
@@ -3373,6 +3222,7 @@ ${dataStr}`;
 
     // ===== EXCEL UPLOAD =====
     let _xuParsedRow = null;
+    let _xuMode = 'monthly'; // 'monthly' | 'daily'
 
     function previewExcelUpload() {
       const errEl = document.getElementById('xu-error');
@@ -3527,39 +3377,49 @@ ${dataStr}`;
 
           _xuParsedRow = { ym, revenue, dau, mau, nru, mpu, arppu, cr, mkt_cost, _dailyRows: dailyRows, _countries: detectedCountries, _dailyMonths: dailyMonths };
 
-          // Render preview table
-          const fmt = (v, dec=0) => v == null ? '<span style="color:var(--text3)">-</span>' : (dec > 0 ? v.toFixed(dec) : Math.round(v).toLocaleString());
-          const countriesStr = detectedCountries.length > 0
-            ? `<span style="color:var(--green)">${detectedCountries.join(', ')}</span>`
-            : '<span style="color:var(--text3)">없음 (Total only)</span>';
-
-          // Show which actual column names were matched (for debugging misses)
+          // Render preview table — content differs by mode
+          const fmtP = (v, dec=0) => v == null ? '<span style="color:var(--text3)">-</span>' : (dec > 0 ? v.toFixed(dec) : Math.round(v).toLocaleString());
           const colMap = { Revenue: revCol, DAU: dauCol, MAU: mauCol, NRU: nruCol, MPU: mpuCol, 'Mkt Cost': mktCol, ARPPU: arppuCol, DPU: dpuCol, 'D1 Ret': d1RetCol };
           const colDebug = Object.entries(colMap)
             .map(([k, v]) => `<span style="${v ? 'color:var(--green)' : 'color:var(--red)'}">${k}${v ? `→<em>${v}</em>` : '✗'}</span>`)
             .join(' &nbsp;');
+          const countriesStr = detectedCountries.length > 0
+            ? `<span style="color:var(--green)">${detectedCountries.join(', ')}</span>`
+            : '<span style="color:var(--text3)">없음 (Total only)</span>';
+
+          const td = (label, val) => `<tr><td style="padding:5px 8px;color:var(--text2)">${label}</td><td style="text-align:right;padding:5px 8px;font-family:monospace">${val}</td></tr>`;
+
+          let tableRows = '';
+          if (_xuMode === 'monthly') {
+            tableRows = [
+              td('Year-Month', ym),
+              td('Revenue (합계)', `$${fmtP(revenue, 2)}`),
+              td('DAU (평균)', fmtP(dau)),
+              td('MAU / A30 (말일)', fmtP(mau)),
+              td('NRU (합계)', fmtP(nru)),
+              td('MPU / PU30 (말일)', fmtP(mpu)),
+              td('ARPPU (계산값)', `$${fmtP(arppu, 2)}`),
+              td('CR (계산값)', cr != null ? (cr*100).toFixed(2)+'%' : '-'),
+              td('Marketing Cost (합계)', `$${fmtP(mkt_cost, 2)}`),
+            ].join('');
+          } else {
+            tableRows = [
+              td('저장 기간', `${dailyMonths[0]}${dailyMonths.length > 1 ? ' ~ ' + dailyMonths[dailyMonths.length-1] : ''}`),
+              td('총 데이터 행 수', `${dailyRows.length}행`),
+              td('국가 breakdown', countriesStr),
+            ].join('') + `<tr><td colspan="2" style="padding:8px 8px 4px;border-top:1px solid var(--border)">
+              <div style="font-size:10px;color:var(--text3);margin-bottom:4px">컬럼 매핑</div>
+              <div style="font-size:10px;line-height:1.8;font-family:monospace">${colDebug}</div>
+            </td></tr>`;
+          }
 
           document.getElementById('xu-preview-table').innerHTML = `
             <table style="width:100%;font-size:12px;border-collapse:collapse">
               <tr style="border-bottom:1px solid var(--border)">
                 <th style="text-align:left;padding:6px 8px;color:var(--text3);font-weight:500">항목</th>
-                <th style="text-align:right;padding:6px 8px;color:var(--text3);font-weight:500">집계값</th>
+                <th style="text-align:right;padding:6px 8px;color:var(--text3);font-weight:500">값</th>
               </tr>
-              <tr><td style="padding:5px 8px;color:var(--text2)">Year-Month</td><td style="text-align:right;padding:5px 8px;font-family:monospace">${ym}</td></tr>
-              <tr><td style="padding:5px 8px;color:var(--text2)">Revenue (합계)</td><td style="text-align:right;padding:5px 8px;font-family:monospace">$${fmt(revenue, 2)}</td></tr>
-              <tr><td style="padding:5px 8px;color:var(--text2)">DAU (평균)</td><td style="text-align:right;padding:5px 8px;font-family:monospace">${fmt(dau)}</td></tr>
-              <tr><td style="padding:5px 8px;color:var(--text2)">MAU / A30 (말일)</td><td style="text-align:right;padding:5px 8px;font-family:monospace">${fmt(mau)}</td></tr>
-              <tr><td style="padding:5px 8px;color:var(--text2)">NRU (합계)</td><td style="text-align:right;padding:5px 8px;font-family:monospace">${fmt(nru)}</td></tr>
-              <tr><td style="padding:5px 8px;color:var(--text2)">MPU / PU30 (말일)</td><td style="text-align:right;padding:5px 8px;font-family:monospace">${fmt(mpu)}</td></tr>
-              <tr><td style="padding:5px 8px;color:var(--text2)">ARPPU (계산값)</td><td style="text-align:right;padding:5px 8px;font-family:monospace">$${fmt(arppu, 2)}</td></tr>
-              <tr><td style="padding:5px 8px;color:var(--text2)">CR (계산값)</td><td style="text-align:right;padding:5px 8px;font-family:monospace">${cr != null ? (cr*100).toFixed(2)+'%' : '-'}</td></tr>
-              <tr><td style="padding:5px 8px;color:var(--text2)">Marketing Cost (합계)</td><td style="text-align:right;padding:5px 8px;font-family:monospace">$${fmt(mkt_cost, 2)}</td></tr>
-              <tr><td style="padding:5px 8px;color:var(--text2)">일별 데이터</td><td style="text-align:right;padding:5px 8px;font-family:monospace">${dailyRows.length}행 (${dailyMonths[0]}${dailyMonths.length > 1 ? ' ~ ' + dailyMonths[dailyMonths.length-1] : ''})</td></tr>
-              <tr><td style="padding:5px 8px;color:var(--text2)">국가 breakdown</td><td style="text-align:right;padding:5px 8px">${countriesStr}</td></tr>
-              <tr><td colspan="2" style="padding:8px 8px 4px;border-top:1px solid var(--border)">
-                <div style="font-size:10px;color:var(--text3);margin-bottom:4px">감지된 컬럼 매핑</div>
-                <div style="font-size:10px;line-height:1.8;font-family:monospace">${colDebug}</div>
-              </td></tr>
+              ${tableRows}
             </table>`;
           previewDiv.style.display = 'block';
           submitBtn.disabled = false;
@@ -3576,34 +3436,35 @@ ${dataStr}`;
       if (!game) { errEl.textContent = 'Game을 선택해주세요.'; return; }
       if (!_xuParsedRow) { errEl.textContent = '파일을 먼저 업로드해주세요.'; return; }
 
-      const { ym, revenue, dau, mau, nru, mpu, arppu, cr, mkt_cost, _dailyRows } = _xuParsedRow;
-      if (RAW.find(r => r.game === game && r.ym === ym)) {
-        errEl.textContent = `${game} ${ym} 데이터가 이미 존재합니다. Raw Data에서 삭제 후 다시 업로드하세요.`;
-        return;
-      }
-
-      const row = { game, ym, revenue, dau, mau, nru, mpu, arppu, cr, mkt_cost };
       const btn = document.getElementById('xu-submit-btn');
       btn.textContent = 'Saving...'; btn.disabled = true;
-      try {
-        // 1. Save monthly aggregate
-        const saved = await api('monthly_data', 'POST', row);
-        RAW.push(Array.isArray(saved) ? saved[0] : saved || row);
-        RAW = enrichRAWData(RAW);
 
-        // 2. Save daily rows if present
-        if (_dailyRows && _dailyRows.length > 0) {
-          const dailyWithGame = _dailyRows.map(r => ({ ...r, game }));
-          try {
-            const savedDaily = await api('daily_data', 'POST', dailyWithGame, '', true);
-            const newDaily = Array.isArray(savedDaily) ? savedDaily : dailyWithGame;
-            // Remove existing daily rows for all uploaded months, then add new ones
-            const uploadedMonths = [...new Set(dailyWithGame.map(r => r.date.slice(0, 7)))];
-            DAILY = DAILY.filter(d => !(matchesGame(d.game, game) && uploadedMonths.includes(d.date.slice(0, 7))));
-            DAILY.push(...newDaily);
-          } catch(de) {
-            console.warn('daily_data 저장 실패 (테이블 없을 수 있음):', de.message);
+      try {
+        if (_xuMode === 'monthly') {
+          // ── Monthly mode: save to monthly_data only ──
+          const { ym, revenue, dau, mau, nru, mpu, arppu, cr, mkt_cost } = _xuParsedRow;
+          if (RAW.find(r => r.game === game && r.ym === ym)) {
+            errEl.textContent = `${game} ${ym} 데이터가 이미 존재합니다. Raw Data에서 삭제 후 다시 업로드하세요.`;
+            btn.textContent = 'Save to Monthly DB'; btn.disabled = false; return;
           }
+          const row = { game, ym, revenue, dau, mau, nru, mpu, arppu, cr, mkt_cost };
+          const saved = await api('monthly_data', 'POST', row);
+          RAW.push(Array.isArray(saved) ? saved[0] : saved || row);
+          RAW = enrichRAWData(RAW);
+
+        } else {
+          // ── Daily mode: save to daily_data only ──
+          const { _dailyRows } = _xuParsedRow;
+          if (!_dailyRows || !_dailyRows.length) {
+            errEl.textContent = '일별 데이터가 없어요.';
+            btn.textContent = 'Save to Daily DB'; btn.disabled = false; return;
+          }
+          const dailyWithGame = _dailyRows.map(r => ({ ...r, game }));
+          const savedDaily = await api('daily_data', 'POST', dailyWithGame, '', true);
+          const newDaily = Array.isArray(savedDaily) ? savedDaily : dailyWithGame;
+          const uploadedMonths = [...new Set(dailyWithGame.map(r => r.date.slice(0, 7)))];
+          DAILY = DAILY.filter(d => !(matchesGame(d.game, game) && uploadedMonths.includes(d.date.slice(0, 7))));
+          DAILY.push(...newDaily);
         }
 
         closeModal('excel-upload');
@@ -3615,9 +3476,11 @@ ${dataStr}`;
         else if (ap === 'page-data') renderDataPage();
         else if (ap === 'page-monitor') renderMonitor();
         _xuParsedRow = null;
+
       } catch (err) {
         errEl.textContent = '저장 실패: ' + err.message;
-        btn.textContent = 'Save to DB'; btn.disabled = false;
+        btn.textContent = _xuMode === 'monthly' ? 'Save to Monthly DB' : 'Save to Daily DB';
+        btn.disabled = false;
       }
     }
 
@@ -3728,7 +3591,7 @@ ${dataStr}`;
     }
 
     // Close modal on overlay click
-    ['modal-monthly', 'modal-deal', 'modal-status-confirm', 'modal-excel-upload'].forEach(id => {
+    ['modal-deal', 'modal-status-confirm', 'modal-excel-upload'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.addEventListener('click', function (e) {
         if (e.target === this) closeModal(id.replace('modal-', ''));
