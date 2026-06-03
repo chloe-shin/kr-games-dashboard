@@ -1566,7 +1566,8 @@
 
     // ===== SUPABASE API =====
     let RAW = [], DEALS = [], INSIGHTS = [], LATEST_INSIGHT = null;
-    let DAILY = []; // daily_data rows: { game, date, dau, revenue, nru, mkt_cost, arppu, dpu, d1_ret }
+    let DAILY = []; // daily_data rows: { game, date, country, dau, revenue, nru, mkt_cost, arppu, dpu, d1_ret }
+    const SEA_COUNTRIES = ['Total', 'VN', 'TH', 'ID', 'PH', 'MY', 'SG', 'Others'];
 
     function isNewGame(game) {
       const now = new Date();
@@ -1580,10 +1581,16 @@
       return getActiveGames().filter(g => isNewGame(g));
     }
 
-    function getDailyData(game, days) {
-      const rows = DAILY.filter(d => matchesGame(d.game, game))
+    function getDailyData(game, days, country) {
+      const c = country || 'Total';
+      const rows = DAILY.filter(d => matchesGame(d.game, game) && (d.country || 'Total') === c)
         .sort((a, b) => a.date.localeCompare(b.date));
       return days ? rows.slice(-days) : rows;
+    }
+
+    function getAvailableCountries(game) {
+      const countries = [...new Set(DAILY.filter(d => matchesGame(d.game, game)).map(d => d.country || 'Total'))];
+      return SEA_COUNTRIES.filter(c => countries.includes(c));
     }
     let editingDealId = null;
 
@@ -2703,6 +2710,8 @@ ${dataStr}`;
     }
 
     let _currentDailyDays = 30;
+    let _currentDailyCountry = 'Total';
+    let _currentMonitorCountry = 'Total';
 
     function switchGameTab(t) {
       currentGameTab = t;
@@ -2717,7 +2726,17 @@ ${dataStr}`;
 
     function switchDailyDays(days) {
       _currentDailyDays = days;
-      renderGameDaily(currentGame, days);
+      renderGameDaily(currentGame, days, _currentDailyCountry);
+    }
+
+    function switchDailyCountry(country) {
+      _currentDailyCountry = country;
+      renderGameDaily(currentGame, _currentDailyDays, country);
+    }
+
+    function switchMonitorCountry(country) {
+      _currentMonitorCountry = country;
+      renderMonitor();
     }
 
     function setGameTimeFormat(f) {
@@ -3158,14 +3177,25 @@ ${dataStr}`;
       Object.values(_monitorCharts).forEach(c => c?.destroy());
       _monitorCharts = {};
 
+      // Country filter (union of available countries across all new games)
+      const allCountries = [...new Set(newGames.flatMap(g => getAvailableCountries(g)))];
+      const availableCountries = SEA_COUNTRIES.filter(c => allCountries.includes(c));
+      const countryFilterHtml = availableCountries.length > 1 ? `
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;flex-wrap:wrap">
+          <span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Country</span>
+          <div class="daily-range-tabs" style="margin-bottom:0">
+            ${availableCountries.map(c => `<button class="daily-range-tab ${c === _currentMonitorCountry ? 'active' : ''}" onclick="switchMonitorCountry('${c}')">${c === 'Total' ? 'All' : c}</button>`).join('')}
+          </div>
+        </div>` : '';
+
       const now = new Date();
-      container.innerHTML = `<div class="monitor-grid">${newGames.map(game => {
+      container.innerHTML = countryFilterHtml + `<div class="monitor-grid">${newGames.map(game => {
         const color = getGameColor(game);
         const deal = DEALS.find(d => matchesGame(d.title, game));
         const launchDate = deal?.start_date ? new Date(deal.start_date) : null;
         const daysSince = launchDate ? Math.floor((now - launchDate) / 86400000) : null;
         const slug = game.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
-        const rows = getDailyData(game, 30);
+        const rows = getDailyData(game, 30, _currentMonitorCountry);
         const latestRow = rows[rows.length - 1];
         const prevRow = rows[rows.length - 2];
 
@@ -3213,7 +3243,7 @@ ${dataStr}`;
 
       // Build charts after DOM is ready
       newGames.forEach(game => {
-        const rows = getDailyData(game, 30);
+        const rows = getDailyData(game, 30, _currentMonitorCountry);
         if (!rows.length) return;
         const slug = game.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
         const canvas = document.getElementById(`monitor-chart-${slug}`);
@@ -3242,9 +3272,10 @@ ${dataStr}`;
       });
     }
 
-    function renderGameDaily(game, days) {
+    function renderGameDaily(game, days, country) {
       days = days || 30;
-      const rows = getDailyData(game, days);
+      country = country || _currentDailyCountry || 'Total';
+      const rows = getDailyData(game, days, country);
       const container = document.getElementById('game-daily-area');
       if (!container) return;
 
@@ -3253,8 +3284,15 @@ ${dataStr}`;
         `<button class="daily-range-tab ${d === days ? 'active' : ''}" onclick="switchDailyDays(${d})">Last ${d}d</button>`
       ).join('');
 
+      const availableCountries = getAvailableCountries(game);
+      const countryHtml = availableCountries.length > 1 ? `
+        <div class="daily-range-tabs" style="margin-bottom:8px">
+          ${availableCountries.map(c => `<button class="daily-range-tab ${c === country ? 'active' : ''}" onclick="switchDailyCountry('${c}')">${c === 'Total' ? '🌏 All' : c}</button>`).join('')}
+        </div>` : '';
+
       if (!rows.length) {
         container.innerHTML = `<div style="padding:20px 0">
+          ${countryHtml}
           <div class="daily-range-tabs">${rangeHtml}</div>
           <div style="text-align:center;padding:40px;color:var(--text3);font-size:13px">
             일별 데이터가 없어요.<br>
@@ -3266,6 +3304,7 @@ ${dataStr}`;
 
       const labels = rows.map(r => r.date.slice(5));
       container.innerHTML = `<div style="padding-top:4px">
+        ${countryHtml}
         <div class="daily-range-tabs">${rangeHtml}</div>
         <div class="two-col" style="gap:16px">
           <div>
@@ -3397,9 +3436,18 @@ ${dataStr}`;
             }
             return null;
           };
-          const sum = k => { const c = col(k); return c ? monthRows.reduce((a, r) => a + (parseFloat(r[c]) || 0), 0) : null; };
-          const avg = k => { const c = col(k); if (!c) return null; const vals = monthRows.map(r => parseFloat(r[c])).filter(v => !isNaN(v)); return vals.length ? vals.reduce((a,b) => a+b,0)/vals.length : null; };
-          const last = k => { const c = col(k); return c ? (parseFloat(lastRow[c]) || null) : null; };
+          // Detect View By column for country breakdown
+          const viewByCol = col('ViewBy') || col('View By') || col('Country') || col('country');
+
+          // For monthly aggregate: use only "Total" rows (or all rows if no View By column)
+          const totalRows = viewByCol
+            ? monthRows.filter(r => !r[viewByCol] || String(r[viewByCol]).trim() === 'Total')
+            : monthRows;
+          const totalLastRow = totalRows[totalRows.length - 1] || lastRow;
+
+          const sum = k => { const c = col(k); return c ? totalRows.reduce((a, r) => a + (parseFloat(r[c]) || 0), 0) : null; };
+          const avg = k => { const c = col(k); if (!c) return null; const vals = totalRows.map(r => parseFloat(r[c])).filter(v => !isNaN(v)); return vals.length ? vals.reduce((a,b) => a+b,0)/vals.length : null; };
+          const last = k => { const c = col(k); return c ? (parseFloat(totalLastRow[c]) || null) : null; };
 
           // Column mappings — supports both old format (KPI Metrics) and new format (report_date)
           const revenue = sum('Revenue') ?? sum('DailyGameRevenue') ?? sum('GameRevenue');
@@ -3411,22 +3459,21 @@ ${dataStr}`;
           const arppu = (revenue && mpu && mpu > 0) ? revenue / mpu : null;
           const cr = (mpu && mau && mau > 0) ? mpu / mau : null;
 
-          // Build daily rows for daily_data table
+          // Build daily rows — ALL rows including country breakdown
           const revCol   = col('Revenue') || col('DailyGameRevenue') || col('GameRevenue');
           const dauCol   = col('DAU');
           const nruCol   = col('NRU');
           const mktCol   = col('Cost') || col('DailyMarketingCost') || col('MarketingCost') || col('MktCost');
-          const roas30Col= col('ROAS30') || col('ROAS30(%)');
-          const ltv30Col = col('LTV30');
           const arppuCol = col('ARPPU') || col('DailyARPPU');
           const dpuCol   = col('DPU');
           const d1RetCol = col('RR01') || col('rRR1(%)') || col('nRR1') || col('D1Retention') || col('d1_ret');
 
           const dailyRows = monthRows.map(r => {
-            const dateVal = r[dateCol];
-            const dateStr = String(dateVal).slice(0, 10);
+            const dateStr = String(r[dateCol]).slice(0, 10);
+            const country = viewByCol ? (String(r[viewByCol]).trim() || 'Total') : 'Total';
             return {
               date: dateStr,
+              country,
               dau:     dauCol    ? (parseFloat(r[dauCol])    || null) : null,
               revenue: revCol    ? (parseFloat(r[revCol])    || null) : null,
               nru:     nruCol    ? (parseFloat(r[nruCol])    || null) : null,
@@ -3437,10 +3484,16 @@ ${dataStr}`;
             };
           });
 
-          _xuParsedRow = { ym, revenue, dau, mau, nru, mpu, arppu, cr, mkt_cost, _dailyRows: dailyRows };
+          // Preview: show detected countries
+          const detectedCountries = [...new Set(dailyRows.map(r => r.country))].filter(c => c !== 'Total');
+
+          _xuParsedRow = { ym, revenue, dau, mau, nru, mpu, arppu, cr, mkt_cost, _dailyRows: dailyRows, _countries: detectedCountries };
 
           // Render preview table
           const fmt = (v, dec=0) => v == null ? '<span style="color:var(--text3)">-</span>' : (dec > 0 ? v.toFixed(dec) : Math.round(v).toLocaleString());
+          const countriesStr = detectedCountries.length > 0
+            ? `<span style="color:var(--green)">${detectedCountries.join(', ')}</span>`
+            : '<span style="color:var(--text3)">없음 (Total only)</span>';
           document.getElementById('xu-preview-table').innerHTML = `
             <table style="width:100%;font-size:12px;border-collapse:collapse">
               <tr style="border-bottom:1px solid var(--border)">
@@ -3456,6 +3509,8 @@ ${dataStr}`;
               <tr><td style="padding:5px 8px;color:var(--text2)">ARPPU (계산값)</td><td style="text-align:right;padding:5px 8px;font-family:monospace">$${fmt(arppu, 2)}</td></tr>
               <tr><td style="padding:5px 8px;color:var(--text2)">CR (계산값)</td><td style="text-align:right;padding:5px 8px;font-family:monospace">${cr != null ? (cr*100).toFixed(2)+'%' : '-'}</td></tr>
               <tr><td style="padding:5px 8px;color:var(--text2)">Marketing Cost (합계)</td><td style="text-align:right;padding:5px 8px;font-family:monospace">$${fmt(mkt_cost, 2)}</td></tr>
+              <tr><td style="padding:5px 8px;color:var(--text2)">일별 데이터 행 수</td><td style="text-align:right;padding:5px 8px;font-family:monospace">${dailyRows.length}행</td></tr>
+              <tr><td style="padding:5px 8px;color:var(--text2)">국가 breakdown</td><td style="text-align:right;padding:5px 8px">${countriesStr}</td></tr>
             </table>`;
           previewDiv.style.display = 'block';
           submitBtn.disabled = false;
