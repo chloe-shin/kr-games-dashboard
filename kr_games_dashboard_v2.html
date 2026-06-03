@@ -2429,21 +2429,6 @@ ${dataStr}`;
     }
 
     // ===== GAME PAGE =====
-    let simLf = 0, simOriginalMg = 0, simGrossProfit = 0;
-
-    function updateSimulation() {
-      const slider = document.getElementById('sim-mg-slider');
-      const mgVal = parseInt(slider.value, 10);
-      document.getElementById('sim-mg-val').innerText = fmt(mgVal);
-      
-      const newInvest = simLf + mgVal;
-      const newNetProfit = simGrossProfit - newInvest;
-      const newRoi = newInvest > 0 ? (newNetProfit / newInvest * 100).toFixed(1) : 0;
-      
-      const roiEl = document.getElementById('sim-roi-val');
-      roiEl.innerText = newRoi + '%';
-      roiEl.style.color = parseFloat(newRoi) >= 0 ? 'var(--gen)' : 'var(--red)';
-    }
 
     function renderGame(game) {
       const gRows = getGameData(game);
@@ -2453,12 +2438,7 @@ ${dataStr}`;
       const totalGrossProfit = gRows.reduce((s, r) => s + (r.vngProfit || 0), 0);
       const netProfit = totalGrossProfit - invest;
       const roi = invest > 0 ? gameRoi(game, gRows).toFixed(1) + '%' : '-';
-      
-      // Update Simulator State
-      simLf = getLf(game);
-      simOriginalMg = getMg(game);
-      simGrossProfit = totalGrossProfit;
-      
+
       const latestRev = gRows.slice(-1)[0]?.revenue;
       const prevRev = gRows.slice(-2, -1)[0]?.revenue;
       const gameMoM = prevRev > 0 ? ((latestRev - prevRev) / prevRev * 100).toFixed(1) : null;
