@@ -2459,10 +2459,6 @@ ${dataStr}`;
       simOriginalMg = getMg(game);
       simGrossProfit = totalGrossProfit;
       
-      const slider = document.getElementById('sim-mg-slider');
-      slider.value = simOriginalMg;
-      document.getElementById('sim-current-mg').innerText = fmt(simOriginalMg);
-      updateSimulation();
       const latestRev = gRows.slice(-1)[0]?.revenue;
       const prevRev = gRows.slice(-2, -1)[0]?.revenue;
       const gameMoM = prevRev > 0 ? ((latestRev - prevRev) / prevRev * 100).toFixed(1) : null;
