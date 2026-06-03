@@ -1566,7 +1566,7 @@
 
     // ===== SUPABASE API =====
     let RAW = [], DEALS = [], INSIGHTS = [], LATEST_INSIGHT = null;
-    let DAILY = []; // daily_data rows: { game, date, dau, revenue, nru, mkt_cost, roas30, ltv30, arppu, dpu }
+    let DAILY = []; // daily_data rows: { game, date, dau, revenue, nru, mkt_cost, arppu, dpu, d1_ret }
 
     function isNewGame(game) {
       const now = new Date();
@@ -3198,9 +3198,9 @@ ${dataStr}`;
               ${chg(latestRow?.revenue, prevRow?.revenue, true)}
             </div>
             <div class="monitor-kpi">
-              <div class="monitor-kpi-label">ROAS 30</div>
-              <div class="monitor-kpi-val">${latestRow?.roas30 != null ? latestRow.roas30.toFixed(1)+'%' : '-'}</div>
-              ${chg(latestRow?.roas30, prevRow?.roas30)}
+              <div class="monitor-kpi-label">D1 Ret</div>
+              <div class="monitor-kpi-val">${latestRow?.d1_ret != null ? latestRow.d1_ret.toFixed(1)+'%' : '-'}</div>
+              ${chg(latestRow?.d1_ret, prevRow?.d1_ret)}
             </div>
             <div class="monitor-kpi">
               <div class="monitor-kpi-label">NRU</div>
@@ -3282,8 +3282,8 @@ ${dataStr}`;
             <canvas id="daily-chart-nru" height="120"></canvas>
           </div>
           <div>
-            <div style="font-size:11px;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">LTV 30d</div>
-            <canvas id="daily-chart-ltv" height="120"></canvas>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">D1 Retention (%)</div>
+            <canvas id="daily-chart-d1ret" height="120"></canvas>
           </div>
         </div>
       </div>`;
@@ -3326,10 +3326,10 @@ ${dataStr}`;
         options: { ...chartDefaults, scales: { x: { ticks: { color: '#555', font: { size: 9 } }, grid: { display: false } }, y: yTick(v => fmtN(v)) } }
       });
 
-      new Chart(document.getElementById('daily-chart-ltv'), {
+      new Chart(document.getElementById('daily-chart-d1ret'), {
         type: 'line',
-        data: { labels, datasets: [{ label: 'LTV30', data: rows.map(r => r.ltv30 || 0), borderColor: '#EC4899', borderWidth: 2, pointRadius: 0, tension: 0.3, fill: true, backgroundColor: 'rgba(236,72,153,.08)' }] },
-        options: { ...chartDefaults, scales: { x: { ticks: { color: '#555', font: { size: 9 } }, grid: { display: false } }, y: yTick(v => '$'+v.toFixed(2)) } }
+        data: { labels, datasets: [{ label: 'D1 Retention', data: rows.map(r => r.d1_ret ?? null), borderColor: '#EC4899', borderWidth: 2, pointRadius: 2, tension: 0.3, fill: true, backgroundColor: 'rgba(236,72,153,.08)', spanGaps: true }] },
+        options: { ...chartDefaults, scales: { x: { ticks: { color: '#555', font: { size: 9 } }, grid: { display: false } }, y: yTick(v => v.toFixed(1)+'%') } }
       });
     }
 
@@ -3417,6 +3417,7 @@ ${dataStr}`;
             const ltv30Col = col('LTV30');
             const arppuCol = col('DailyARPPU') || col('ARPPU');
             const dpuCol = col('DPU');
+            const d1RetCol = col('rRR1(%)') || col('nRR1') || col('D1Retention') || col('d1_ret');
             return {
               date: dateStr,
               dau: dauCol ? (parseFloat(r[dauCol]) || null) : null,
@@ -3427,6 +3428,7 @@ ${dataStr}`;
               ltv30: ltv30Col ? (parseFloat(r[ltv30Col]) || null) : null,
               arppu: arppuCol ? (parseFloat(r[arppuCol]) || null) : null,
               dpu: dpuCol ? (parseFloat(r[dpuCol]) || null) : null,
+              d1_ret: d1RetCol ? (parseFloat(r[d1RetCol]) || null) : null,
             };
           });
 
