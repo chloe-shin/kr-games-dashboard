@@ -3403,6 +3403,20 @@ ${dataStr}`;
             k === 'report_date' || k === 'KPI Metrics' || /^date$/i.test(k.trim()) || /report.?date/i.test(k)
           ) || Object.keys(firstRow).find(k => /date|day/i.test(k)) || Object.keys(firstRow)[0];
 
+          // Forward-fill date column: Excel often only puts the date on the first row
+          // of a date group, leaving country breakdown rows blank
+          let _lastValidDate = null;
+          rows.forEach(r => {
+            const v = r[dateCol];
+            const s = v != null ? String(v).trim() : '';
+            if (s && !isNaN(Date.parse(s))) {
+              _lastValidDate = s;
+              r[dateCol] = s;
+            } else if (_lastValidDate && (!s || s === '' || s === 'null')) {
+              r[dateCol] = _lastValidDate; // fill down
+            }
+          });
+
           // Parse dates and filter valid rows (skip Grand Total / summary rows)
           const dataRows = rows.filter(r => {
             const v = r[dateCol];
