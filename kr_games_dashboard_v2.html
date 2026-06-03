@@ -3009,7 +3009,6 @@ ${dataStr}`;
                                   .sort((a,b) => a.date.localeCompare(b.date));
         const totalRows = cutoffDate ? allTotalRows.filter(r => r.date >= cutoffDate) : allTotalRows;
         const latestRow = allTotalRows[allTotalRows.length - 1];
-        const prevRow   = allTotalRows[allTotalRows.length - 2];
 
         const chgBadge = (curr, prev) => {
           if (curr == null || prev == null || prev === 0) return '';
@@ -3031,22 +3030,31 @@ ${dataStr}`;
           </div>`;
         }
 
-        // KPI header
+        // KPI header — cumulative for the selected period
+        const sumOf = key => totalRows.reduce((s, r) => s + (r[key] != null ? Number(r[key]) : 0), 0);
+        const avgOf = key => { const vs = totalRows.filter(r => r[key] != null).map(r => Number(r[key])); return vs.length ? vs.reduce((a,b)=>a+b,0)/vs.length : null; };
+        const periodLabel = _monitorDays > 0 ? `최근 ${_monitorDays}일` : '전체';
+        // prev period for delta (same length window before cutoff)
+        const prevCutoff = _monitorDays > 0 ? new Date(now - _monitorDays * 2 * 86400000).toISOString().slice(0,10) : null;
+        const prevRows = prevCutoff ? allTotalRows.filter(r => r.date >= prevCutoff && r.date < (cutoffDate || '')) : [];
+        const prevSum = key => prevRows.reduce((s, r) => s + (r[key] != null ? Number(r[key]) : 0), 0);
+        const prevAvg = key => { const vs = prevRows.filter(r => r[key] != null).map(r => Number(r[key])); return vs.length ? vs.reduce((a,b)=>a+b,0)/vs.length : null; };
+
         const kpiHtml = `
           <div style="display:flex;gap:24px;flex-wrap:wrap;margin-top:4px">
             ${[
-              ['DAU',     fmtI(latestRow?.dau),     chgBadge(latestRow?.dau, prevRow?.dau)],
-              ['Revenue', fmtR(latestRow?.revenue),  chgBadge(latestRow?.revenue, prevRow?.revenue)],
-              ['NRU',     fmtI(latestRow?.nru),      chgBadge(latestRow?.nru, prevRow?.nru)],
-              ['D1 Ret',  fmtPct(latestRow?.d1_ret), chgBadge(latestRow?.d1_ret, prevRow?.d1_ret)],
-              ['ARPPU',   fmtR(latestRow?.arppu),    ''],
-              ['Mkt Cost',fmtR(latestRow?.mkt_cost), chgBadge(latestRow?.mkt_cost, prevRow?.mkt_cost)],
+              ['DAU(avg)',  fmtI(avgOf('dau')),      chgBadge(avgOf('dau'), prevAvg('dau'))],
+              ['Revenue',  fmtR(sumOf('revenue')),   chgBadge(sumOf('revenue'), prevSum('revenue'))],
+              ['NRU',      fmtI(sumOf('nru')),       chgBadge(sumOf('nru'), prevSum('nru'))],
+              ['D1 Ret',   fmtPct(avgOf('d1_ret')),  chgBadge(avgOf('d1_ret'), prevAvg('d1_ret'))],
+              ['ARPPU',    fmtR(avgOf('arppu')),     ''],
+              ['Mkt Cost', fmtR(sumOf('mkt_cost')),  chgBadge(sumOf('mkt_cost'), prevSum('mkt_cost'))],
             ].map(([label, val, chg]) => `
               <div>
                 <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">${label}</div>
                 <div style="font-size:16px;font-weight:600">${val}${chg}</div>
               </div>`).join('')}
-            <div style="margin-left:4px;color:var(--text3);font-size:11px;align-self:flex-end;padding-bottom:2px">최근 데이터: ${latestRow.date}</div>
+            <div style="margin-left:4px;color:var(--text3);font-size:11px;align-self:flex-end;padding-bottom:2px">${periodLabel} 누적 · 최근: ${latestRow.date}</div>
           </div>`;
 
         // Date table (filtered by date range)
