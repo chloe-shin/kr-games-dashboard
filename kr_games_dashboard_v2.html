@@ -1163,24 +1163,6 @@
       <!-- GAME -->
       <div class="page" id="page-game">
         <div class="game-kpi-grid" id="game-kpis"></div>
-        <div class="card" style="margin-bottom:20px;">
-           <div class="section-title">What-If Simulator: ROI Projection</div>
-           <div style="font-size:12px; color:var(--text3); margin-bottom:16px;">Adjust Minimum Guarantee (MG) to preview impact on game ROI dynamically.</div>
-           <div style="display:flex; align-items:center; gap:16px;">
-             <div style="flex:1">
-               <label>Minimum Guarantee (USD): <span id="sim-mg-val" style="color:var(--text);font-weight:bold;">$0</span></label>
-               <input type="range" id="sim-mg-slider" min="0" max="20000000" step="50000" value="0" style="width:100%;margin-top:8px" oninput="updateSimulation()">
-               <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--text3); margin-top:4px;">
-                 <span>Current MG: <span id="sim-current-mg">0</span></span>
-                 <span>Max: $20M</span>
-               </div>
-             </div>
-             <div style="width:150px; background:var(--bg3); border-radius:8px; padding:12px; text-align:center; border:1px solid var(--border2)">
-                <div style="font-size:11px;color:var(--text2)">Simulated ROI</div>
-                <div id="sim-roi-val" style="font-size:24px;color:var(--gen);font-weight:bold;margin-top:4px">0.0%</div>
-             </div>
-           </div>
-        </div>
         <div class="card">
           <div class="tabs" id="game-tabs" style="display:flex; justify-content:space-between; align-items:center;">
             <div>
@@ -2508,12 +2490,6 @@ ${dataStr}`;
       <div class="game-kpi-val">${fmt(latestRev)}</div>
       <div class="game-kpi-sub">${gameMoM != null ? `<span class="${parseFloat(gameMoM) >= 0 ? 'up' : 'down'}">${gameMoM}%</span> MoM` : '-'}</div>
     </div>
-    <div class="game-kpi" style="border:1px solid rgba(232,160,48,0.4);background:rgba(232,160,48,0.05)">
-      <div class="game-kpi-label has-tooltip" style="color:#E8A030;font-weight:700;display:flex;align-items:center;gap:4px;cursor:help" data-tooltip="{Total Gross Rev * (1-RS)} - LF - MG">RS Profit <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></div>
-      <div class="game-kpi-val">${fmt(netProfit)}</div>
-      <div class="game-kpi-sub">${gamePeriodStr}</div>
-      <div style="margin-top:6px"><span class="disclaimer"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg> Excludes OPEX · For BD review</span></div>
-    </div>
     <div class="game-kpi" style="border:1px solid rgba(224,96,144,0.4);background:rgba(224,96,144,0.05)">
       <div class="game-kpi-label has-tooltip" style="color:#E06090;font-weight:700;display:flex;align-items:center;gap:4px;cursor:help" data-tooltip="(RS Profit) / (LF+MG) * 100%">ROI <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></div>
       <div class="game-kpi-val">${roi}</div>
@@ -2618,9 +2594,8 @@ ${dataStr}`;
       const gc = 'rgba(255,255,255,.04)', tc = '#666';
 
       if (metric === 'revenue') {
-        area.innerHTML = `<div style="display:flex;gap:12px;margin-bottom:12px"><span class="leg-item"><span class="leg-dot" style="background:${c}bb"></span>Revenue</span><span class="leg-item"><span class="leg-dot" style="background:${c}44"></span>RS Profit</span></div><div class="chart-wrap" style="height:280px"><canvas id="gameChart1"></canvas></div>`;
-        const rs = getRs(game);
-        gameChart1 = new Chart(document.getElementById('gameChart1').getContext('2d'), { type: 'bar', data: { labels, datasets: [{ label: 'Revenue', data: gRows.map(r => r.revenue), backgroundColor: c + 'bb', borderWidth: 0 }, { label: 'RS Profit', data: gRows.map(r => r.vngProfit), backgroundColor: c + '44', borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c2 => `${c2.dataset.label}: ${fmt(c2.raw)}` } } }, scales: { x: { ticks: { autoSkip: true, maxRotation: 45, font: { size: 10 }, color: tc }, grid: { color: gc } }, y: { ticks: { callback: v => fmt(v), font: { size: 10 }, color: tc }, grid: { color: gc } } } } });
+        area.innerHTML = `<div class="chart-wrap" style="height:280px"><canvas id="gameChart1"></canvas></div>`;
+        gameChart1 = new Chart(document.getElementById('gameChart1').getContext('2d'), { type: 'line', data: { labels, datasets: [{ label: 'Revenue', data: gRows.map(r => r.revenue), borderColor: c, backgroundColor: c + '18', fill: true, borderWidth: 2.5, pointRadius: 3, pointHoverRadius: 5, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, title: { display: true, text: 'Monthly Revenue (USD)', font: { size: 11, weight: '500' }, color: '#888' }, tooltip: { callbacks: { label: c2 => `Revenue: ${fmt(c2.raw)}` } } }, scales: { x: { ticks: { autoSkip: true, maxRotation: 45, font: { size: 10 }, color: tc }, grid: { color: gc } }, y: { ticks: { callback: v => fmt(v), font: { size: 10 }, color: tc }, grid: { color: gc } } } } });
       } else if (metric === 'cr_arppu') {
         area.innerHTML = `<div class="two-col"><div class="chart-wrap" style="height:240px"><canvas id="gameChart1"></canvas></div><div class="chart-wrap" style="height:240px"><canvas id="gameChart2"></canvas></div></div>`;
         gameChart1 = new Chart(document.getElementById('gameChart1').getContext('2d'), { type: 'line', data: { labels, datasets: [{ label: 'CR%', data: gRows.map(r => r.cr != null ? +(r.cr * 100).toFixed(2) : null), borderColor: c, backgroundColor: c + '22', fill: true, borderWidth: 2, pointRadius: 2, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, title: { display: true, text: 'Conversion rate (%)', font: { size: 11, weight: '500' }, color: '#888' } }, scales: { x: { ticks: { autoSkip: true, maxRotation: 45, font: { size: 9 }, color: tc }, grid: { color: gc } }, y: { ticks: { callback: v => v.toFixed(1) + '%', font: { size: 10 }, color: tc }, grid: { color: gc } } } } });
