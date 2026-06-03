@@ -1743,6 +1743,7 @@
     // ===== CHARTS STATE =====
     let revChart = null, roiChart = null, gameChart1 = null, gameChart2 = null, dailyChart1 = null, dailyChart2 = null;
     let _monitorCharts = {};
+    let _monitorDays = 30; // date range filter for Daily Monitor
     let currentRevTab = 'line', currentOverViewGame = 'All', currentGame = 'Play Together', currentGameTab = 'revenue', currentDataGame = 'All';
     let overviewStartYM = null, overviewEndYM = null;
     let gameStartYM = null, gameEndYM = null;
@@ -2982,6 +2983,11 @@ ${dataStr}`;
       const fmtR = v => v == null ? '-' : '$' + Math.round(v).toLocaleString();
       const fmtI = v => v == null ? '-' : Math.round(v).toLocaleString();
       const fmtPct = v => v == null ? '-' : (v * 100).toFixed(1) + '%';
+
+      // Date range filter: cut-off date based on _monitorDays (0 = all)
+      const cutoffDate = _monitorDays > 0
+        ? new Date(now.getTime() - _monitorDays * 86400000).toISOString().slice(0, 10)
+        : null;
       const th = t => `<th style="text-align:right;padding:3px 8px;color:var(--text3);font-weight:500;white-space:nowrap;font-size:11px">${t}</th>`;
       const thL = t => `<th style="text-align:left;padding:3px 8px;color:var(--text3);font-weight:500;font-size:11px">${t}</th>`;
       const td = v => `<td style="text-align:right;padding:3px 8px;font-family:monospace;font-size:12px">${v}</td>`;
@@ -2994,11 +3000,12 @@ ${dataStr}`;
         const daysSince = launchDate ? Math.floor((now - launchDate) / 86400000) : null;
         const slug = game.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
 
-        // All Total rows sorted ascending
-        const totalRows = DAILY.filter(d => matchesGame(d.game, game) && d.country === 'Total')
-                               .sort((a,b) => a.date.localeCompare(b.date));
-        const latestRow = totalRows[totalRows.length - 1];
-        const prevRow   = totalRows[totalRows.length - 2];
+        // All Total rows sorted ascending (all-time for latest KPI), filtered for tables/charts
+        const allTotalRows = DAILY.filter(d => matchesGame(d.game, game) && d.country === 'Total')
+                                  .sort((a,b) => a.date.localeCompare(b.date));
+        const totalRows = cutoffDate ? allTotalRows.filter(r => r.date >= cutoffDate) : allTotalRows;
+        const latestRow = allTotalRows[allTotalRows.length - 1];
+        const prevRow   = allTotalRows[allTotalRows.length - 2];
 
         const chgBadge = (curr, prev) => {
           if (curr == null || prev == null || prev === 0) return '';
@@ -3038,18 +3045,17 @@ ${dataStr}`;
             <div style="margin-left:4px;color:var(--text3);font-size:11px;align-self:flex-end;padding-bottom:2px">최근 데이터: ${latestRow.date}</div>
           </div>`;
 
-        // Date table (last 14 days)
-        const lastDates = totalRows.slice(-14);
+        // Date table (filtered by date range)
         const dateTableHtml = `
           <div>
-            <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">📅 날짜별 (최근 ${lastDates.length}일)</div>
+            <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">📅 날짜별 (${totalRows.length}일)</div>
             <div style="overflow-x:auto;max-height:280px;overflow-y:auto">
               <table style="width:100%;border-collapse:collapse">
                 <thead style="position:sticky;top:0;background:var(--card)">
                   <tr style="border-bottom:1px solid var(--border)">${thL('날짜')}${th('Revenue')}${th('DAU')}${th('NRU')}${th('Mkt Cost')}${th('ARPPU')}${th('DPU')}${th('D1 Ret')}</tr>
                 </thead>
                 <tbody>
-                  ${lastDates.map(r => `<tr style="border-bottom:1px solid rgba(255,255,255,.04)">
+                  ${totalRows.map(r => `<tr style="border-bottom:1px solid rgba(255,255,255,.04)">
                     ${tdL(`<span style="color:var(--text2)">${r.date.slice(5)}</span>`)}
                     ${td(fmtR(r.revenue))}${td(fmtI(r.dau))}${td(fmtI(r.nru))}${td(fmtR(r.mkt_cost))}${td(fmtR(r.arppu))}${td(fmtI(r.dpu))}${td(fmtPct(r.d1_ret))}
                   </tr>`).join('')}
@@ -3058,9 +3064,9 @@ ${dataStr}`;
             </div>
           </div>`;
 
-        // Country breakdown
+        // Country breakdown (filtered by date range)
         const countryAgg = {};
-        DAILY.filter(d => matchesGame(d.game, game) && d.country !== 'Total').forEach(r => {
+        DAILY.filter(d => matchesGame(d.game, game) && d.country !== 'Total' && (!cutoffDate || d.date >= cutoffDate)).forEach(r => {
           if (!countryAgg[r.country]) countryAgg[r.country] = { rev:0, nru:0, mkt:0, dau:[], d1:[] };
           const a = countryAgg[r.country];
           if (r.revenue  != null) a.rev += r.revenue;
@@ -3105,24 +3111,32 @@ ${dataStr}`;
         </div>`;
       }).join('');
 
-      container.innerHTML = sections;
+      // Date range filter UI (top of monitor)
+      const dateRangeHtml = `
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;flex-wrap:wrap">
+          <span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">기간</span>
+          <div class="daily-range-tabs" style="margin-bottom:0">
+            ${[7,14,30,60,0].map(d => `<button class="daily-range-tab ${_monitorDays===d?'active':''}" onclick="window.switchMonitorDays(${d})">${d===0?'전체':d+'d'}</button>`).join('')}
+          </div>
+        </div>`;
+      container.innerHTML = dateRangeHtml + sections;
 
       // Build stacked Revenue charts per game
       newGames.forEach(game => {
         const slug = game.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
         const canvas = document.getElementById(`monitor-chart-${slug}`);
         if (!canvas) return;
-        const totalRows = DAILY.filter(d => matchesGame(d.game, game) && d.country === 'Total')
+        const chartRows = DAILY.filter(d => matchesGame(d.game, game) && d.country === 'Total' && (!cutoffDate || d.date >= cutoffDate))
                                .sort((a,b) => a.date.localeCompare(b.date));
-        if (!totalRows.length) return;
-        const labels = totalRows.map(r => r.date.slice(5));
+        if (!chartRows.length) return;
+        const labels = chartRows.map(r => r.date.slice(5));
         const availC = SEA_COUNTRIES.filter(c => c !== 'Total' &&
-          DAILY.some(d => matchesGame(d.game, game) && d.country === c));
+          DAILY.some(d => matchesGame(d.game, game) && d.country === c && (!cutoffDate || d.date >= cutoffDate)));
         let datasets;
         if (availC.length > 0) {
           datasets = availC.map(c => ({
             label: c, stack: 'stack',
-            data: totalRows.map(r => {
+            data: chartRows.map(r => {
               const cr = DAILY.find(d => matchesGame(d.game, game) && d.country === c && d.date === r.date);
               return cr?.revenue ?? 0;
             }),
@@ -3131,7 +3145,7 @@ ${dataStr}`;
           }));
         } else {
           const color = getGameColor(game);
-          datasets = [{ label: 'Revenue', data: totalRows.map(r => r.revenue || 0), backgroundColor: color + '99', borderColor: color, borderWidth: 1 }];
+          datasets = [{ label: 'Revenue', data: chartRows.map(r => r.revenue || 0), backgroundColor: color + '99', borderColor: color, borderWidth: 1 }];
         }
         _monitorCharts[slug] = new Chart(canvas, {
           type: 'bar',
@@ -3150,6 +3164,11 @@ ${dataStr}`;
         });
       });
     }
+
+    window.switchMonitorDays = function(days) {
+      _monitorDays = days;
+      renderMonitor();
+    };
 
     function renderGameDaily(game, days, country) {
       days = days || 30;
