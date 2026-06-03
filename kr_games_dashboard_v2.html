@@ -3501,6 +3501,9 @@ ${dataStr}`;
               { key:'d1_ret',   label:'D1 Ret',     color:'#06B6D4', type:'line', fmt: v=>v.toFixed(1)+'%' },
             ];
 
+            const allDates = totalOnly2.map(r => r.date);
+            const minDate = allDates[0], maxDate = allDates[allDates.length-1];
+
             document.getElementById('xu-preview-table').insertAdjacentHTML('afterend', `
               <div id="xu-chart-wrap" style="margin-top:14px">
                 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px">
@@ -3508,6 +3511,22 @@ ${dataStr}`;
                     style="font-size:10px;padding:3px 10px;border-radius:20px;border:1px solid ${m.color};
                     background:${i===0?m.color+'33':'transparent'};color:${i===0?m.color:'var(--text3)'};cursor:pointer;transition:all .15s"
                     >${m.label}</button>`).join('')}
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+                  <span style="font-size:10px;color:var(--text3)">기간</span>
+                  ${[7,14,30].map(d => `<button onclick="xuSetRange(${d})" id="xu-rb-${d}"
+                    style="font-size:10px;padding:2px 9px;border-radius:20px;border:1px solid var(--border2);
+                    background:transparent;color:var(--text3);cursor:pointer">최근 ${d}일</button>`).join('')}
+                  <button onclick="xuSetRange(0)" id="xu-rb-0"
+                    style="font-size:10px;padding:2px 9px;border-radius:20px;border:1px solid var(--accent);
+                    background:var(--accent)22;color:var(--accent);cursor:pointer">전체</button>
+                  <input type="date" id="xu-date-from" value="${minDate}" min="${minDate}" max="${maxDate}"
+                    onchange="xuSetRange(-1)"
+                    style="font-size:10px;padding:2px 6px;border-radius:6px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);cursor:pointer">
+                  <span style="font-size:10px;color:var(--text3)">~</span>
+                  <input type="date" id="xu-date-to" value="${maxDate}" min="${minDate}" max="${maxDate}"
+                    onchange="xuSetRange(-1)"
+                    style="font-size:10px;padding:2px 6px;border-radius:6px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);cursor:pointer">
                 </div>
                 <canvas id="xu-chart-main" height="120"></canvas>
               </div>`);
@@ -3522,7 +3541,32 @@ ${dataStr}`;
             });
 
             let _xuChart = null;
+            let _xuActiveMetric = 'revenue';
+
+            window.xuSetRange = function(days) {
+              [7,14,30,0].forEach(d => {
+                const b = document.getElementById('xu-rb-'+d);
+                if (!b) return;
+                const isActive = d === days;
+                b.style.background = isActive ? 'var(--accent)22' : 'transparent';
+                b.style.color = isActive ? 'var(--accent)' : 'var(--text3)';
+                b.style.borderColor = isActive ? 'var(--accent)' : 'var(--border2)';
+              });
+              if (days > 0) {
+                const from = new Date(maxDate);
+                from.setDate(from.getDate() - days + 1);
+                const fromStr = from.toISOString().slice(0,10);
+                document.getElementById('xu-date-from').value = fromStr > minDate ? fromStr : minDate;
+                document.getElementById('xu-date-to').value = maxDate;
+              } else if (days === 0) {
+                document.getElementById('xu-date-from').value = minDate;
+                document.getElementById('xu-date-to').value = maxDate;
+              }
+              window.xuSwitchMetric(_xuActiveMetric);
+            };
+
             window.xuSwitchMetric = function(key) {
+              _xuActiveMetric = key;
               const m = metrics.find(x => x.key === key);
               if (!m) return;
               metrics.forEach(x => {
@@ -3534,6 +3578,12 @@ ${dataStr}`;
               });
               if (_xuChart) { _xuChart.destroy(); _xuChart = null; }
 
+              // Apply date range filter
+              const fromVal = document.getElementById('xu-date-from')?.value || minDate;
+              const toVal   = document.getElementById('xu-date-to')?.value   || maxDate;
+              const filteredTotal = totalOnly2.filter(r => r.date >= fromVal && r.date <= toVal);
+              const filteredLabels = filteredTotal.map(r => r.date.slice(5));
+
               const isStack = stackMetrics.has(key) && detectedCountries.length > 0;
 
               if (isStack) {
@@ -3541,8 +3591,8 @@ ${dataStr}`;
                 const availC = SEA_COUNTRIES.filter(c => c !== 'Total' && byCountry[c]?.length);
                 const datasets = availC.map(c => ({
                   label: c,
-                  data: labels.map(lbl => {
-                    const r = byCountry[c].find(x => x.date.slice(5) === lbl);
+                  data: filteredLabels.map(lbl => {
+                    const r = byCountry[c].find(x => x.date >= fromVal && x.date <= toVal && x.date.slice(5) === lbl);
                     return r?.[key] ?? 0;
                   }),
                   backgroundColor: (cColors[c] || '#888') + 'CC',
@@ -3552,7 +3602,7 @@ ${dataStr}`;
                 }));
                 _xuChart = new Chart(document.getElementById('xu-chart-main'), {
                   type: 'bar',
-                  data: { labels, datasets },
+                  data: { labels: filteredLabels, datasets },
                   options: {
                     animation: false, responsive: true,
                     plugins: {
@@ -3566,11 +3616,11 @@ ${dataStr}`;
                   }
                 });
               } else {
-                // Single metric (Total row)
-                const data = totalOnly2.map(r => r[key] ?? null);
+                // Single metric (Total row, date-filtered)
+                const data = filteredTotal.map(r => r[key] ?? null);
                 _xuChart = new Chart(document.getElementById('xu-chart-main'), {
                   type: m.type,
-                  data: { labels, datasets: [{
+                  data: { labels: filteredLabels, datasets: [{
                     label: m.label, data,
                     backgroundColor: m.type==='bar' ? m.color+'55' : m.color+'22',
                     borderColor: m.color,
