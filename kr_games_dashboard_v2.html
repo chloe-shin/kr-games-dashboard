@@ -3359,35 +3359,41 @@ ${dataStr}`;
           if (!rows.length) { errEl.textContent = '파일에 데이터가 없어요.'; return; }
 
           // Detect header — find the date column
+          // Supports: 'report_date', 'KPI Metrics', or any column with 'date'/'day' in name
           const firstRow = rows[0];
-          const dateCol = Object.keys(firstRow).find(k => k === 'KPI Metrics' || /date|day/i.test(k)) || Object.keys(firstRow)[0];
+          const dateCol = Object.keys(firstRow).find(k =>
+            k === 'report_date' || k === 'KPI Metrics' || /^date$/i.test(k.trim()) || /report.?date/i.test(k)
+          ) || Object.keys(firstRow).find(k => /date|day/i.test(k)) || Object.keys(firstRow)[0];
 
-          // Parse dates and filter valid rows
+          // Parse dates and filter valid rows (skip Grand Total / summary rows)
           const dataRows = rows.filter(r => {
             const v = r[dateCol];
-            return v && !isNaN(Date.parse(String(v)));
+            if (!v) return false;
+            const s = String(v).trim();
+            if (/grand.?total|total|summary/i.test(s)) return false;
+            return !isNaN(Date.parse(s));
           });
-          if (!dataRows.length) { errEl.textContent = '날짜 데이터를 찾을 수 없어요. KPI Metrics 컬럼을 확인해주세요.'; return; }
+          if (!dataRows.length) { errEl.textContent = '날짜 데이터를 찾을 수 없어요. report_date 또는 KPI Metrics 컬럼을 확인해주세요.'; return; }
 
           // Detect the year-month (all rows should be same month)
           const months = [...new Set(dataRows.map(r => String(r[dateCol]).slice(0, 7)))];
           if (months.length > 1) {
-            document.getElementById('xu-warn').textContent = `⚠️ 여러 월 데이터 감지됨 (${months.join(', ')}). 첫 번째 월(${months[0]})만 집계합니다.`;
+            document.getElementById('xu-warn').textContent = `⚠️ 여러 월 데이터 감지됨 (${months.join(', ')}). 최신 월(${months[months.length-1]})만 집계합니다.`;
             document.getElementById('xu-warn').style.display = 'block';
           } else {
             document.getElementById('xu-warn').style.display = 'none';
           }
-          const ym = months[0];
+          const ym = months[months.length - 1]; // 최신 월 기준
           const monthRows = dataRows.filter(r => String(r[dateCol]).startsWith(ym));
 
           // Sort ascending by date (last day = last row)
           monthRows.sort((a, b) => String(a[dateCol]).localeCompare(String(b[dateCol])));
           const lastRow = monthRows[monthRows.length - 1];
 
-          // Helper: column lookup (case-insensitive, partial match)
+          // Helper: column lookup (case-insensitive, strips spaces)
           const col = (...names) => {
             for (const name of names) {
-              const k = Object.keys(firstRow).find(k => k.toLowerCase().replace(/\s+/g,'') === name.toLowerCase().replace(/\s+/g,''));
+              const k = Object.keys(firstRow).find(k => k.trim().toLowerCase().replace(/\s+/g,'') === name.toLowerCase().replace(/\s+/g,''));
               if (k !== undefined) return k;
             }
             return null;
@@ -3396,39 +3402,39 @@ ${dataStr}`;
           const avg = k => { const c = col(k); if (!c) return null; const vals = monthRows.map(r => parseFloat(r[c])).filter(v => !isNaN(v)); return vals.length ? vals.reduce((a,b) => a+b,0)/vals.length : null; };
           const last = k => { const c = col(k); return c ? (parseFloat(lastRow[c]) || null) : null; };
 
-          const revenue = sum('DailyGameRevenue') ?? sum('Revenue') ?? sum('GameRevenue');
+          // Column mappings — supports both old format (KPI Metrics) and new format (report_date)
+          const revenue = sum('Revenue') ?? sum('DailyGameRevenue') ?? sum('GameRevenue');
           const dau = avg('DAU');
-          const mau = last('A30') ?? avg('MAU');
+          const mau = last('TrailingMAU') ?? last('A30') ?? avg('MAU');
           const nru = sum('NRU');
-          const mpu = last('PU30') ?? last('MPU');
-          const mkt_cost = sum('DailyMarketingCost') ?? sum('MarketingCost') ?? sum('MktCost');
+          const mpu = last('TrailingMPU') ?? last('PU30') ?? last('MPU');
+          const mkt_cost = sum('Cost') ?? sum('DailyMarketingCost') ?? sum('MarketingCost') ?? sum('MktCost');
           const arppu = (revenue && mpu && mpu > 0) ? revenue / mpu : null;
           const cr = (mpu && mau && mau > 0) ? mpu / mau : null;
 
           // Build daily rows for daily_data table
+          const revCol   = col('Revenue') || col('DailyGameRevenue') || col('GameRevenue');
+          const dauCol   = col('DAU');
+          const nruCol   = col('NRU');
+          const mktCol   = col('Cost') || col('DailyMarketingCost') || col('MarketingCost') || col('MktCost');
+          const roas30Col= col('ROAS30') || col('ROAS30(%)');
+          const ltv30Col = col('LTV30');
+          const arppuCol = col('ARPPU') || col('DailyARPPU');
+          const dpuCol   = col('DPU');
+          const d1RetCol = col('RR01') || col('rRR1(%)') || col('nRR1') || col('D1Retention') || col('d1_ret');
+
           const dailyRows = monthRows.map(r => {
             const dateVal = r[dateCol];
             const dateStr = String(dateVal).slice(0, 10);
-            const revCol = col('DailyGameRevenue') || col('Revenue') || col('GameRevenue');
-            const dauCol = col('DAU');
-            const nruCol = col('NRU');
-            const mktCol = col('DailyMarketingCost') || col('MarketingCost') || col('MktCost');
-            const roas30Col = col('ROAS30(%)') || col('ROAS30');
-            const ltv30Col = col('LTV30');
-            const arppuCol = col('DailyARPPU') || col('ARPPU');
-            const dpuCol = col('DPU');
-            const d1RetCol = col('rRR1(%)') || col('nRR1') || col('D1Retention') || col('d1_ret');
             return {
               date: dateStr,
-              dau: dauCol ? (parseFloat(r[dauCol]) || null) : null,
-              revenue: revCol ? (parseFloat(r[revCol]) || null) : null,
-              nru: nruCol ? (parseFloat(r[nruCol]) || null) : null,
-              mkt_cost: mktCol ? (parseFloat(r[mktCol]) || null) : null,
-              roas30: roas30Col ? (parseFloat(r[roas30Col]) || null) : null,
-              ltv30: ltv30Col ? (parseFloat(r[ltv30Col]) || null) : null,
-              arppu: arppuCol ? (parseFloat(r[arppuCol]) || null) : null,
-              dpu: dpuCol ? (parseFloat(r[dpuCol]) || null) : null,
-              d1_ret: d1RetCol ? (parseFloat(r[d1RetCol]) || null) : null,
+              dau:     dauCol    ? (parseFloat(r[dauCol])    || null) : null,
+              revenue: revCol    ? (parseFloat(r[revCol])    || null) : null,
+              nru:     nruCol    ? (parseFloat(r[nruCol])    || null) : null,
+              mkt_cost:mktCol    ? (parseFloat(r[mktCol])    || null) : null,
+              arppu:   arppuCol  ? (parseFloat(r[arppuCol])  || null) : null,
+              dpu:     dpuCol    ? (parseFloat(r[dpuCol])    || null) : null,
+              d1_ret:  d1RetCol  ? (parseFloat(r[d1RetCol])  || null) : null,
             };
           });
 
