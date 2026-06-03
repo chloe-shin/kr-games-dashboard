@@ -1592,10 +1592,7 @@
       document.getElementById('loading-overlay').style.display = 'none';
       updateLastUpdated();
 
-      // 게임 select를 active 게임 기반으로 동적 생성 (Terminated 제외)
-      const gameSelect = document.getElementById('f-game');
-      gameSelect.innerHTML = '<option value="">Select game</option>' +
-        getActiveGames().map(t => `<option value="${t}">${t}</option>`).join('');
+      // (legacy f-game select removed with manual monthly form)
 
       // Pre-assign colors for existing games
       DEALS.forEach(d => { if (d.title) getGameColor(d.title); });
