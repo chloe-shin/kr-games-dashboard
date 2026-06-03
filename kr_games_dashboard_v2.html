@@ -3400,10 +3400,20 @@ ${dataStr}`;
               td('Marketing Cost (합계)', `$${fmtP(mkt_cost, 2)}`),
             ].join('');
           } else {
+            // Latest Total row for sample values
+            const latestTotal = [...dailyRows].filter(r => r.country === 'Total').pop() || [...dailyRows].pop();
             tableRows = [
               td('저장 기간', `${dailyMonths[0]}${dailyMonths.length > 1 ? ' ~ ' + dailyMonths[dailyMonths.length-1] : ''}`),
               td('총 데이터 행 수', `${dailyRows.length}행`),
               td('국가 breakdown', countriesStr),
+              `<tr><td colspan="2" style="padding:6px 8px 2px;border-top:1px solid var(--border);font-size:10px;color:var(--text3)">최신 데이터 샘플 (${latestTotal?.date || '-'})</td></tr>`,
+              td('DAU', latestTotal?.dau != null ? fmtP(latestTotal.dau) : '-'),
+              td('Revenue', latestTotal?.revenue != null ? `$${fmtP(latestTotal.revenue, 2)}` : '-'),
+              td('NRU', latestTotal?.nru != null ? fmtP(latestTotal.nru) : '-'),
+              td('Marketing Cost', latestTotal?.mkt_cost != null ? `$${fmtP(latestTotal.mkt_cost, 2)}` : '-'),
+              td('ARPPU', latestTotal?.arppu != null ? `$${fmtP(latestTotal.arppu, 2)}` : '-'),
+              td('DPU', latestTotal?.dpu != null ? fmtP(latestTotal.dpu) : '-'),
+              td('D1 Retention', latestTotal?.d1_ret != null ? latestTotal.d1_ret.toFixed(1) + '%' : '-'),
             ].join('') + `<tr><td colspan="2" style="padding:8px 8px 4px;border-top:1px solid var(--border)">
               <div style="font-size:10px;color:var(--text3);margin-bottom:4px">컬럼 매핑</div>
               <div style="font-size:10px;line-height:1.8;font-family:monospace">${colDebug}</div>
