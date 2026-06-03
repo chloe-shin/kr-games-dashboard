@@ -1743,7 +1743,8 @@
     // ===== CHARTS STATE =====
     let revChart = null, roiChart = null, gameChart1 = null, gameChart2 = null, dailyChart1 = null, dailyChart2 = null;
     let _monitorCharts = {};
-    let _monitorDays = 30; // date range filter for Daily Monitor
+    let _monitorDays = 30;   // date range filter for Daily Monitor
+    let _monitorGame = null; // null = all games shown
     let currentRevTab = 'line', currentOverViewGame = 'All', currentGame = 'Play Together', currentGameTab = 'revenue', currentDataGame = 'All';
     let overviewStartYM = null, overviewEndYM = null;
     let gameStartYM = null, gameEndYM = null;
@@ -2988,12 +2989,15 @@ ${dataStr}`;
       const cutoffDate = _monitorDays > 0
         ? new Date(now.getTime() - _monitorDays * 86400000).toISOString().slice(0, 10)
         : null;
+
+      // Game filter
+      const visibleGames = _monitorGame ? newGames.filter(g => g === _monitorGame) : newGames;
       const th = t => `<th style="text-align:right;padding:3px 8px;color:var(--text3);font-weight:500;white-space:nowrap;font-size:11px">${t}</th>`;
       const thL = t => `<th style="text-align:left;padding:3px 8px;color:var(--text3);font-weight:500;font-size:11px">${t}</th>`;
       const td = v => `<td style="text-align:right;padding:3px 8px;font-family:monospace;font-size:12px">${v}</td>`;
       const tdL = v => `<td style="padding:3px 8px;font-size:12px">${v}</td>`;
 
-      const sections = newGames.map(game => {
+      const sections = visibleGames.map(game => {
         const color = getGameColor(game);
         const deal = DEALS.find(d => matchesGame(d.title, game));
         const launchDate = deal?.start_date ? new Date(deal.start_date) : null;
@@ -3111,23 +3115,35 @@ ${dataStr}`;
         </div>`;
       }).join('');
 
-      // Date range filter UI (top of monitor)
-      const dateRangeHtml = `
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;flex-wrap:wrap">
-          <span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">기간</span>
-          <div class="daily-range-tabs" style="margin-bottom:0">
-            ${[7,14,30,60,0].map(d => `<button class="daily-range-tab ${_monitorDays===d?'active':''}" onclick="window.switchMonitorDays(${d})">${d===0?'전체':d+'d'}</button>`).join('')}
+      // Filter bar: game toggle + date range
+      const gameColor = g => getGameColor(g);
+      const filterBarHtml = `
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:20px;padding:12px 16px;background:var(--card);border-radius:12px;border:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap">Game</span>
+            <button class="daily-range-tab ${!_monitorGame?'active':''}" onclick="window.switchMonitorGame(null)" style="font-size:11px">All</button>
+            ${newGames.map(g => `<button class="daily-range-tab ${_monitorGame===g?'active':''}" onclick="window.switchMonitorGame('${g.replace(/'/g,"\\'")}')">
+              <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${gameColor(g)};margin-right:5px;vertical-align:middle"></span>${g}
+            </button>`).join('')}
+          </div>
+          <div style="width:1px;height:20px;background:var(--border);flex-shrink:0"></div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap">기간</span>
+            ${[7,14,30,60,0].map(d => `<button class="daily-range-tab ${_monitorDays===d?'active':''}" onclick="window.switchMonitorDays(${d})" style="font-size:11px">${d===0?'전체':d+'d'}</button>`).join('')}
           </div>
         </div>`;
-      container.innerHTML = dateRangeHtml + sections;
+      container.innerHTML = filterBarHtml + sections;
 
       // Build stacked Revenue charts per game
       newGames.forEach(game => {
         const slug = game.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
         const canvas = document.getElementById(`monitor-chart-${slug}`);
         if (!canvas) return;
-        const chartRows = DAILY.filter(d => matchesGame(d.game, game) && d.country === 'Total' && (!cutoffDate || d.date >= cutoffDate))
-                               .sort((a,b) => a.date.localeCompare(b.date));
+        const allChartRows = DAILY.filter(d => matchesGame(d.game, game) && d.country === 'Total' && (!cutoffDate || d.date >= cutoffDate))
+                                  .sort((a,b) => a.date.localeCompare(b.date));
+        // Start chart from first date that has any real data
+        const firstDataIdx = allChartRows.findIndex(r => r.revenue != null || r.dau != null || r.nru != null);
+        const chartRows = firstDataIdx > 0 ? allChartRows.slice(firstDataIdx) : allChartRows;
         if (!chartRows.length) return;
         const labels = chartRows.map(r => r.date.slice(5));
         const availC = SEA_COUNTRIES.filter(c => c !== 'Total' &&
@@ -3167,6 +3183,10 @@ ${dataStr}`;
 
     window.switchMonitorDays = function(days) {
       _monitorDays = days;
+      renderMonitor();
+    };
+    window.switchMonitorGame = function(game) {
+      _monitorGame = (game === _monitorGame) ? null : game;
       renderMonitor();
     };
 
