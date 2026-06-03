@@ -3061,18 +3061,21 @@ ${dataStr}`;
         const dateTableHtml = `
           <div>
             <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">📅 날짜별 (${totalRows.length}일)</div>
-            <div style="overflow-x:auto;max-height:280px;overflow-y:auto">
-              <table style="width:100%;border-collapse:collapse">
-                <thead style="position:sticky;top:0;background:var(--card)">
-                  <tr style="border-bottom:1px solid var(--border)">${thL('날짜')}${th('Revenue')}${th('DAU')}${th('NRU')}${th('Mkt Cost')}${th('ARPPU')}${th('DPU')}${th('D1 Ret')}</tr>
-                </thead>
-                <tbody>
-                  ${totalRows.map(r => `<tr style="border-bottom:1px solid rgba(255,255,255,.04)">
-                    ${tdL(`<span style="color:var(--text2)">${r.date.slice(5)}</span>`)}
-                    ${td(fmtR(r.revenue))}${td(fmtI(r.dau))}${td(fmtI(r.nru))}${td(fmtR(r.mkt_cost))}${td(fmtR(r.arppu))}${td(fmtI(r.dpu))}${td(fmtPct(r.d1_ret))}
-                  </tr>`).join('')}
-                </tbody>
-              </table>
+            <div style="overflow-x:auto">
+              <div style="max-height:320px;overflow-y:auto;will-change:scroll-position;-webkit-overflow-scrolling:touch">
+                <table style="width:100%;border-collapse:collapse;table-layout:fixed;min-width:560px">
+                  <colgroup><col style="width:60px"><col style="width:90px"><col style="width:72px"><col style="width:72px"><col style="width:90px"><col style="width:72px"><col style="width:60px"><col style="width:68px"></colgroup>
+                  <thead style="position:sticky;top:0;z-index:2;background:var(--card)">
+                    <tr style="border-bottom:1px solid var(--border)">${thL('날짜')}${th('Revenue')}${th('DAU')}${th('NRU')}${th('Mkt Cost')}${th('ARPPU')}${th('DPU')}${th('D1 Ret')}</tr>
+                  </thead>
+                  <tbody>
+                    ${totalRows.map(r => `<tr style="border-bottom:1px solid rgba(255,255,255,.04);height:28px">
+                      ${tdL(`<span style="color:var(--text2)">${r.date.slice(5)}</span>`)}
+                      ${td(fmtR(r.revenue))}${td(fmtI(r.dau))}${td(fmtI(r.nru))}${td(fmtR(r.mkt_cost))}${td(fmtR(r.arppu))}${td(fmtI(r.dpu))}${td(fmtPct(r.d1_ret))}
+                    </tr>`).join('')}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>`;
 
