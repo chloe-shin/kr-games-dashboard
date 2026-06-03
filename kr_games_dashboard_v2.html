@@ -3478,6 +3478,42 @@ ${dataStr}`;
               </tr>
               ${tableRows}
             </table>`;
+
+          // Draw preview charts (daily mode only)
+          if (_xuMode === 'daily') {
+            const totalOnly2 = [...dailyRows].filter(r => r.country === 'Total').sort((a,b) => a.date.localeCompare(b.date));
+            const labels = totalOnly2.map(r => r.date.slice(5));
+            // Revenue chart
+            document.getElementById('xu-preview-table').insertAdjacentHTML('afterend', `
+              <div style="margin-top:14px">
+                <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:6px">📈 Revenue & NRU 트렌드</div>
+                <canvas id="xu-chart-rev" height="110"></canvas>
+              </div>
+              <div style="margin-top:12px">
+                <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:6px">💸 Marketing Cost 트렌드</div>
+                <canvas id="xu-chart-mkt" height="90"></canvas>
+              </div>`);
+            const co = { animation:false, responsive:true, plugins:{legend:{labels:{color:'#888',font:{size:10}}}}, scales:{x:{ticks:{color:'#555',font:{size:9},maxTicksLimit:12},grid:{display:false}}} };
+            new Chart(document.getElementById('xu-chart-rev'), {
+              type:'bar',
+              data:{ labels, datasets:[
+                { type:'bar', label:'Revenue', data:totalOnly2.map(r=>r.revenue||0), backgroundColor:'#4A9EF555', borderColor:'#4A9EF5', borderWidth:1, yAxisID:'y' },
+                { type:'line', label:'NRU', data:totalOnly2.map(r=>r.nru||0), borderColor:'#2ECC9A', borderWidth:2, pointRadius:0, tension:0.3, yAxisID:'y2' }
+              ]},
+              options:{ ...co, interaction:{mode:'index'}, scales:{ x:co.scales.x,
+                y:{ position:'left', ticks:{color:'#555',font:{size:9},callback:v=>'$'+(v>=1000?(v/1000).toFixed(0)+'k':v)}, grid:{color:'rgba(255,255,255,.04)'} },
+                y2:{ position:'right', ticks:{color:'#2ECC9A',font:{size:9},callback:v=>v>=1000?(v/1000).toFixed(0)+'k':v}, grid:{display:false} }
+              }}
+            });
+            new Chart(document.getElementById('xu-chart-mkt'), {
+              type:'line',
+              data:{ labels, datasets:[
+                { label:'Mkt Cost', data:totalOnly2.map(r=>r.mkt_cost||0), borderColor:'#E8A030', backgroundColor:'#E8A03022', fill:true, borderWidth:2, pointRadius:0, tension:0.3 }
+              ]},
+              options:{ ...co, scales:{ x:co.scales.x, y:{ ticks:{color:'#555',font:{size:9},callback:v=>'$'+(v>=1000?(v/1000).toFixed(0)+'k':v)}, grid:{color:'rgba(255,255,255,.04)'} } } }
+            });
+          }
+
           previewDiv.style.display = 'block';
           submitBtn.disabled = false;
         } catch (err) {
