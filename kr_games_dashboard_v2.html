@@ -3400,58 +3400,74 @@ ${dataStr}`;
               td('Marketing Cost (합계)', `$${fmtP(mkt_cost, 2)}`),
             ].join('');
           } else {
-            // Summary rows
-            tableRows = [
-              td('저장 기간', `${dailyMonths[0]}${dailyMonths.length > 1 ? ' ~ ' + dailyMonths[dailyMonths.length-1] : ''}`),
-              td('총 데이터 행 수', `${dailyRows.length}행`),
-              td('국가 breakdown', countriesStr),
-            ].join('');
-
-            // Mini data table: last 3 dates × all countries
-            const sortedRows = [...dailyRows].sort((a, b) => a.date.localeCompare(b.date) || a.country.localeCompare(b.country));
-            const last3Dates = [...new Set(sortedRows.map(r => r.date))].slice(-3);
-            const previewRows = sortedRows.filter(r => last3Dates.includes(r.date));
-            const countryOrder = ['Total', ...detectedCountries, 'Others'].filter(c => previewRows.some(r => r.country === c));
             const n = v => v != null ? Math.round(v).toLocaleString() : '-';
             const d = v => v != null ? '$' + fmtP(v, 0) : '-';
             const p = v => v != null ? v.toFixed(1) + '%' : '-';
+            const thStyle = 'text-align:right;padding:3px 8px;color:var(--text3);font-weight:500;white-space:nowrap';
+            const tdR = v => `<td style="text-align:right;padding:2px 8px;font-family:monospace">${v}</td>`;
 
-            tableRows += `<tr><td colspan="2" style="padding:8px 8px 4px;border-top:1px solid var(--border)">
-              <div style="font-size:10px;color:var(--text3);margin-bottom:6px">최근 ${last3Dates.length}일 데이터 미리보기</div>
-              <div style="overflow-x:auto">
-              <table style="width:100%;font-size:10px;border-collapse:collapse;min-width:420px">
-                <tr style="color:var(--text3)">
-                  <th style="text-align:left;padding:3px 6px;white-space:nowrap">날짜</th>
-                  <th style="text-align:left;padding:3px 6px">Country</th>
-                  <th style="text-align:right;padding:3px 6px">DAU</th>
-                  <th style="text-align:right;padding:3px 6px">Revenue</th>
-                  <th style="text-align:right;padding:3px 6px">NRU</th>
-                  <th style="text-align:right;padding:3px 6px">Mkt Cost</th>
-                  <th style="text-align:right;padding:3px 6px">D1 Ret</th>
-                </tr>
-                ${last3Dates.flatMap((date, di) => countryOrder.map((country, ci) => {
-                  const r = previewRows.find(x => x.date === date && x.country === country);
-                  if (!r) return '';
-                  const isTotal = country === 'Total';
-                  const borderStyle = ci === 0 && di > 0 ? 'border-top:1px solid rgba(255,255,255,.06)' : '';
-                  return `<tr style="${borderStyle}${isTotal ? ';font-weight:500' : ';color:var(--text2)'}">
-                    <td style="padding:2px 6px;font-family:monospace;white-space:nowrap">${ci === 0 ? date.slice(5) : ''}</td>
-                    <td style="padding:2px 6px">${country}</td>
-                    <td style="text-align:right;padding:2px 6px;font-family:monospace">${n(r.dau)}</td>
-                    <td style="text-align:right;padding:2px 6px;font-family:monospace">${d(r.revenue)}</td>
-                    <td style="text-align:right;padding:2px 6px;font-family:monospace">${n(r.nru)}</td>
-                    <td style="text-align:right;padding:2px 6px;font-family:monospace">${d(r.mkt_cost)}</td>
-                    <td style="text-align:right;padding:2px 6px;font-family:monospace">${p(r.d1_ret)}</td>
-                  </tr>`;
-                })).join('')}
-              </table>
-              </div>
-            </td></tr>`;
+            // Section 1: 날짜별 Total rows (ascending)
+            const totalOnly = [...dailyRows].filter(r => r.country === 'Total').sort((a,b) => a.date.localeCompare(b.date));
 
-            tableRows += `<tr><td colspan="2" style="padding:6px 8px 4px;border-top:1px solid var(--border)">
-              <div style="font-size:10px;color:var(--text3);margin-bottom:4px">컬럼 매핑</div>
-              <div style="font-size:10px;line-height:1.8;font-family:monospace">${colDebug}</div>
-            </td></tr>`;
+            // Section 2: 국가별 집계 (sum revenue/nru/mkt_cost, avg dau, last d1_ret)
+            const countryAgg = {};
+            dailyRows.filter(r => r.country !== 'Total').forEach(r => {
+              if (!countryAgg[r.country]) countryAgg[r.country] = { revenue:0, nru:0, mkt_cost:0, dau:[], d1_ret:[] };
+              const a = countryAgg[r.country];
+              if (r.revenue != null) a.revenue += r.revenue;
+              if (r.nru != null) a.nru += r.nru;
+              if (r.mkt_cost != null) a.mkt_cost += r.mkt_cost;
+              if (r.dau != null) a.dau.push(r.dau);
+              if (r.d1_ret != null) a.d1_ret.push(r.d1_ret);
+            });
+            const cOrder = SEA_COUNTRIES.filter(c => c !== 'Total' && countryAgg[c]);
+
+            const miniTable = (headerRow, bodyRows) => `
+              <div style="overflow-x:auto;overflow-y:auto;max-height:220px;border:1px solid var(--border);border-radius:6px">
+              <table style="width:100%;font-size:10px;border-collapse:collapse;min-width:380px">
+                <thead style="position:sticky;top:0;background:var(--bg3)">
+                  <tr>${headerRow}</tr>
+                </thead>
+                <tbody>${bodyRows}</tbody>
+              </table></div>`;
+
+            const headers = `<th style="text-align:left;padding:3px 8px;color:var(--text3);font-weight:500">날짜</th>
+              <th style="${thStyle}">Revenue</th><th style="${thStyle}">DAU</th>
+              <th style="${thStyle}">NRU</th><th style="${thStyle}">Mkt Cost</th><th style="${thStyle}">D1 Ret</th>`;
+
+            const dateRows = totalOnly.map((r, i) => `<tr style="${i%2===0?'':'background:rgba(255,255,255,.02)'}">
+              <td style="padding:2px 8px;font-family:monospace;white-space:nowrap">${r.date.slice(5)}</td>
+              ${tdR(d(r.revenue))}${tdR(n(r.dau))}${tdR(n(r.nru))}${tdR(d(r.mkt_cost))}${tdR(p(r.d1_ret))}
+            </tr>`).join('');
+
+            const cHeaders = `<th style="text-align:left;padding:3px 8px;color:var(--text3);font-weight:500">Country</th>
+              <th style="${thStyle}">Revenue</th><th style="${thStyle}">DAU (avg)</th>
+              <th style="${thStyle}">NRU</th><th style="${thStyle}">Mkt Cost</th>`;
+
+            const cRows = cOrder.map((c, i) => {
+              const a = countryAgg[c];
+              const avgDau = a.dau.length ? a.dau.reduce((x,y)=>x+y,0)/a.dau.length : null;
+              return `<tr style="${i%2===0?'':'background:rgba(255,255,255,.02)'}">
+                <td style="padding:2px 8px;font-weight:500">${c}</td>
+                ${tdR(d(a.revenue))}${tdR(n(avgDau))}${tdR(n(a.nru))}${tdR(d(a.mkt_cost))}
+              </tr>`;
+            }).join('');
+
+            tableRows = `
+              <tr><td colspan="2" style="padding:4px 0 2px">
+                <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:4px">
+                  📅 날짜별 (${totalOnly.length}일 · ${dailyMonths[0]}${dailyMonths.length>1?' ~ '+dailyMonths[dailyMonths.length-1]:''})
+                </div>
+                ${miniTable(headers, dateRows)}
+              </td></tr>
+              <tr><td colspan="2" style="padding:10px 0 2px">
+                <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:4px">🌏 국가별 합계</div>
+                ${miniTable(cHeaders, cRows)}
+              </td></tr>
+              <tr><td colspan="2" style="padding:8px 0 2px;border-top:1px solid var(--border)">
+                <div style="font-size:10px;color:var(--text3);margin-bottom:4px">컬럼 매핑</div>
+                <div style="font-size:10px;line-height:1.8;font-family:monospace">${colDebug}</div>
+              </td></tr>`;
           }
 
           document.getElementById('xu-preview-table').innerHTML = `
