@@ -2974,99 +2974,177 @@ ${dataStr}`;
         return;
       }
 
-      // Destroy old monitor charts
       Object.values(_monitorCharts).forEach(c => c?.destroy());
       _monitorCharts = {};
 
-      // Country filter (union of available countries across all new games)
-      const allCountries = [...new Set(newGames.flatMap(g => getAvailableCountries(g)))];
-      const availableCountries = SEA_COUNTRIES.filter(c => allCountries.includes(c));
-      const countryFilterHtml = availableCountries.length > 1 ? `
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;flex-wrap:wrap">
-          <span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Country</span>
-          <div class="daily-range-tabs" style="margin-bottom:0">
-            ${availableCountries.map(c => `<button class="daily-range-tab ${c === _currentMonitorCountry ? 'active' : ''}" onclick="switchMonitorCountry('${c}')">${c === 'Total' ? 'All' : c}</button>`).join('')}
-          </div>
-        </div>` : '';
-
+      const cColors = { VN:'#4A9EF5', TH:'#2ECC9A', ID:'#E8A030', PH:'#E06090', MY:'#8B5CF6', SG:'#06B6D4', TWHK:'#F97316', Others:'#888' };
       const now = new Date();
-      container.innerHTML = countryFilterHtml + `<div class="monitor-grid">${newGames.map(game => {
+      const fmtR = v => v == null ? '-' : '$' + Math.round(v).toLocaleString();
+      const fmtI = v => v == null ? '-' : Math.round(v).toLocaleString();
+      const fmtPct = v => v == null ? '-' : (v * 100).toFixed(1) + '%';
+      const th = t => `<th style="text-align:right;padding:3px 8px;color:var(--text3);font-weight:500;white-space:nowrap;font-size:11px">${t}</th>`;
+      const thL = t => `<th style="text-align:left;padding:3px 8px;color:var(--text3);font-weight:500;font-size:11px">${t}</th>`;
+      const td = v => `<td style="text-align:right;padding:3px 8px;font-family:monospace;font-size:12px">${v}</td>`;
+      const tdL = v => `<td style="padding:3px 8px;font-size:12px">${v}</td>`;
+
+      const sections = newGames.map(game => {
         const color = getGameColor(game);
         const deal = DEALS.find(d => matchesGame(d.title, game));
         const launchDate = deal?.start_date ? new Date(deal.start_date) : null;
         const daysSince = launchDate ? Math.floor((now - launchDate) / 86400000) : null;
         const slug = game.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
-        const rows = getDailyData(game, 30, _currentMonitorCountry);
-        const latestRow = rows[rows.length - 1];
-        const prevRow = rows[rows.length - 2];
 
-        const chg = (curr, prev, isAmt) => {
-          if (!curr || !prev || prev === 0) return '';
+        // All Total rows sorted ascending
+        const totalRows = DAILY.filter(d => matchesGame(d.game, game) && d.country === 'Total')
+                               .sort((a,b) => a.date.localeCompare(b.date));
+        const latestRow = totalRows[totalRows.length - 1];
+        const prevRow   = totalRows[totalRows.length - 2];
+
+        const chgBadge = (curr, prev) => {
+          if (curr == null || prev == null || prev === 0) return '';
           const pct = ((curr - prev) / Math.abs(prev) * 100).toFixed(1);
           const up = curr >= prev;
-          return `<div class="monitor-kpi-change ${up ? 'up' : 'down'}">${up ? '↑' : '↓'} ${Math.abs(pct)}% vs prev day</div>`;
+          return `<span style="font-size:10px;color:${up?'var(--green)':'var(--red)'}"> ${up?'↑':'↓'}${Math.abs(pct)}%</span>`;
         };
 
-        return `<div class="monitor-card">
+        if (!totalRows.length) {
+          return `<div class="monitor-card" style="margin-bottom:20px">
+            <div class="monitor-card-header">
+              <div class="monitor-card-title">
+                <span style="width:10px;height:10px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0"></span>
+                <span>${game}</span><span class="nav-new-badge" style="margin-left:6px">NEW</span>
+              </div>
+              <span class="monitor-days-badge">${daysSince != null ? `D+${daysSince}` : ''}</span>
+            </div>
+            <div style="text-align:center;padding:32px;color:var(--text3);font-size:13px">일별 데이터 없음 — Excel 업로드 필요</div>
+          </div>`;
+        }
+
+        // KPI header
+        const kpiHtml = `
+          <div style="display:flex;gap:24px;flex-wrap:wrap;margin-top:4px">
+            ${[
+              ['DAU',     fmtI(latestRow?.dau),     chgBadge(latestRow?.dau, prevRow?.dau)],
+              ['Revenue', fmtR(latestRow?.revenue),  chgBadge(latestRow?.revenue, prevRow?.revenue)],
+              ['NRU',     fmtI(latestRow?.nru),      chgBadge(latestRow?.nru, prevRow?.nru)],
+              ['D1 Ret',  fmtPct(latestRow?.d1_ret), chgBadge(latestRow?.d1_ret, prevRow?.d1_ret)],
+              ['ARPPU',   fmtR(latestRow?.arppu),    ''],
+              ['Mkt Cost',fmtR(latestRow?.mkt_cost), chgBadge(latestRow?.mkt_cost, prevRow?.mkt_cost)],
+            ].map(([label, val, chg]) => `
+              <div>
+                <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">${label}</div>
+                <div style="font-size:16px;font-weight:600">${val}${chg}</div>
+              </div>`).join('')}
+            <div style="margin-left:4px;color:var(--text3);font-size:11px;align-self:flex-end;padding-bottom:2px">최근 데이터: ${latestRow.date}</div>
+          </div>`;
+
+        // Date table (last 14 days)
+        const lastDates = totalRows.slice(-14);
+        const dateTableHtml = `
+          <div>
+            <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">📅 날짜별 (최근 ${lastDates.length}일)</div>
+            <div style="overflow-x:auto;max-height:280px;overflow-y:auto">
+              <table style="width:100%;border-collapse:collapse">
+                <thead style="position:sticky;top:0;background:var(--card)">
+                  <tr style="border-bottom:1px solid var(--border)">${thL('날짜')}${th('Revenue')}${th('DAU')}${th('NRU')}${th('Mkt Cost')}${th('ARPPU')}${th('DPU')}${th('D1 Ret')}</tr>
+                </thead>
+                <tbody>
+                  ${lastDates.map(r => `<tr style="border-bottom:1px solid rgba(255,255,255,.04)">
+                    ${tdL(`<span style="color:var(--text2)">${r.date.slice(5)}</span>`)}
+                    ${td(fmtR(r.revenue))}${td(fmtI(r.dau))}${td(fmtI(r.nru))}${td(fmtR(r.mkt_cost))}${td(fmtR(r.arppu))}${td(fmtI(r.dpu))}${td(fmtPct(r.d1_ret))}
+                  </tr>`).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>`;
+
+        // Country breakdown
+        const countryAgg = {};
+        DAILY.filter(d => matchesGame(d.game, game) && d.country !== 'Total').forEach(r => {
+          if (!countryAgg[r.country]) countryAgg[r.country] = { rev:0, nru:0, mkt:0, dau:[], d1:[] };
+          const a = countryAgg[r.country];
+          if (r.revenue  != null) a.rev += r.revenue;
+          if (r.nru      != null) a.nru += r.nru;
+          if (r.mkt_cost != null) a.mkt += r.mkt_cost;
+          if (r.dau      != null) a.dau.push(r.dau);
+          if (r.d1_ret   != null) a.d1.push(r.d1_ret);
+        });
+        const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : null;
+        const ctryRows = SEA_COUNTRIES.filter(c => c !== 'Total' && countryAgg[c]).map(c => {
+          const a = countryAgg[c];
+          return `<tr style="border-bottom:1px solid rgba(255,255,255,.04)">
+            ${tdL(`<span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${cColors[c]||'#888'};margin-right:5px;vertical-align:middle"></span>${c}`)}
+            ${td(fmtR(a.rev))}${td(fmtI(avg(a.dau)))}${td(fmtI(a.nru))}${td(fmtR(a.mkt))}${td(fmtPct(avg(a.d1)))}
+          </tr>`;
+        }).join('');
+        const countryTableHtml = ctryRows ? `
+          <div>
+            <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">🌏 국가별 합계</div>
+            <div style="overflow-x:auto">
+              <table style="width:100%;border-collapse:collapse">
+                <thead><tr style="border-bottom:1px solid var(--border)">${thL('Country')}${th('Revenue')}${th('DAU(avg)')}${th('NRU')}${th('Mkt Cost')}${th('D1 Ret')}</tr></thead>
+                <tbody>${ctryRows}</tbody>
+              </table>
+            </div>
+          </div>` : '';
+
+        return `<div class="monitor-card" style="margin-bottom:20px">
           <div class="monitor-card-header">
             <div class="monitor-card-title">
-              <span style="width:10px;height:10px;border-radius:50%;background:${color};flex-shrink:0;display:inline-block"></span>
-              <span>${game}</span>
-              <span class="nav-new-badge" style="margin-left:4px">NEW</span>
+              <span style="width:10px;height:10px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0"></span>
+              <span>${game}</span><span class="nav-new-badge" style="margin-left:6px">NEW</span>
             </div>
-            <span class="monitor-days-badge">${daysSince != null ? `D+${daysSince}` : '출시일 미등록'}</span>
+            <span class="monitor-days-badge">${daysSince != null ? `D+${daysSince}` : ''}</span>
           </div>
-          <div class="monitor-kpi-row">
-            <div class="monitor-kpi">
-              <div class="monitor-kpi-label">DAU</div>
-              <div class="monitor-kpi-val">${latestRow?.dau != null ? fmtN(latestRow.dau) : '-'}</div>
-              ${chg(latestRow?.dau, prevRow?.dau)}
-            </div>
-            <div class="monitor-kpi">
-              <div class="monitor-kpi-label">Revenue</div>
-              <div class="monitor-kpi-val">${latestRow?.revenue != null ? fmt(latestRow.revenue) : '-'}</div>
-              ${chg(latestRow?.revenue, prevRow?.revenue, true)}
-            </div>
-            <div class="monitor-kpi">
-              <div class="monitor-kpi-label">D1 Ret</div>
-              <div class="monitor-kpi-val">${latestRow?.d1_ret != null ? latestRow.d1_ret.toFixed(1)+'%' : '-'}</div>
-              ${chg(latestRow?.d1_ret, prevRow?.d1_ret)}
-            </div>
-            <div class="monitor-kpi">
-              <div class="monitor-kpi-label">NRU</div>
-              <div class="monitor-kpi-val">${latestRow?.nru != null ? fmtN(latestRow.nru) : '-'}</div>
-              ${chg(latestRow?.nru, prevRow?.nru)}
-            </div>
+          ${kpiHtml}
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px">
+            ${dateTableHtml}
+            ${countryTableHtml || '<div></div>'}
           </div>
-          ${rows.length > 0 ? `<canvas id="monitor-chart-${slug}" height="80"></canvas>` : `<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px">일별 데이터 없음 — Excel 업로드 필요</div>`}
+          <div style="margin-top:16px"><canvas id="monitor-chart-${slug}" height="100"></canvas></div>
         </div>`;
-      }).join('')}</div>`;
+      }).join('');
 
-      // Build charts after DOM is ready
+      container.innerHTML = sections;
+
+      // Build stacked Revenue charts per game
       newGames.forEach(game => {
-        const rows = getDailyData(game, 30, _currentMonitorCountry);
-        if (!rows.length) return;
         const slug = game.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
         const canvas = document.getElementById(`monitor-chart-${slug}`);
         if (!canvas) return;
-        const color = getGameColor(game);
-        const labels = rows.map(r => r.date.slice(5));
+        const totalRows = DAILY.filter(d => matchesGame(d.game, game) && d.country === 'Total')
+                               .sort((a,b) => a.date.localeCompare(b.date));
+        if (!totalRows.length) return;
+        const labels = totalRows.map(r => r.date.slice(5));
+        const availC = SEA_COUNTRIES.filter(c => c !== 'Total' &&
+          DAILY.some(d => matchesGame(d.game, game) && d.country === c));
+        let datasets;
+        if (availC.length > 0) {
+          datasets = availC.map(c => ({
+            label: c, stack: 'stack',
+            data: totalRows.map(r => {
+              const cr = DAILY.find(d => matchesGame(d.game, game) && d.country === c && d.date === r.date);
+              return cr?.revenue ?? 0;
+            }),
+            backgroundColor: (cColors[c] || '#888') + 'CC',
+            borderColor: cColors[c] || '#888', borderWidth: 0,
+          }));
+        } else {
+          const color = getGameColor(game);
+          datasets = [{ label: 'Revenue', data: totalRows.map(r => r.revenue || 0), backgroundColor: color + '99', borderColor: color, borderWidth: 1 }];
+        }
         _monitorCharts[slug] = new Chart(canvas, {
           type: 'bar',
-          data: {
-            labels,
-            datasets: [
-              { type: 'bar', label: 'Revenue', data: rows.map(r => r.revenue || 0), backgroundColor: color + '55', borderColor: color, borderWidth: 1, yAxisID: 'y' },
-              { type: 'line', label: 'DAU', data: rows.map(r => r.dau || 0), borderColor: '#4A9EF5', borderWidth: 1.5, pointRadius: 0, tension: 0.3, yAxisID: 'y2' }
-            ]
-          },
+          data: { labels, datasets },
           options: {
-            animation: false, responsive: true, interaction: { mode: 'index' },
-            plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + (ctx.datasetIndex === 0 ? '$' + ctx.parsed.y.toLocaleString() : fmtN(ctx.parsed.y)) } } },
+            animation: false, responsive: true,
+            plugins: {
+              legend: { display: availC.length > 0, position: 'bottom', labels: { color:'#888', font:{size:9}, boxWidth:10, padding:8 } },
+              tooltip: { mode:'index', callbacks: { label: ctx => ctx.dataset.label + ': $' + Math.round(ctx.parsed.y).toLocaleString() } }
+            },
             scales: {
-              x: { ticks: { color: '#555', font: { size: 9 } }, grid: { display: false } },
-              y: { position: 'left', ticks: { color: '#555', font: { size: 9 }, callback: v => '$' + (v >= 1000 ? (v/1000).toFixed(0)+'k' : v) }, grid: { color: 'rgba(255,255,255,.04)' } },
-              y2: { position: 'right', ticks: { color: '#4A9EF5', font: { size: 9 }, callback: v => fmtN(v) }, grid: { display: false } }
+              x: { stacked: true, ticks: { color:'#555', font:{size:9}, maxTicksLimit:16 }, grid: { display:false } },
+              y: { stacked: true, ticks: { color:'#555', font:{size:9}, callback: v => '$'+(v>=1000?(v/1000).toFixed(0)+'k':v) }, grid: { color:'rgba(255,255,255,.04)' } }
             }
           }
         });
