@@ -3505,6 +3505,15 @@ ${dataStr}`;
                 <canvas id="xu-chart-main" height="120"></canvas>
               </div>`);
 
+            // Country colors for stacked charts
+            const cColors = { VN:'#4A9EF5', TH:'#2ECC9A', ID:'#E8A030', PH:'#E06090', MY:'#8B5CF6', SG:'#06B6D4', Others:'#888' };
+            const stackMetrics = new Set(['revenue','dau']);
+            // Pre-group rows by country for stacked charts
+            const byCountry = {};
+            SEA_COUNTRIES.filter(c=>c!=='Total').forEach(c => {
+              byCountry[c] = [...dailyRows].filter(r=>r.country===c).sort((a,b)=>a.date.localeCompare(b.date));
+            });
+
             let _xuChart = null;
             window.xuSwitchMetric = function(key) {
               const m = metrics.find(x => x.key === key);
@@ -3516,35 +3525,61 @@ ${dataStr}`;
                 btn.style.background = active ? x.color+'33' : 'transparent';
                 btn.style.color = active ? x.color : 'var(--text3)';
               });
-              const data = totalOnly2.map(r => r[key] ?? null);
-              const hasData = data.some(v => v != null && v > 0);
               if (_xuChart) { _xuChart.destroy(); _xuChart = null; }
-              _xuChart = new Chart(document.getElementById('xu-chart-main'), {
-                type: m.type,
-                data: { labels, datasets: [{
-                  label: m.label,
-                  data,
-                  backgroundColor: m.type==='bar' ? m.color+'55' : m.color+'22',
-                  borderColor: m.color,
-                  borderWidth: m.type==='bar' ? 1 : 2,
-                  pointRadius: 0, tension: 0.3,
-                  fill: m.type==='line',
-                  spanGaps: true,
-                }]},
-                options: {
-                  animation: false, responsive: true,
-                  plugins: { legend:{display:false}, tooltip:{callbacks:{label: ctx => m.label+': '+m.fmt(ctx.parsed.y)}} },
-                  scales: {
-                    x: { ticks:{color:'#555',font:{size:9},maxTicksLimit:14}, grid:{display:false} },
-                    y: { ticks:{color:'#555',font:{size:9},callback:m.fmt}, grid:{color:'rgba(255,255,255,.04)'} }
+
+              const isStack = stackMetrics.has(key) && detectedCountries.length > 0;
+
+              if (isStack) {
+                // Stacked bar by country
+                const availC = SEA_COUNTRIES.filter(c => c !== 'Total' && byCountry[c]?.length);
+                const datasets = availC.map(c => ({
+                  label: c,
+                  data: labels.map(lbl => {
+                    const r = byCountry[c].find(x => x.date.slice(5) === lbl);
+                    return r?.[key] ?? 0;
+                  }),
+                  backgroundColor: (cColors[c] || '#888') + 'CC',
+                  borderColor: cColors[c] || '#888',
+                  borderWidth: 0,
+                  stack: 'stack',
+                }));
+                _xuChart = new Chart(document.getElementById('xu-chart-main'), {
+                  type: 'bar',
+                  data: { labels, datasets },
+                  options: {
+                    animation: false, responsive: true,
+                    plugins: {
+                      legend: { display:true, position:'bottom', labels:{color:'#888',font:{size:9},boxWidth:10,padding:8} },
+                      tooltip: { mode:'index', callbacks:{ label: ctx => ctx.dataset.label+': '+m.fmt(ctx.parsed.y) } }
+                    },
+                    scales: {
+                      x: { stacked:true, ticks:{color:'#555',font:{size:9},maxTicksLimit:14}, grid:{display:false} },
+                      y: { stacked:true, ticks:{color:'#555',font:{size:9},callback:m.fmt}, grid:{color:'rgba(255,255,255,.04)'} }
+                    }
                   }
-                }
-              });
-              if (!hasData) {
-                const ctx = document.getElementById('xu-chart-main').getContext('2d');
-                ctx.save(); ctx.fillStyle='#555'; ctx.textAlign='center'; ctx.font='12px DM Sans';
-                ctx.fillText('데이터 없음', document.getElementById('xu-chart-main').width/2, 60);
-                ctx.restore();
+                });
+              } else {
+                // Single metric (Total row)
+                const data = totalOnly2.map(r => r[key] ?? null);
+                _xuChart = new Chart(document.getElementById('xu-chart-main'), {
+                  type: m.type,
+                  data: { labels, datasets: [{
+                    label: m.label, data,
+                    backgroundColor: m.type==='bar' ? m.color+'55' : m.color+'22',
+                    borderColor: m.color,
+                    borderWidth: m.type==='bar' ? 1 : 2,
+                    pointRadius: 0, tension: 0.3,
+                    fill: m.type==='line', spanGaps: true,
+                  }]},
+                  options: {
+                    animation: false, responsive: true,
+                    plugins: { legend:{display:false}, tooltip:{callbacks:{label: ctx=>m.label+': '+m.fmt(ctx.parsed.y)}} },
+                    scales: {
+                      x: { ticks:{color:'#555',font:{size:9},maxTicksLimit:14}, grid:{display:false} },
+                      y: { ticks:{color:'#555',font:{size:9},callback:m.fmt}, grid:{color:'rgba(255,255,255,.04)'} }
+                    }
+                  }
+                });
               }
             };
             window.xuSwitchMetric('revenue');
