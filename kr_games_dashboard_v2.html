@@ -2088,16 +2088,17 @@
     }
 
     async function exportPPTX() {
-      if (typeof pptxgen === 'undefined') {
+      const PptxCtor = typeof PptxGenJS !== 'undefined' ? PptxGenJS : (typeof pptxgen !== 'undefined' ? pptxgen : null);
+      if (!PptxCtor) {
         alert('PPTX Generator library is not loaded yet. Please wait a moment.');
         return;
       }
-      
+
       const btn = document.getElementById('btn-pptx');
       if (btn) btn.textContent = 'Exporting...';
-      
+
       try {
-        let pptx = new pptxgen();
+        let pptx = new PptxCtor();
         let slide = pptx.addSlide();
         slide.background = { color: "1e1e21" }; // Match dark theme
         
