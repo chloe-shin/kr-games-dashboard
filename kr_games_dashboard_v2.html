@@ -1157,7 +1157,10 @@
             <div id="mg-bars"></div>
           </div>
           <div class="card">
-            <div class="section-title" style="margin-bottom:4px">Portfolio ROI by game</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+              <div class="section-title">Portfolio ROI by game</div>
+              <span style="font-size:10px;color:var(--text3);background:rgba(255,255,255,.06);border-radius:4px;padding:2px 7px;white-space:nowrap">📌 All-time · Date filter not applied</span>
+            </div>
             <div style="font-size:11px;color:var(--text3);margin-bottom:12px">(RS Profit) / (LF+MG) x 100%</div>
             <div class="chart-wrap" style="height:200px"><canvas id="roiChart"></canvas></div>
           </div>
@@ -2177,7 +2180,7 @@
 
     function buildROIChart() {
       if (roiChart) { roiChart.destroy(); roiChart = null; }
-      const dataToUse = getFilteredRAW();
+      const dataToUse = RAW; // Always all-time regardless of date filter
       const ctx = document.getElementById('roiChart').getContext('2d');
       const vals = GAMES.map(g => +gameRoi(g, dataToUse).toFixed(2));
       roiChart = new Chart(ctx, { type: 'bar', data: { labels: GAMES.map(g => g.split(' ').slice(0, 2).join(' ')), datasets: [{ data: vals, backgroundColor: GAMES.map(g => clr(g) + 'cc'), borderWidth: 0 }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `ROI: ${c.raw}%` } } }, scales: { x: { ticks: { callback: v => v + '%', font: { size: 10 }, color: '#666' }, grid: { color: 'rgba(255,255,255,.04)' } }, y: { ticks: { font: { size: 11 }, color: '#aaa' }, grid: { display: false } } } } });
