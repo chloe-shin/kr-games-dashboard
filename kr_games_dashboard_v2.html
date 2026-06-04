@@ -1149,7 +1149,10 @@
 
         <div class="two-col section">
           <div class="card">
-            <div class="section-title" style="margin-bottom:16px">MG recoup status</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+              <div class="section-title">MG recoup status</div>
+              <span style="font-size:10px;color:var(--text3);background:rgba(255,255,255,.06);border-radius:4px;padding:2px 7px;white-space:nowrap">📌 All-time · Date filter not applied</span>
+            </div>
             <div style="font-size:11px;color:var(--text3);margin-bottom:12px">(Gross Rev × RS) / MG — Developer Recoup</div>
             <div id="mg-bars"></div>
           </div>
@@ -2153,12 +2156,13 @@
     }
 
     function buildMGBars() {
-      const dataToUse = getFilteredRAW();
+      // MG recoup always uses all-time data regardless of date filter
+      const allData = RAW;
       document.getElementById('mg-bars').innerHTML = GAMES.map(g => {
-        const recoupPct = mgRecoupPct(g, dataToUse);
+        const recoupPct = mgRecoupPct(g, allData);
         const barW = Math.min(recoupPct, 100);
         const c = recoupPct > 100 ? '#2ECC9A' : recoupPct > 50 ? '#E8A030' : '#E05555';
-        const devShare = dataToUse.filter(r => r.game === g).reduce((s, r) => s + (r.devShare || 0), 0);
+        const devShare = allData.filter(r => r.game === g).reduce((s, r) => s + (r.devShare || 0), 0);
         const mg = getMg(g);
         return `<div style="margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px">
