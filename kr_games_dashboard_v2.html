@@ -3351,7 +3351,7 @@ ${dataStr}`;
           </div>
           <div style="margin-top:16px">
             <div id="monitor-ctry-tabs-${slug}" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px"></div>
-            <canvas id="monitor-chart-${slug}" height="100"></canvas>
+            <div id="monitor-chart-area-${slug}"></div>
           </div>
         </div>`;
       }).join('');
@@ -3384,63 +3384,85 @@ ${dataStr}`;
         </div>`;
       container.innerHTML = filterBarHtml + sections;
 
-      // Build charts per game (stacked by country, or single country line)
-      newGames.forEach(game => {
-        const slug = game.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
-        const canvas = document.getElementById(`monitor-chart-${slug}`);
-        const tabsEl = document.getElementById(`monitor-ctry-tabs-${slug}`);
-        if (!canvas) return;
-
-        // Available countries for this game in the selected period
-        const availC = SEA_COUNTRIES.filter(c => c !== 'Total' &&
-          DAILY.some(d => { const dt=(d.date||'').slice(0,10); return matchesGame(d.game, game) && d.country === c && (!cutoffDate || dt >= cutoffDate) && (!endDate || dt <= endDate); }));
-
-        // Render country toggle buttons
-        if (tabsEl && availC.length > 0) {
-          const selC = _monitorChartCountry[slug] || 'All';
-          const btnStyle = (active) => `padding:2px 9px;border-radius:5px;font-size:10px;border:1px solid var(--border);cursor:pointer;background:${active?'rgba(74,158,245,.15)':'transparent'};color:${active?'var(--accent)':'var(--text3)'}`;
-          tabsEl.innerHTML = `<button style="${btnStyle(selC==='All')}" onclick="window.switchMonitorChartCountry('${slug}','All')">All</button>` +
-            availC.map(c => `<button style="${btnStyle(selC===c)};border-color:${selC===c?(cColors[c]||'#888'):'var(--border)'}" onclick="window.switchMonitorChartCountry('${slug}','${c}')"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${cColors[c]||'#888'};margin-right:3px;vertical-align:middle"></span>${c}</button>`).join('');
-        }
-
-        const selCountry = _monitorChartCountry[slug] || 'All';
-        if (_monitorCharts[slug]) { _monitorCharts[slug].destroy(); }
-
-        if (selCountry === 'All') {
-          // Stacked Revenue bar by country
-          const allChartRows = DAILY.filter(d => { const dt=(d.date||'').slice(0,10); return matchesGame(d.game, game) && d.country === 'Total' && (!cutoffDate || dt >= cutoffDate) && (!endDate || dt <= endDate); }).sort((a,b) => a.date.localeCompare(b.date));
-          const firstIdx = allChartRows.findIndex(r => r.revenue != null || r.dau != null || r.nru != null);
-          const chartRows = firstIdx > 0 ? allChartRows.slice(firstIdx) : allChartRows;
-          if (!chartRows.length) return;
-          const labels = chartRows.map(r => (r.date||'').slice(5));
-          let datasets;
-          if (availC.length > 0) {
-            datasets = availC.map(c => ({ label: c, stack: 'stack', data: chartRows.map(r => { const cr = DAILY.find(d => matchesGame(d.game,game) && d.country===c && (d.date||'').slice(0,10)===(r.date||'').slice(0,10)); return cr?.revenue ?? 0; }), backgroundColor:(cColors[c]||'#888')+'CC', borderColor:cColors[c]||'#888', borderWidth:0 }));
-          } else {
-            const gc2 = getGameColor(game);
-            datasets = [{ label:'Revenue', data:chartRows.map(r=>r.revenue||0), backgroundColor:gc2+'99', borderColor:gc2, borderWidth:1 }];
-          }
-          _monitorCharts[slug] = new Chart(canvas, { type:'bar', data:{ labels, datasets }, options:{ animation:false, responsive:true, plugins:{ legend:{ display:availC.length>0, position:'bottom', labels:{color:'#888',font:{size:9},boxWidth:10,padding:8} }, tooltip:{ mode:'index', callbacks:{ label: ctx => ctx.dataset.label+': $'+Math.round(ctx.parsed.y).toLocaleString() } } },
-            scales:{ x:{ stacked:true, ticks:{color:'#555',font:{size:9},maxTicksLimit:16}, grid:{display:false} }, y:{ stacked:true, ticks:{color:'#555',font:{size:9},callback:v=>'$'+(v>=1000?(v/1000).toFixed(0)+'k':v)}, grid:{color:'rgba(255,255,255,.04)'} } } } });
-        } else {
-          // Single country: Revenue + DAU dual axis line chart
-          const ctryRows = DAILY.filter(d => { const dt=(d.date||'').slice(0,10); return matchesGame(d.game, game) && d.country === selCountry && (!cutoffDate || dt >= cutoffDate) && (!endDate || dt <= endDate); }).sort((a,b) => (a.date||'').localeCompare(b.date||''));
-          if (!ctryRows.length) return;
-          const labels = ctryRows.map(r => (r.date||'').slice(5));
-          const cc = cColors[selCountry] || getGameColor(game);
-          _monitorCharts[slug] = new Chart(canvas, { type:'bar', data:{ labels, datasets:[
-            { label:'Revenue', data:ctryRows.map(r=>r.revenue??null), backgroundColor:cc+'AA', borderColor:cc, borderWidth:0, yAxisID:'y' },
-            { label:'DAU', type:'line', data:ctryRows.map(r=>r.dau??null), borderColor:'#fff', backgroundColor:'transparent', borderWidth:1.5, pointRadius:2, tension:0.3, yAxisID:'y2' },
-          ]}, options:{ animation:false, responsive:true, plugins:{ legend:{ display:true, position:'bottom', labels:{color:'#888',font:{size:9},boxWidth:10,padding:8} }, tooltip:{ mode:'index', callbacks:{ label: ctx => ctx.dataset.label===('DAU') ? 'DAU: '+Math.round(ctx.parsed.y).toLocaleString() : 'Revenue: $'+Math.round(ctx.parsed.y).toLocaleString() } } },
-            scales:{ x:{ ticks:{color:'#555',font:{size:9},maxTicksLimit:16}, grid:{display:false} }, y:{ position:'left', ticks:{color:'#555',font:{size:9},callback:v=>'$'+(v>=1000?(v/1000).toFixed(0)+'k':v)}, grid:{color:'rgba(255,255,255,.04)'} }, y2:{ position:'right', ticks:{color:'#aaa',font:{size:9},callback:v=>v>=1000?(v/1000).toFixed(0)+'k':v}, grid:{display:false} } } } });
-        }
-
-      });
+      // Build charts per game
+      newGames.forEach(game => buildMonitorGameChart(game, cutoffDate, endDate, cColors));
     }
 
-    window.switchMonitorChartCountry = function(slug, country) {
+    function buildMonitorGameChart(game, cutoffDate, endDate, cColors) {
+      if (!cColors) cColors = { VN:'#4A9EF5', TH:'#2ECC9A', ID:'#E8A030', PH:'#E06090', MY:'#8B5CF6', SG:'#06B6D4', TWHK:'#F97316', Others:'#888' };
+      const slug = game.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
+      const areaEl = document.getElementById(`monitor-chart-area-${slug}`);
+      const tabsEl = document.getElementById(`monitor-ctry-tabs-${slug}`);
+      if (!areaEl) return;
+
+      const availC = SEA_COUNTRIES.filter(c => c !== 'Total' &&
+        DAILY.some(d => { const dt=(d.date||'').slice(0,10); return matchesGame(d.game,game) && d.country===c && (!cutoffDate||dt>=cutoffDate) && (!endDate||dt<=endDate); }));
+
+      if (tabsEl) {
+        const selC = _monitorChartCountry[slug] || 'All';
+        const mkBtn = (label, c, col) => {
+          const active = selC === c;
+          const dot = col ? `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${col};margin-right:4px;vertical-align:middle"></span>` : '';
+          return `<button style="padding:3px 10px;border-radius:5px;font-size:10px;border:1px solid ${active?(col||'var(--accent)'):'var(--border)'};cursor:pointer;background:${active?'rgba(74,158,245,.12)':'transparent'};color:${active?'#fff':'var(--text3)'}" onclick="window.switchMonitorChartCountry('${slug}','${c}','${game.replace(/'/g,"\\'")}')"> ${dot}${label}</button>`;
+        };
+        tabsEl.innerHTML = mkBtn('🌏 All','All','') + availC.map(c => mkBtn(c, c, cColors[c]||'#888')).join('');
+      }
+
+      // Destroy old charts
+      ['_rev','_nru'].forEach(k => { if (_monitorCharts[slug+k]) { _monitorCharts[slug+k].destroy(); delete _monitorCharts[slug+k]; } });
+
+      const selCountry = _monitorChartCountry[slug] || 'All';
+      const gc = 'rgba(255,255,255,.04)', tc = '#555';
+      const fmtK = v => v>=1000?(v/1000).toFixed(0)+'k':String(Math.round(v));
+
+      if (selCountry === 'All') {
+        const allChartRows = DAILY.filter(d => { const dt=(d.date||'').slice(0,10); return matchesGame(d.game,game) && d.country==='Total' && (!cutoffDate||dt>=cutoffDate) && (!endDate||dt<=endDate); }).sort((a,b)=>a.date.localeCompare(b.date));
+        const fi = allChartRows.findIndex(r=>r.revenue!=null||r.dau!=null||r.nru!=null);
+        const chartRows = fi>0 ? allChartRows.slice(fi) : allChartRows;
+        if (!chartRows.length) { areaEl.innerHTML=''; return; }
+        const labels = chartRows.map(r=>(r.date||'').slice(5));
+        const datasets = availC.length>0
+          ? availC.map(c=>({ label:c, stack:'stack', data:chartRows.map(r=>{ const cr=DAILY.find(d=>matchesGame(d.game,game)&&d.country===c&&(d.date||'').slice(0,10)===(r.date||'').slice(0,10)); return cr?.revenue??0; }), backgroundColor:(cColors[c]||'#888')+'CC', borderColor:cColors[c]||'#888', borderWidth:0 }))
+          : [{ label:'Revenue', data:chartRows.map(r=>r.revenue||0), backgroundColor:getGameColor(game)+'99', borderColor:getGameColor(game), borderWidth:1 }];
+        areaEl.innerHTML = `<canvas id="mc-rev-${slug}" height="110"></canvas>`;
+        _monitorCharts[slug+'_rev'] = new Chart(document.getElementById(`mc-rev-${slug}`), { type:'bar', data:{labels,datasets}, options:{ animation:false, responsive:true, plugins:{ legend:{display:availC.length>0,position:'bottom',labels:{color:'#888',font:{size:9},boxWidth:10,padding:8}}, tooltip:{mode:'index',callbacks:{label:ctx=>ctx.dataset.label+': $'+Math.round(ctx.parsed.y).toLocaleString()}} }, scales:{ x:{stacked:true,ticks:{color:tc,font:{size:9},maxTicksLimit:16},grid:{display:false}}, y:{stacked:true,ticks:{color:tc,font:{size:9},callback:v=>'$'+fmtK(v)},grid:{color:gc}} } } });
+      } else {
+        const rows = DAILY.filter(d=>{ const dt=(d.date||'').slice(0,10); return matchesGame(d.game,game)&&d.country===selCountry&&(!cutoffDate||dt>=cutoffDate)&&(!endDate||dt<=endDate); }).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+        if (!rows.length) { areaEl.innerHTML=`<div style="padding:20px;color:var(--text3);font-size:12px;text-align:center">No data for ${selCountry}</div>`; return; }
+        const labels = rows.map(r=>(r.date||'').slice(5));
+        const cc = cColors[selCountry]||getGameColor(game);
+        areaEl.innerHTML = `
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div>
+              <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Revenue & DAU</div>
+              <canvas id="mc-rev-${slug}" height="130"></canvas>
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">NRU (New Users)</div>
+              <canvas id="mc-nru-${slug}" height="130"></canvas>
+            </div>
+          </div>`;
+        _monitorCharts[slug+'_rev'] = new Chart(document.getElementById(`mc-rev-${slug}`), { type:'bar', data:{ labels, datasets:[
+          { type:'bar',  label:'Revenue', data:rows.map(r=>r.revenue??null), backgroundColor:cc+'55', borderColor:cc, borderWidth:1, yAxisID:'y' },
+          { type:'line', label:'DAU',     data:rows.map(r=>r.dau??null),     borderColor:'#4A9EF5', backgroundColor:'transparent', borderWidth:1.5, pointRadius:1, tension:0.3, yAxisID:'y2', spanGaps:true },
+        ]}, options:{ animation:false, responsive:true, interaction:{mode:'index'},
+          plugins:{ legend:{display:true,position:'bottom',labels:{color:'#888',font:{size:9},boxWidth:10,padding:6}}, tooltip:{callbacks:{label:ctx=>ctx.dataset.label==='DAU'?'DAU: '+Math.round(ctx.parsed.y).toLocaleString():'Rev: $'+Math.round(ctx.parsed.y).toLocaleString()}} },
+          scales:{ x:{ticks:{color:tc,font:{size:9},maxTicksLimit:14},grid:{display:false}}, y:{position:'left',ticks:{color:tc,font:{size:9},callback:v=>'$'+fmtK(v)},grid:{color:gc}}, y2:{position:'right',ticks:{color:'#4A9EF5',font:{size:9},callback:v=>fmtK(v)},grid:{display:false}} } } });
+        _monitorCharts[slug+'_nru'] = new Chart(document.getElementById(`mc-nru-${slug}`), { type:'bar', data:{ labels, datasets:[
+          { label:'NRU', data:rows.map(r=>r.nru??null), backgroundColor:'#8B5CF655', borderColor:'#8B5CF6', borderWidth:1 }
+        ]}, options:{ animation:false, responsive:true,
+          plugins:{ legend:{display:false}, tooltip:{callbacks:{label:ctx=>'NRU: '+Math.round(ctx.parsed.y).toLocaleString()}} },
+          scales:{ x:{ticks:{color:tc,font:{size:9},maxTicksLimit:14},grid:{display:false}}, y:{ticks:{color:tc,font:{size:9},callback:v=>fmtK(v)},grid:{color:gc}} } } });
+      }
+    }
+
+    window.switchMonitorChartCountry = function(slug, country, game) {
       _monitorChartCountry[slug] = country;
-      renderMonitor();
+      // In-place chart rebuild — no full re-render, no scroll jump
+      const cutoff = _monitorStartDate || null;
+      const end    = _monitorEndDate   || null;
+      const cCol   = { VN:'#4A9EF5', TH:'#2ECC9A', ID:'#E8A030', PH:'#E06090', MY:'#8B5CF6', SG:'#06B6D4', TWHK:'#F97316', Others:'#888' };
+      buildMonitorGameChart(game, cutoff, end, cCol);
     };
     window.switchMonitorDays = function(days) {
       _monitorDays = days;
