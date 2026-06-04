@@ -2986,14 +2986,13 @@ ${dataStr}`;
       const fmtI = v => v == null ? '-' : Math.round(v).toLocaleString();
       const fmtPct = v => v == null ? '-' : (v * 100).toFixed(1) + '%';
 
-      // Compute latest data date from all DAILY rows (reference for presets)
-      const allDates = DAILY.map(d => (d.date||'').slice(0,10)).filter(Boolean).sort();
-      const latestDataDate = allDates[allDates.length - 1] || new Date().toISOString().slice(0,10);
+      // Use today as the reference for all presets and defaults
+      const today = new Date().toISOString().slice(0,10);
 
-      // If start/end not yet initialised, set default to last 30 days from latest data
+      // If start/end not yet initialised, default to last 30 days from today
       if (!_monitorStartDate && !_monitorEndDate) {
-        _monitorEndDate = latestDataDate;
-        const d = new Date(latestDataDate); d.setDate(d.getDate() - 29);
+        _monitorEndDate = today;
+        const d = new Date(today); d.setDate(d.getDate() - 29);
         _monitorStartDate = d.toISOString().slice(0,10);
       }
 
@@ -3012,12 +3011,16 @@ ${dataStr}`;
         const deal = DEALS.find(d => matchesGame(d.title, game));
         const launchDate = deal?.start_date ? new Date(deal.start_date) : null;
         const launchDateStr = launchDate ? launchDate.toISOString().slice(0,10) : null;
-        const daysSince = launchDate ? Math.floor((new Date(latestDataDate) - launchDate) / 86400000) : null;
+        const daysSince = launchDate ? Math.floor((new Date(today) - launchDate) / 86400000) : null;
         const slug = game.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
 
-        // All Total rows sorted ascending; filtered for selected date range
-        const allTotalRows = DAILY.filter(d => matchesGame(d.game, game) && d.country === 'Total')
-                                  .sort((a,b) => a.date.localeCompare(b.date));
+        // All Total rows sorted ascending; deduplicated by date (keep last per date = freshest upload)
+        const allTotalRowsRaw = DAILY.filter(d => matchesGame(d.game, game) && d.country === 'Total')
+                                     .sort((a,b) => (a.date||'').localeCompare(b.date||''));
+        const dedupeByDate = rows => {
+          const seen = {}; rows.forEach(r => { seen[(r.date||'').slice(0,10)] = r; }); return Object.values(seen).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+        };
+        const allTotalRows = dedupeByDate(allTotalRowsRaw);
         const totalRows = allTotalRows.filter(r => {
           const d = (r.date||'').slice(0,10);
           return (!cutoffDate || d >= cutoffDate) && (!endDate || d <= endDate);
@@ -3226,15 +3229,13 @@ ${dataStr}`;
       renderMonitor();
     };
     window.switchMonitorPreset = function(days) {
-      // days=0 → 전체, otherwise N days back from latest data date
-      const allDates = DAILY.map(d => (d.date||'').slice(0,10)).filter(Boolean).sort();
-      const latest = allDates[allDates.length - 1] || new Date().toISOString().slice(0,10);
       if (days === 0) {
         _monitorStartDate = null;
         _monitorEndDate   = null;
       } else {
-        _monitorEndDate = latest;
-        const d = new Date(latest); d.setDate(d.getDate() - (days - 1));
+        const t = new Date().toISOString().slice(0,10);
+        _monitorEndDate = t;
+        const d = new Date(t); d.setDate(d.getDate() - (days - 1));
         _monitorStartDate = d.toISOString().slice(0,10);
       }
       renderMonitor();
