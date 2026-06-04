@@ -2009,7 +2009,30 @@
       const ctx = document.getElementById('revChart').getContext('2d');
       const gc = 'rgba(255,255,255,.04)', tc = '#666';
       if (type === 'stacked') {
-        revChart = new Chart(ctx, { type: 'bar', data: { labels: allYMs, datasets: targetGames.map(g => ({ label: g, data: allYMs.map(ym => byGY[g][ym] || 0), backgroundColor: clr(g) + 'cc', borderWidth: 0 })) }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${c.dataset.label}: ${fmt(c.raw)}` } } }, scales: { x: { stacked: true, ticks: { autoSkip: true, maxRotation: 45, font: { size: 10 }, color: tc }, grid: { color: gc } }, y: { stacked: true, ticks: { callback: v => fmt(v), font: { size: 10 }, color: tc }, grid: { color: gc } } } } });
+        const stackTotalPlugin = {
+          id: 'stackTotal',
+          afterDatasetsDraw(chart) {
+            const ctx = chart.ctx;
+            const nds = chart.data.datasets.length;
+            if (!nds) return;
+            chart.data.labels.forEach((_, i) => {
+              const total = chart.data.datasets.reduce((s, ds) => s + (ds.data[i] || 0), 0);
+              if (!total) return;
+              const lastMeta = chart.getDatasetMeta(nds - 1);
+              const bar = lastMeta.data[i];
+              if (!bar) return;
+              ctx.save();
+              ctx.font = 'bold 9px DM Sans,sans-serif';
+              ctx.fillStyle = '#ccc';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'bottom';
+              const label = total >= 1e6 ? '$'+(total/1e6).toFixed(1)+'M' : total >= 1e3 ? '$'+(total/1e3).toFixed(0)+'k' : '$'+Math.round(total);
+              ctx.fillText(label, bar.x, bar.y - 3);
+              ctx.restore();
+            });
+          }
+        };
+        revChart = new Chart(ctx, { type: 'bar', data: { labels: allYMs, datasets: targetGames.map(g => ({ label: g, data: allYMs.map(ym => byGY[g][ym] || 0), backgroundColor: clr(g) + 'cc', borderWidth: 0 })) }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${c.dataset.label}: ${fmt(c.raw)}` } } }, scales: { x: { stacked: true, ticks: { autoSkip: true, maxRotation: 45, font: { size: 10 }, color: tc }, grid: { color: gc } }, y: { stacked: true, ticks: { callback: v => fmt(v), font: { size: 10 }, color: tc }, grid: { color: gc } } } }, plugins: [stackTotalPlugin] });
       } else if (type === 'line') {
         revChart = new Chart(ctx, { type: 'line', data: { labels: allYMs, datasets: targetGames.map(g => ({ label: g, data: allYMs.map(ym => byGY[g][ym] || null), borderColor: clr(g), backgroundColor: 'transparent', borderWidth: 2, pointRadius: 2, tension: 0.3, spanGaps: false })) }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${c.dataset.label}: ${fmt(c.raw)}` } } }, scales: { x: { ticks: { autoSkip: true, maxRotation: 45, font: { size: 10 }, color: tc }, grid: { color: gc } }, y: { ticks: { callback: v => fmt(v), font: { size: 10 }, color: tc }, grid: { color: gc } } } } });
       } else if (type === 'bubble') {
