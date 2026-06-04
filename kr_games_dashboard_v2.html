@@ -1560,7 +1560,7 @@
           api('monthly_data', 'GET', null, 'order=ym.asc'),
           api('deal_terms', 'GET', null, 'order=created_at.asc'),
           api('insights', 'GET', null, 'order=year_month.desc'),
-          api('daily_data', 'GET', null, 'order=date.asc').catch(() => [])
+          api('daily_data', 'GET', null, 'order=date.asc&limit=50000').catch(() => [])
         ]);
         DEALS = deals || [];
         RAW = enrichRAWData(monthly || []);
