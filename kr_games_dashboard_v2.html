@@ -1623,8 +1623,8 @@
       return getGameColor(g) || '#555';
     }
     function getYMs() { return [...new Set(RAW.map(r => r.ym))].sort(); }
-    function getGameData(g) { 
-      let d = RAW.filter(r => r.game === g);
+    function getGameData(g) {
+      let d = RAW.filter(r => matchesGame(r.game, g));
       if (gameStartYM) d = d.filter(r => r.ym >= gameStartYM);
       if (gameEndYM) d = d.filter(r => r.ym <= gameEndYM);
       return d.sort((a, b) => a.ym.localeCompare(b.ym)); 
