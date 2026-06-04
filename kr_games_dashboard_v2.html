@@ -3042,6 +3042,9 @@ ${dataStr}`;
         };
 
         if (!totalRows.length) {
+          const availMsg = allTotalRows.length
+            ? `DB 데이터: ${(allTotalRows[0].date||'').slice(0,10)} ~ ${(allTotalRows[allTotalRows.length-1].date||'').slice(0,10)} (${allTotalRows.length}일)`
+            : 'DB에 Total 행 없음 — 파일 재업로드 필요';
           return `<div class="monitor-card" style="margin-bottom:20px">
             <div class="monitor-card-header">
               <div class="monitor-card-title">
@@ -3051,7 +3054,10 @@ ${dataStr}`;
               </div>
               <span class="monitor-days-badge">${daysSince != null ? `D+${daysSince}` : ''}</span>
             </div>
-            <div style="text-align:center;padding:32px;color:var(--text3);font-size:13px">선택 기간에 데이터 없음 (${cutoffDate||'처음'} ~ ${endDate||'끝'})</div>
+            <div style="text-align:center;padding:32px;color:var(--text3);font-size:13px">
+              선택 기간에 데이터 없음 (${cutoffDate||'처음'} ~ ${endDate||'끝'})<br>
+              <span style="font-size:11px">${availMsg}</span>
+            </div>
           </div>`;
         }
 
