@@ -1129,8 +1129,8 @@
           <div class="card">
             <div class="tabs" id="rev-tabs" style="display:flex; justify-content:space-between; align-items:center;">
               <div style="display:flex; gap:4px">
-                <button class="tab" onclick="switchRevTab('stacked')">Stacked</button>
-                <button class="tab active" onclick="switchRevTab('line')">By game</button>
+                <button class="tab active" onclick="switchRevTab('stacked')">Stacked</button>
+                <button class="tab" onclick="switchRevTab('line')">By game</button>
                 <button class="tab" onclick="switchRevTab('mom')">MoM growth</button>
                 <button class="tab" onclick="switchRevTab('bubble')">Health Bubble</button>
               </div>
@@ -1775,7 +1775,7 @@
     let _monitorEndDate   = null; // YYYY-MM-DD, null = no end filter
     let _monitorDateInited = false; // true after first default is applied
     let _monitorGame = null; // null = all games shown
-    let currentRevTab = 'line', currentOverViewGame = 'All', currentGame = 'Play Together', currentGameTab = 'revenue', currentDataGame = 'All';
+    let currentRevTab = 'stacked', currentOverViewGame = 'All', currentGame = 'Play Together', currentGameTab = 'revenue', currentDataGame = 'All';
     let overviewStartYM = null, overviewEndYM = null;
     let gameStartYM = null, gameEndYM = null;
     let gameTimeFormat = 'monthly';
