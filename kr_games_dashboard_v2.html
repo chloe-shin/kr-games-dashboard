@@ -1746,6 +1746,7 @@
     let _monitorDays = 30;   // date range filter for Daily Monitor (used to set dates)
     let _monitorStartDate = null; // YYYY-MM-DD, null = no start filter
     let _monitorEndDate   = null; // YYYY-MM-DD, null = no end filter
+    let _monitorDateInited = false; // true after first default is applied
     let _monitorGame = null; // null = all games shown
     let currentRevTab = 'line', currentOverViewGame = 'All', currentGame = 'Play Together', currentGameTab = 'revenue', currentDataGame = 'All';
     let overviewStartYM = null, overviewEndYM = null;
@@ -2989,8 +2990,9 @@ ${dataStr}`;
       // Use today as the reference for all presets and defaults
       const today = new Date().toISOString().slice(0,10);
 
-      // If start/end not yet initialised, default to last 30 days from today
-      if (!_monitorStartDate && !_monitorEndDate) {
+      // Default to last 30 days on very first load only
+      if (!_monitorDateInited) {
+        _monitorDateInited = true;
         _monitorEndDate = today;
         const d = new Date(today); d.setDate(d.getDate() - 29);
         _monitorStartDate = d.toISOString().slice(0,10);
@@ -3879,14 +3881,17 @@ ${dataStr}`;
           // Probe table schema to only send columns that actually exist
           const dailyWithGame = _dailyRows.map(r => ({ ...r, game }));
           console.log('[daily upload] sample row:', JSON.stringify(dailyWithGame[0]));
+          console.log('[daily upload] total rows:', dailyWithGame.length);
 
-          const uploadedMonths = [...new Set(dailyWithGame.map(r => r.date.slice(0, 7)))];
-          // DELETE existing rows for each uploaded month, then INSERT fresh
-          for (const month of uploadedMonths) {
-            const [y, m] = month.split('-').map(Number);
-            const nextDate = new Date(y, m, 1).toISOString().slice(0, 10);
-            await api('daily_data', 'DELETE', null,
-              `game=eq.${encodeURIComponent(game)}&date=gte.${month}-01&date=lt.${nextDate}`);
+          // DELETE by exact dates to avoid timestamp format issues
+          const uploadedDates = [...new Set(dailyWithGame.map(r => r.date))];
+          const uploadedMonths = [...new Set(uploadedDates.map(d => d.slice(0, 7)))];
+          // Batch in chunks of 50 to avoid URL length limits
+          const chunk = (arr, n) => { const r=[]; for(let i=0;i<arr.length;i+=n) r.push(arr.slice(i,i+n)); return r; };
+          for (const batch of chunk(uploadedDates, 50)) {
+            const deleted = await api('daily_data', 'DELETE', null,
+              `game=eq.${encodeURIComponent(game)}&date=in.(${batch.join(',')})`);
+            console.log('[daily upload] deleted batch:', batch.length, 'dates');
           }
 
           // POST with auto-retry: if Supabase says column doesn't exist, remove it and retry
@@ -3907,7 +3912,8 @@ ${dataStr}`;
           }
           if (!savedDaily) throw new Error('컬럼 오류로 저장 실패. 콘솔을 확인해주세요.');
           const newDaily = Array.isArray(savedDaily) ? savedDaily : dailyWithGame;
-          DAILY = DAILY.filter(d => !(matchesGame(d.game, game) && uploadedMonths.includes(d.date.slice(0, 7))));
+          // Remove old in-memory rows for uploaded dates (handle both date and timestamp formats)
+          DAILY = DAILY.filter(d => !(matchesGame(d.game, game) && uploadedDates.includes((d.date||'').slice(0,10))));
           DAILY.push(...newDaily);
         }
 
