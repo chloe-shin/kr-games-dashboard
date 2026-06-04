@@ -1776,6 +1776,7 @@
     // ===== CHARTS STATE =====
     let revChart = null, roiChart = null, gameChart1 = null, gameChart2 = null, dailyChart1 = null, dailyChart2 = null;
     let _monitorCharts = {};
+    let _monitorChartCountry = {}; // slug → country name or 'All'
     let _monitorDays = 30;   // date range filter for Daily Monitor (used to set dates)
     let _monitorStartDate = null; // YYYY-MM-DD, null = no start filter
     let _monitorEndDate   = null; // YYYY-MM-DD, null = no end filter
@@ -3348,7 +3349,10 @@ ${dataStr}`;
             ${dateTableHtml}
             ${countryTableHtml || '<div></div>'}
           </div>
-          <div style="margin-top:16px"><canvas id="monitor-chart-${slug}" height="100"></canvas></div>
+          <div style="margin-top:16px">
+            <div id="monitor-ctry-tabs-${slug}" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px"></div>
+            <canvas id="monitor-chart-${slug}" height="100"></canvas>
+          </div>
         </div>`;
       }).join('');
 
@@ -3380,53 +3384,73 @@ ${dataStr}`;
         </div>`;
       container.innerHTML = filterBarHtml + sections;
 
-      // Build stacked Revenue charts per game
+      // Build charts per game (stacked by country, or single country line)
       newGames.forEach(game => {
         const slug = game.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
         const canvas = document.getElementById(`monitor-chart-${slug}`);
+        const tabsEl = document.getElementById(`monitor-ctry-tabs-${slug}`);
         if (!canvas) return;
-        const allChartRows = DAILY.filter(d => { const dt=(d.date||'').slice(0,10); return matchesGame(d.game, game) && d.country === 'Total' && (!cutoffDate || dt >= cutoffDate) && (!endDate || dt <= endDate); })
-                                  .sort((a,b) => a.date.localeCompare(b.date));
-        // Start chart from first date that has any real data
-        const firstDataIdx = allChartRows.findIndex(r => r.revenue != null || r.dau != null || r.nru != null);
-        const chartRows = firstDataIdx > 0 ? allChartRows.slice(firstDataIdx) : allChartRows;
-        if (!chartRows.length) return;
-        const labels = chartRows.map(r => r.date.slice(5));
+
+        // Available countries for this game in the selected period
         const availC = SEA_COUNTRIES.filter(c => c !== 'Total' &&
           DAILY.some(d => { const dt=(d.date||'').slice(0,10); return matchesGame(d.game, game) && d.country === c && (!cutoffDate || dt >= cutoffDate) && (!endDate || dt <= endDate); }));
-        let datasets;
-        if (availC.length > 0) {
-          datasets = availC.map(c => ({
-            label: c, stack: 'stack',
-            data: chartRows.map(r => {
-              const cr = DAILY.find(d => matchesGame(d.game, game) && d.country === c && d.date === r.date);
-              return cr?.revenue ?? 0;
-            }),
-            backgroundColor: (cColors[c] || '#888') + 'CC',
-            borderColor: cColors[c] || '#888', borderWidth: 0,
-          }));
-        } else {
-          const color = getGameColor(game);
-          datasets = [{ label: 'Revenue', data: chartRows.map(r => r.revenue || 0), backgroundColor: color + '99', borderColor: color, borderWidth: 1 }];
+
+        // Render country toggle buttons
+        if (tabsEl && availC.length > 0) {
+          const selC = _monitorChartCountry[slug] || 'All';
+          const btnStyle = (active) => `padding:2px 9px;border-radius:5px;font-size:10px;border:1px solid var(--border);cursor:pointer;background:${active?'rgba(74,158,245,.15)':'transparent'};color:${active?'var(--accent)':'var(--text3)'}`;
+          tabsEl.innerHTML = `<button style="${btnStyle(selC==='All')}" onclick="window.switchMonitorChartCountry('${slug}','All')">All</button>` +
+            availC.map(c => `<button style="${btnStyle(selC===c)};border-color:${selC===c?(cColors[c]||'#888'):'var(--border)'}" onclick="window.switchMonitorChartCountry('${slug}','${c}')"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${cColors[c]||'#888'};margin-right:3px;vertical-align:middle"></span>${c}</button>`).join('');
         }
-        _monitorCharts[slug] = new Chart(canvas, {
-          type: 'bar',
-          data: { labels, datasets },
-          options: {
+
+        const selCountry = _monitorChartCountry[slug] || 'All';
+        if (_monitorCharts[slug]) { _monitorCharts[slug].destroy(); }
+
+        if (selCountry === 'All') {
+          // Stacked Revenue bar by country
+          const allChartRows = DAILY.filter(d => { const dt=(d.date||'').slice(0,10); return matchesGame(d.game, game) && d.country === 'Total' && (!cutoffDate || dt >= cutoffDate) && (!endDate || dt <= endDate); }).sort((a,b) => a.date.localeCompare(b.date));
+          const firstIdx = allChartRows.findIndex(r => r.revenue != null || r.dau != null || r.nru != null);
+          const chartRows = firstIdx > 0 ? allChartRows.slice(firstIdx) : allChartRows;
+          if (!chartRows.length) return;
+          const labels = chartRows.map(r => (r.date||'').slice(5));
+          let datasets;
+          if (availC.length > 0) {
+            datasets = availC.map(c => ({ label: c, stack: 'stack', data: chartRows.map(r => { const cr = DAILY.find(d => matchesGame(d.game,game) && d.country===c && (d.date||'').slice(0,10)===(r.date||'').slice(0,10)); return cr?.revenue ?? 0; }), backgroundColor:(cColors[c]||'#888')+'CC', borderColor:cColors[c]||'#888', borderWidth:0 }));
+          } else {
+            const gc2 = getGameColor(game);
+            datasets = [{ label:'Revenue', data:chartRows.map(r=>r.revenue||0), backgroundColor:gc2+'99', borderColor:gc2, borderWidth:1 }];
+          }
+          _monitorCharts[slug] = new Chart(canvas, { type:'bar', data:{ labels, datasets }, options:{ animation:false, responsive:true, plugins:{ legend:{ display:availC.length>0, position:'bottom', labels:{color:'#888',font:{size:9},boxWidth:10,padding:8} }, tooltip:{ mode:'index', callbacks:{ label: ctx => ctx.dataset.label+': $'+Math.round(ctx.parsed.y).toLocaleString() } } },
+            scales:{ x:{ stacked:true, ticks:{color:'#555',font:{size:9},maxTicksLimit:16}, grid:{display:false} }, y:{ stacked:true, ticks:{color:'#555',font:{size:9},callback:v=>'$'+(v>=1000?(v/1000).toFixed(0)+'k':v)}, grid:{color:'rgba(255,255,255,.04)'} } } } });
+        } else {
+          // Single country: Revenue + DAU dual axis line chart
+          const ctryRows = DAILY.filter(d => { const dt=(d.date||'').slice(0,10); return matchesGame(d.game, game) && d.country === selCountry && (!cutoffDate || dt >= cutoffDate) && (!endDate || dt <= endDate); }).sort((a,b) => (a.date||'').localeCompare(b.date||''));
+          if (!ctryRows.length) return;
+          const labels = ctryRows.map(r => (r.date||'').slice(5));
+          const cc = cColors[selCountry] || getGameColor(game);
+          _monitorCharts[slug] = new Chart(canvas, { type:'bar', data:{ labels, datasets:[
+            { label:'Revenue', data:ctryRows.map(r=>r.revenue??null), backgroundColor:cc+'AA', borderColor:cc, borderWidth:0, yAxisID:'y' },
+            { label:'DAU', type:'line', data:ctryRows.map(r=>r.dau??null), borderColor:'#fff', backgroundColor:'transparent', borderWidth:1.5, pointRadius:2, tension:0.3, yAxisID:'y2' },
+          ]}, options:{ animation:false, responsive:true, plugins:{ legend:{ display:true, position:'bottom', labels:{color:'#888',font:{size:9},boxWidth:10,padding:8} }, tooltip:{ mode:'index', callbacks:{ label: ctx => ctx.dataset.label===('DAU') ? 'DAU: '+Math.round(ctx.parsed.y).toLocaleString() : 'Revenue: $'+Math.round(ctx.parsed.y).toLocaleString() } } },
+            scales:{ x:{ ticks:{color:'#555',font:{size:9},maxTicksLimit:16}, grid:{display:false} }, y:{ position:'left', ticks:{color:'#555',font:{size:9},callback:v=>'$'+(v>=1000?(v/1000).toFixed(0)+'k':v)}, grid:{color:'rgba(255,255,255,.04)'} }, y2:{ position:'right', ticks:{color:'#aaa',font:{size:9},callback:v=>v>=1000?(v/1000).toFixed(0)+'k':v}, grid:{display:false} } } } });
+        }
+
+        // dummy to keep old options block closed — replaced above
+        if (false) { const _dummy = { options: {
             animation: false, responsive: true,
             plugins: {
-              legend: { display: availC.length > 0, position: 'bottom', labels: { color:'#888', font:{size:9}, boxWidth:10, padding:8 } },
+              legend: { display: true, position: 'bottom', labels: { color:'#888', font:{size:9}, boxWidth:10, padding:8 } },
               tooltip: { mode:'index', callbacks: { label: ctx => ctx.dataset.label + ': $' + Math.round(ctx.parsed.y).toLocaleString() } }
             },
             scales: {
-              x: { stacked: true, ticks: { color:'#555', font:{size:9}, maxTicksLimit:16 }, grid: { display:false } },
-              y: { stacked: true, ticks: { color:'#555', font:{size:9}, callback: v => '$'+(v>=1000?(v/1000).toFixed(0)+'k':v) }, grid: { color:'rgba(255,255,255,.04)' } }
-            }
-          }
-        });
+        }}; } // end dummy if block
       });
     }
 
+    window.switchMonitorChartCountry = function(slug, country) {
+      _monitorChartCountry[slug] = country;
+      renderMonitor();
+    };
     window.switchMonitorDays = function(days) {
       _monitorDays = days;
       renderMonitor();
