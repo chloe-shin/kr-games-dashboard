@@ -1584,7 +1584,11 @@
       DEALS.forEach(d => { if (d.title) getGameColor(d.title); });
 
       renderSidebar();
-      showPage('overview');
+      try {
+        const last = JSON.parse(localStorage.getItem('last_page') || 'null');
+        if (last && last.page) showPage(last.page, last.game);
+        else showPage('overview');
+      } catch(e) { showPage('overview'); }
     }
 
     // ===== HELPERS =====
@@ -1821,6 +1825,7 @@
 
     function showPage(page, game) {
       closeMobileSidebar();
+      try { localStorage.setItem('last_page', JSON.stringify({ page, game: game || null })); } catch(e) {}
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
 
       const actions = document.getElementById('topbar-actions');
