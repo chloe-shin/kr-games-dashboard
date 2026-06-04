@@ -3382,9 +3382,17 @@ ${dataStr}`;
       const reader = new FileReader();
       reader.onload = e => {
         try {
-          const wb = XLSX.read(e.target.result, { type: 'array' });
+          const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
           const sheet = wb.Sheets[wb.SheetNames[0]];
           const rows = XLSX.utils.sheet_to_json(sheet, { defval: null });
+          // Normalize Excel Date objects → 'YYYY-MM-DD' strings
+          rows.forEach(row => {
+            Object.keys(row).forEach(k => {
+              if (row[k] instanceof Date && !isNaN(row[k])) {
+                row[k] = row[k].toISOString().slice(0, 10);
+              }
+            });
+          });
 
           if (!rows.length) { errEl.textContent = '파일에 데이터가 없어요.'; return; }
 
