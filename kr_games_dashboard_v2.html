@@ -1584,7 +1584,7 @@
 
         // Populate Overview Game Select
         const ovSelect = document.getElementById('ov-game-select');
-        ovSelect.innerHTML = '<option value="All">All Games</option>' + getActiveGames().map(g => `<option value="${g}">${g}</option>`).join('');
+        ovSelect.innerHTML = '<option value="All">All Games</option>' + getAllGames().map(g => `<option value="${g}">${g}</option>`).join('');
       } catch (e) {
         console.error('Init error:', e);
         alert('데이터를 불러오지 못했어요. 네트워크를 확인해주세요.');
@@ -1678,13 +1678,24 @@
       const rawGames = [...new Set(RAW.map(r => r.game))].filter(g => !isExcluded(g));
 
       // 2. DEALS Launched games with no matching RAW entry yet
-      //    (e.g. new deal added before any data is entered)
       const launchedDealNames = DEALS
         .filter(d => d.status === 'Launched')
         .map(d => d.title)
         .filter(t => !rawGames.some(g => matchesGame(g, t)));
 
       return [...rawGames, ...launchedDealNames];
+    }
+
+    function getAllGames() {
+      // All games with data (including Terminated) — used for Overview totals
+      const notLaunched = DEALS.filter(d => d.status === 'Not Launched').map(d => d.title);
+      const isNotLaunched = g => notLaunched.some(t => matchesGame(t, g));
+      const rawGames = [...new Set(RAW.map(r => r.game))].filter(g => !isNotLaunched(g));
+      const allDealNames = DEALS
+        .filter(d => d.status !== 'Not Launched')
+        .map(d => d.title)
+        .filter(t => !rawGames.some(g => matchesGame(g, t)));
+      return [...rawGames, ...allDealNames];
     }
 
     // ===== SIDEBAR =====
@@ -1941,8 +1952,8 @@
       const latestYMForInsight = allYMs.length > 0 ? allYMs.slice(-1)[0] : '-';
       LATEST_INSIGHT = INSIGHTS.find(i => i.year_month === (overviewEndYM || latestYMForInsight)) || INSIGHTS[0] || null;
 
-      const targetGames = currentOverViewGame === 'All' ? getActiveGames() : [currentOverViewGame];
-      
+      const targetGames = currentOverViewGame === 'All' ? getAllGames() : [currentOverViewGame];
+
       const totalInvest = targetGames.reduce((s, g) => s + getLf(g) + getMg(g), 0);
       const totalOurGrossProfit = targetGames.reduce((s, g) => {
         return s + dataToUse.filter(r => r.game === g).reduce((a, r) => a + (r.vngProfit || 0), 0);
@@ -2002,7 +2013,7 @@
       if (revChart) { revChart.destroy(); revChart = null; }
       const dataToUse = getFilteredRAW();
       const allYMs = [...new Set(dataToUse.map(r => r.ym))].sort();
-      const targetGames = currentOverViewGame === 'All' ? getActiveGames() : [currentOverViewGame];
+      const targetGames = currentOverViewGame === 'All' ? getAllGames() : [currentOverViewGame];
       buildLegend('rev-legend', targetGames);
       const byGY = {};
       targetGames.forEach(g => { byGY[g] = {}; allYMs.forEach(ym => { byGY[g][ym] = dataToUse.filter(r => r.game === g && r.ym === ym).reduce((s, r) => s + (r.revenue || 0), 0); }); });
