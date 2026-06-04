@@ -1743,7 +1743,9 @@
     // ===== CHARTS STATE =====
     let revChart = null, roiChart = null, gameChart1 = null, gameChart2 = null, dailyChart1 = null, dailyChart2 = null;
     let _monitorCharts = {};
-    let _monitorDays = 30;   // date range filter for Daily Monitor
+    let _monitorDays = 30;   // date range filter for Daily Monitor (used to set dates)
+    let _monitorStartDate = null; // YYYY-MM-DD, null = no start filter
+    let _monitorEndDate   = null; // YYYY-MM-DD, null = no end filter
     let _monitorGame = null; // null = all games shown
     let currentRevTab = 'line', currentOverViewGame = 'All', currentGame = 'Play Together', currentGameTab = 'revenue', currentDataGame = 'All';
     let overviewStartYM = null, overviewEndYM = null;
@@ -2980,15 +2982,23 @@ ${dataStr}`;
       _monitorCharts = {};
 
       const cColors = { VN:'#4A9EF5', TH:'#2ECC9A', ID:'#E8A030', PH:'#E06090', MY:'#8B5CF6', SG:'#06B6D4', TWHK:'#F97316', Others:'#888' };
-      const now = new Date();
       const fmtR = v => v == null ? '-' : '$' + Math.round(v).toLocaleString();
       const fmtI = v => v == null ? '-' : Math.round(v).toLocaleString();
       const fmtPct = v => v == null ? '-' : (v * 100).toFixed(1) + '%';
 
-      // Date range filter: cut-off date based on _monitorDays (0 = all)
-      const cutoffDate = _monitorDays > 0
-        ? new Date(now.getTime() - _monitorDays * 86400000).toISOString().slice(0, 10)
-        : null;
+      // Compute latest data date from all DAILY rows (reference for presets)
+      const allDates = DAILY.map(d => d.date).filter(Boolean).sort();
+      const latestDataDate = allDates[allDates.length - 1] || new Date().toISOString().slice(0,10);
+
+      // If start/end not yet initialised, set default to last 30 days from latest data
+      if (!_monitorStartDate && !_monitorEndDate) {
+        _monitorEndDate = latestDataDate;
+        const d = new Date(latestDataDate); d.setDate(d.getDate() - 29);
+        _monitorStartDate = d.toISOString().slice(0,10);
+      }
+
+      const cutoffDate = _monitorStartDate || null;
+      const endDate    = _monitorEndDate   || null;
 
       // Game filter
       const visibleGames = _monitorGame ? newGames.filter(g => g === _monitorGame) : newGames;
@@ -3001,13 +3011,15 @@ ${dataStr}`;
         const color = getGameColor(game);
         const deal = DEALS.find(d => matchesGame(d.title, game));
         const launchDate = deal?.start_date ? new Date(deal.start_date) : null;
-        const daysSince = launchDate ? Math.floor((now - launchDate) / 86400000) : null;
+        const launchDateStr = launchDate ? launchDate.toISOString().slice(0,10) : null;
+        const daysSince = launchDate ? Math.floor((new Date(latestDataDate) - launchDate) / 86400000) : null;
         const slug = game.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
 
-        // All Total rows sorted ascending (all-time for latest KPI), filtered for tables/charts
+        // All Total rows sorted ascending; filtered for selected date range
         const allTotalRows = DAILY.filter(d => matchesGame(d.game, game) && d.country === 'Total')
                                   .sort((a,b) => a.date.localeCompare(b.date));
-        const totalRows = cutoffDate ? allTotalRows.filter(r => r.date >= cutoffDate) : allTotalRows;
+        const totalRows = allTotalRows.filter(r =>
+          (!cutoffDate || r.date >= cutoffDate) && (!endDate || r.date <= endDate));
         const latestRow = allTotalRows[allTotalRows.length - 1];
 
         const chgBadge = (curr, prev) => {
@@ -3022,21 +3034,24 @@ ${dataStr}`;
             <div class="monitor-card-header">
               <div class="monitor-card-title">
                 <span style="width:10px;height:10px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0"></span>
-                <span>${game}</span><span class="nav-new-badge" style="margin-left:6px">NEW</span>
+                <span>${game}</span>
+                ${launchDateStr ? `<span style="font-size:11px;color:var(--text3);margin-left:8px">🚀 ${launchDateStr}</span>` : ''}
               </div>
               <span class="monitor-days-badge">${daysSince != null ? `D+${daysSince}` : ''}</span>
             </div>
-            <div style="text-align:center;padding:32px;color:var(--text3);font-size:13px">일별 데이터 없음 — Excel 업로드 필요</div>
+            <div style="text-align:center;padding:32px;color:var(--text3);font-size:13px">선택 기간에 데이터 없음 (${cutoffDate||'처음'} ~ ${endDate||'끝'})</div>
           </div>`;
         }
 
         // KPI header — cumulative for the selected period
         const sumOf = key => totalRows.reduce((s, r) => s + (r[key] != null ? Number(r[key]) : 0), 0);
         const avgOf = key => { const vs = totalRows.filter(r => r[key] != null).map(r => Number(r[key])); return vs.length ? vs.reduce((a,b)=>a+b,0)/vs.length : null; };
-        const periodLabel = _monitorDays > 0 ? `최근 ${_monitorDays}일` : '전체';
-        // prev period for delta (same length window before cutoff)
-        const prevCutoff = _monitorDays > 0 ? new Date(now - _monitorDays * 2 * 86400000).toISOString().slice(0,10) : null;
-        const prevRows = prevCutoff ? allTotalRows.filter(r => r.date >= prevCutoff && r.date < (cutoffDate || '')) : [];
+        const periodDays = totalRows.length;
+        const periodLabel = `${cutoffDate||'처음'} ~ ${endDate||'끝'} (${periodDays}일)`;
+        // prev period for delta: same length window immediately before cutoff
+        const prevEnd = cutoffDate ? (() => { const d=new Date(cutoffDate); d.setDate(d.getDate()-1); return d.toISOString().slice(0,10); })() : null;
+        const prevStart = (prevEnd && periodDays > 0) ? (() => { const d=new Date(prevEnd); d.setDate(d.getDate()-(periodDays-1)); return d.toISOString().slice(0,10); })() : null;
+        const prevRows = (prevStart && prevEnd) ? allTotalRows.filter(r => r.date >= prevStart && r.date <= prevEnd) : [];
         const prevSum = key => prevRows.reduce((s, r) => s + (r[key] != null ? Number(r[key]) : 0), 0);
         const prevAvg = key => { const vs = prevRows.filter(r => r[key] != null).map(r => Number(r[key])); return vs.length ? vs.reduce((a,b)=>a+b,0)/vs.length : null; };
 
@@ -3054,7 +3069,7 @@ ${dataStr}`;
                 <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">${label}</div>
                 <div style="font-size:16px;font-weight:600">${val}${chg}</div>
               </div>`).join('')}
-            <div style="margin-left:4px;color:var(--text3);font-size:11px;align-self:flex-end;padding-bottom:2px">${periodLabel} 누적 · 최근: ${latestRow.date}</div>
+            <div style="margin-left:4px;color:var(--text3);font-size:11px;align-self:flex-end;padding-bottom:2px">${periodLabel} 누적</div>
           </div>`;
 
         // Date table (filtered by date range)
@@ -3081,7 +3096,7 @@ ${dataStr}`;
 
         // Country breakdown (filtered by date range)
         const countryAgg = {};
-        DAILY.filter(d => matchesGame(d.game, game) && d.country !== 'Total' && (!cutoffDate || d.date >= cutoffDate)).forEach(r => {
+        DAILY.filter(d => matchesGame(d.game, game) && d.country !== 'Total' && (!cutoffDate || d.date >= cutoffDate) && (!endDate || d.date <= endDate)).forEach(r => {
           if (!countryAgg[r.country]) countryAgg[r.country] = { rev:0, nru:0, mkt:0, dau:[], d1:[] };
           const a = countryAgg[r.country];
           if (r.revenue  != null) a.rev += r.revenue;
@@ -3130,6 +3145,7 @@ ${dataStr}`;
 
       // Filter bar: game toggle + date range
       const gameColor = g => getGameColor(g);
+      const inputStyle = `background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text1);font-size:11px;padding:3px 7px;cursor:pointer;outline:none`;
       const filterBarHtml = `
         <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:20px;padding:12px 16px;background:var(--card);border-radius:12px;border:1px solid var(--border)">
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
@@ -3140,9 +3156,17 @@ ${dataStr}`;
             </button>`).join('')}
           </div>
           <div style="width:1px;height:20px;background:var(--border);flex-shrink:0"></div>
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
             <span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap">기간</span>
-            ${[7,14,30,60,0].map(d => `<button class="daily-range-tab ${_monitorDays===d?'active':''}" onclick="window.switchMonitorDays(${d})" style="font-size:11px">${d===0?'전체':d+'d'}</button>`).join('')}
+            <input type="date" id="monitor-date-start" value="${_monitorStartDate||''}" style="${inputStyle}" onchange="window.setMonitorDateRange(this.value, document.getElementById('monitor-date-end').value)">
+            <span style="font-size:11px;color:var(--text3)">~</span>
+            <input type="date" id="monitor-date-end" value="${_monitorEndDate||''}" style="${inputStyle}" onchange="window.setMonitorDateRange(document.getElementById('monitor-date-start').value, this.value)">
+            <div style="display:flex;gap:4px">
+              ${[7,14,30,60,'전체'].map(d => {
+                const isActive = d === '전체' ? (!_monitorStartDate && !_monitorEndDate) : false;
+                return `<button class="daily-range-tab${isActive?' active':''}" onclick="window.switchMonitorPreset(${d==='전체'?0:d})" style="font-size:10px;padding:3px 8px">${d==='전체'?'전체':d+'d'}</button>`;
+              }).join('')}
+            </div>
           </div>
         </div>`;
       container.innerHTML = filterBarHtml + sections;
@@ -3152,7 +3176,7 @@ ${dataStr}`;
         const slug = game.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
         const canvas = document.getElementById(`monitor-chart-${slug}`);
         if (!canvas) return;
-        const allChartRows = DAILY.filter(d => matchesGame(d.game, game) && d.country === 'Total' && (!cutoffDate || d.date >= cutoffDate))
+        const allChartRows = DAILY.filter(d => matchesGame(d.game, game) && d.country === 'Total' && (!cutoffDate || d.date >= cutoffDate) && (!endDate || d.date <= endDate))
                                   .sort((a,b) => a.date.localeCompare(b.date));
         // Start chart from first date that has any real data
         const firstDataIdx = allChartRows.findIndex(r => r.revenue != null || r.dau != null || r.nru != null);
@@ -3160,7 +3184,7 @@ ${dataStr}`;
         if (!chartRows.length) return;
         const labels = chartRows.map(r => r.date.slice(5));
         const availC = SEA_COUNTRIES.filter(c => c !== 'Total' &&
-          DAILY.some(d => matchesGame(d.game, game) && d.country === c && (!cutoffDate || d.date >= cutoffDate)));
+          DAILY.some(d => matchesGame(d.game, game) && d.country === c && (!cutoffDate || d.date >= cutoffDate) && (!endDate || d.date <= endDate)));
         let datasets;
         if (availC.length > 0) {
           datasets = availC.map(c => ({
@@ -3196,6 +3220,25 @@ ${dataStr}`;
 
     window.switchMonitorDays = function(days) {
       _monitorDays = days;
+      renderMonitor();
+    };
+    window.switchMonitorPreset = function(days) {
+      // days=0 → 전체, otherwise N days back from latest data date
+      const allDates = DAILY.map(d => d.date).filter(Boolean).sort();
+      const latest = allDates[allDates.length - 1] || new Date().toISOString().slice(0,10);
+      if (days === 0) {
+        _monitorStartDate = null;
+        _monitorEndDate   = null;
+      } else {
+        _monitorEndDate = latest;
+        const d = new Date(latest); d.setDate(d.getDate() - (days - 1));
+        _monitorStartDate = d.toISOString().slice(0,10);
+      }
+      renderMonitor();
+    };
+    window.setMonitorDateRange = function(start, end) {
+      _monitorStartDate = start || null;
+      _monitorEndDate   = end   || null;
       renderMonitor();
     };
     window.switchMonitorGame = function(game) {
