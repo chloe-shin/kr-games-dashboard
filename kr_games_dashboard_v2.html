@@ -2987,7 +2987,7 @@ ${dataStr}`;
       const fmtPct = v => v == null ? '-' : (v * 100).toFixed(1) + '%';
 
       // Compute latest data date from all DAILY rows (reference for presets)
-      const allDates = DAILY.map(d => d.date).filter(Boolean).sort();
+      const allDates = DAILY.map(d => (d.date||'').slice(0,10)).filter(Boolean).sort();
       const latestDataDate = allDates[allDates.length - 1] || new Date().toISOString().slice(0,10);
 
       // If start/end not yet initialised, set default to last 30 days from latest data
@@ -3018,8 +3018,10 @@ ${dataStr}`;
         // All Total rows sorted ascending; filtered for selected date range
         const allTotalRows = DAILY.filter(d => matchesGame(d.game, game) && d.country === 'Total')
                                   .sort((a,b) => a.date.localeCompare(b.date));
-        const totalRows = allTotalRows.filter(r =>
-          (!cutoffDate || r.date >= cutoffDate) && (!endDate || r.date <= endDate));
+        const totalRows = allTotalRows.filter(r => {
+          const d = (r.date||'').slice(0,10);
+          return (!cutoffDate || d >= cutoffDate) && (!endDate || d <= endDate);
+        });
         const latestRow = allTotalRows[allTotalRows.length - 1];
 
         const chgBadge = (curr, prev) => {
@@ -3096,7 +3098,7 @@ ${dataStr}`;
 
         // Country breakdown (filtered by date range)
         const countryAgg = {};
-        DAILY.filter(d => matchesGame(d.game, game) && d.country !== 'Total' && (!cutoffDate || d.date >= cutoffDate) && (!endDate || d.date <= endDate)).forEach(r => {
+        DAILY.filter(d => { const dt=(d.date||'').slice(0,10); return matchesGame(d.game, game) && d.country !== 'Total' && (!cutoffDate || dt >= cutoffDate) && (!endDate || dt <= endDate); }).forEach(r => {
           if (!countryAgg[r.country]) countryAgg[r.country] = { rev:0, nru:0, mkt:0, dau:[], d1:[] };
           const a = countryAgg[r.country];
           if (r.revenue  != null) a.rev += r.revenue;
@@ -3176,7 +3178,7 @@ ${dataStr}`;
         const slug = game.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
         const canvas = document.getElementById(`monitor-chart-${slug}`);
         if (!canvas) return;
-        const allChartRows = DAILY.filter(d => matchesGame(d.game, game) && d.country === 'Total' && (!cutoffDate || d.date >= cutoffDate) && (!endDate || d.date <= endDate))
+        const allChartRows = DAILY.filter(d => { const dt=(d.date||'').slice(0,10); return matchesGame(d.game, game) && d.country === 'Total' && (!cutoffDate || dt >= cutoffDate) && (!endDate || dt <= endDate); })
                                   .sort((a,b) => a.date.localeCompare(b.date));
         // Start chart from first date that has any real data
         const firstDataIdx = allChartRows.findIndex(r => r.revenue != null || r.dau != null || r.nru != null);
@@ -3184,7 +3186,7 @@ ${dataStr}`;
         if (!chartRows.length) return;
         const labels = chartRows.map(r => r.date.slice(5));
         const availC = SEA_COUNTRIES.filter(c => c !== 'Total' &&
-          DAILY.some(d => matchesGame(d.game, game) && d.country === c && (!cutoffDate || d.date >= cutoffDate) && (!endDate || d.date <= endDate)));
+          DAILY.some(d => { const dt=(d.date||'').slice(0,10); return matchesGame(d.game, game) && d.country === c && (!cutoffDate || dt >= cutoffDate) && (!endDate || dt <= endDate); }));
         let datasets;
         if (availC.length > 0) {
           datasets = availC.map(c => ({
@@ -3224,7 +3226,7 @@ ${dataStr}`;
     };
     window.switchMonitorPreset = function(days) {
       // days=0 → 전체, otherwise N days back from latest data date
-      const allDates = DAILY.map(d => d.date).filter(Boolean).sort();
+      const allDates = DAILY.map(d => (d.date||'').slice(0,10)).filter(Boolean).sort();
       const latest = allDates[allDates.length - 1] || new Date().toISOString().slice(0,10);
       if (days === 0) {
         _monitorStartDate = null;
