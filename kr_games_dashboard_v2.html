@@ -3021,13 +3021,30 @@ ${dataStr}`;
         const daysSince = launchDate ? Math.floor((new Date(today) - launchDate) / 86400000) : null;
         const slug = game.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
 
-        // All Total rows sorted ascending; deduplicated by date (keep last per date = freshest upload)
-        const allTotalRowsRaw = DAILY.filter(d => matchesGame(d.game, game) && d.country === 'Total')
-                                     .sort((a,b) => (a.date||'').localeCompare(b.date||''));
-        const dedupeByDate = rows => {
-          const seen = {}; rows.forEach(r => { seen[(r.date||'').slice(0,10)] = r; }); return Object.values(seen).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
-        };
-        const allTotalRows = dedupeByDate(allTotalRowsRaw);
+        // Build allTotalRows: use explicit Total rows where they exist,
+        // synthesise from country rows for any date that has no Total row
+        const allGameRows = DAILY.filter(d => matchesGame(d.game, game))
+                                 .sort((a,b) => (a.date||'').localeCompare(b.date||''));
+        const dateMap = {};
+        allGameRows.forEach(r => {
+          const dt = (r.date||'').slice(0,10);
+          if (!dateMap[dt]) dateMap[dt] = { total: null, countries: [] };
+          if ((r.country||'') === 'Total') dateMap[dt].total = r;
+          else dateMap[dt].countries.push(r);
+        });
+        const _sumN = (arr, key) => { const vs = arr.filter(r => r[key] != null); return vs.length ? vs.reduce((s,r)=>s+Number(r[key]),0) : null; };
+        const _avgN = (arr, key) => { const vs = arr.filter(r => r[key] != null).map(r=>Number(r[key])); return vs.length ? vs.reduce((a,b)=>a+b,0)/vs.length : null; };
+        const allTotalRows = Object.entries(dateMap)
+          .sort(([a],[b]) => a.localeCompare(b))
+          .map(([dt, {total, countries}]) => {
+            if (total) return total;
+            if (!countries.length) return null;
+            const base = countries[0];
+            return { ...base, date: dt, country: 'Total',
+              revenue: _sumN(countries,'revenue'), dau: _avgN(countries,'dau'),
+              nru: _sumN(countries,'nru'), mkt_cost: _sumN(countries,'mkt_cost'),
+              arppu: _avgN(countries,'arppu'), dpu: _sumN(countries,'dpu'), d1_ret: _avgN(countries,'d1_ret') };
+          }).filter(Boolean);
         const totalRows = allTotalRows.filter(r => {
           const d = (r.date||'').slice(0,10);
           return (!cutoffDate || d >= cutoffDate) && (!endDate || d <= endDate);
