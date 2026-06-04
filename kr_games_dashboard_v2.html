@@ -1554,13 +1554,27 @@
       return sorted;
     }
 
+    // Fetch all rows from a table using pagination (bypasses Supabase 1000-row default limit)
+    async function fetchAll(table, filter) {
+      const PAGE = 1000;
+      let all = [], offset = 0;
+      while (true) {
+        const batch = await api(table, 'GET', null, `${filter}&limit=${PAGE}&offset=${offset}`).catch(() => []);
+        if (!batch || !batch.length) break;
+        all = all.concat(batch);
+        if (batch.length < PAGE) break;
+        offset += PAGE;
+      }
+      return all;
+    }
+
     async function init() {
       try {
         const [monthly, deals, insightsRes, dailyRes] = await Promise.all([
           api('monthly_data', 'GET', null, 'order=ym.asc'),
           api('deal_terms', 'GET', null, 'order=created_at.asc'),
           api('insights', 'GET', null, 'order=year_month.desc'),
-          api('daily_data', 'GET', null, 'order=date.asc&limit=50000').catch(() => [])
+          fetchAll('daily_data', 'order=date.asc')
         ]);
         DEALS = deals || [];
         RAW = enrichRAWData(monthly || []);
