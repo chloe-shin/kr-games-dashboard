@@ -3046,15 +3046,16 @@ ${dataStr}`;
         }
 
         // KPI header — cumulative for the selected period
-        const sumOf = key => totalRows.reduce((s, r) => s + (r[key] != null ? Number(r[key]) : 0), 0);
+        // sumOf returns null (shows "-") if no non-null values exist
+        const sumOf = key => { const vs = totalRows.filter(r => r[key] != null); return vs.length ? vs.reduce((s,r) => s + Number(r[key]), 0) : null; };
         const avgOf = key => { const vs = totalRows.filter(r => r[key] != null).map(r => Number(r[key])); return vs.length ? vs.reduce((a,b)=>a+b,0)/vs.length : null; };
         const periodDays = totalRows.length;
         const periodLabel = `${cutoffDate||'처음'} ~ ${endDate||'끝'} (${periodDays}일)`;
         // prev period for delta: same length window immediately before cutoff
         const prevEnd = cutoffDate ? (() => { const d=new Date(cutoffDate); d.setDate(d.getDate()-1); return d.toISOString().slice(0,10); })() : null;
         const prevStart = (prevEnd && periodDays > 0) ? (() => { const d=new Date(prevEnd); d.setDate(d.getDate()-(periodDays-1)); return d.toISOString().slice(0,10); })() : null;
-        const prevRows = (prevStart && prevEnd) ? allTotalRows.filter(r => r.date >= prevStart && r.date <= prevEnd) : [];
-        const prevSum = key => prevRows.reduce((s, r) => s + (r[key] != null ? Number(r[key]) : 0), 0);
+        const prevRows = (prevStart && prevEnd) ? allTotalRows.filter(r => { const dt=(r.date||'').slice(0,10); return dt >= prevStart && dt <= prevEnd; }) : [];
+        const prevSum = key => { const vs = prevRows.filter(r => r[key] != null); return vs.length ? vs.reduce((s,r) => s + Number(r[key]), 0) : null; };
         const prevAvg = key => { const vs = prevRows.filter(r => r[key] != null).map(r => Number(r[key])); return vs.length ? vs.reduce((a,b)=>a+b,0)/vs.length : null; };
 
         const kpiHtml = `
@@ -3099,13 +3100,13 @@ ${dataStr}`;
         // Country breakdown (filtered by date range)
         const countryAgg = {};
         DAILY.filter(d => { const dt=(d.date||'').slice(0,10); return matchesGame(d.game, game) && d.country !== 'Total' && (!cutoffDate || dt >= cutoffDate) && (!endDate || dt <= endDate); }).forEach(r => {
-          if (!countryAgg[r.country]) countryAgg[r.country] = { rev:0, nru:0, mkt:0, dau:[], d1:[] };
+          if (!countryAgg[r.country]) countryAgg[r.country] = { rev:null, nru:null, mkt:null, dau:[], d1:[] };
           const a = countryAgg[r.country];
-          if (r.revenue  != null) a.rev += r.revenue;
-          if (r.nru      != null) a.nru += r.nru;
-          if (r.mkt_cost != null) a.mkt += r.mkt_cost;
-          if (r.dau      != null && r.dau !== undefined) a.dau.push(Number(r.dau));
-          if (r.d1_ret   != null && r.d1_ret !== undefined) a.d1.push(Number(r.d1_ret));
+          if (r.revenue  != null) { a.rev = (a.rev||0) + Number(r.revenue); }
+          if (r.nru      != null) { a.nru = (a.nru||0) + Number(r.nru); }
+          if (r.mkt_cost != null) { a.mkt = (a.mkt||0) + Number(r.mkt_cost); }
+          if (r.dau      != null) a.dau.push(Number(r.dau));
+          if (r.d1_ret   != null) a.d1.push(Number(r.d1_ret));
         });
         const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : null;
         const ctryRows = SEA_COUNTRIES.filter(c => c !== 'Total' && countryAgg[c]).map(c => {
