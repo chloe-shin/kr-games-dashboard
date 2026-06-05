@@ -1327,6 +1327,21 @@
           <label class="form-label" id="xu-file-label">Excel File</label>
           <input type="file" id="xu-file" accept=".xlsx,.xls" class="form-input" style="cursor:pointer" onchange="previewExcelUpload()">
         </div>
+        <div id="xu-country-row" style="display:none">
+          <label class="form-label">Country <span style="color:var(--red)">*</span> <span style="font-size:11px;color:var(--text3);font-weight:400">— 이 파일에 국가 컬럼이 없어요. 어느 국가 데이터인지 선택해주세요.</span></label>
+          <select id="xu-country" class="form-input" onchange="previewExcelUpload()">
+            <option value="">Select country...</option>
+            <option value="Total">🌏 Total (all countries combined)</option>
+            <option value="VN">🇻🇳 VN — Vietnam</option>
+            <option value="TH">🇹🇭 TH — Thailand</option>
+            <option value="ID">🇮🇩 ID — Indonesia</option>
+            <option value="PH">🇵🇭 PH — Philippines</option>
+            <option value="MY">🇲🇾 MY — Malaysia</option>
+            <option value="SG">🇸🇬 SG — Singapore</option>
+            <option value="TWHK">🇹🇼 TWHK — Taiwan + Hong Kong</option>
+            <option value="Others">Others</option>
+          </select>
+        </div>
         <div id="xu-preview" style="display:none">
           <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Preview</div>
           <div id="xu-preview-table"></div>
@@ -3121,6 +3136,8 @@ ${dataStr}`;
         document.getElementById('xu-warn').style.display = 'none';
         document.getElementById('xu-error').textContent = '';
         document.getElementById('xu-submit-btn').disabled = true;
+        document.getElementById('xu-country-row').style.display = 'none';
+        document.getElementById('xu-country').value = '';
         _xuParsedRow = null;
         document.getElementById('modal-excel-upload').classList.add('open');
       } else {
@@ -3696,6 +3713,25 @@ ${dataStr}`;
           const viewByCol = col('ViewBy', 'View By', 'Country', 'country', 'Region')
                          || colRx('^view.?by$', '^country$', '^region$');
 
+          // If no country column, show country selector and require selection
+          const countryRowEl = document.getElementById('xu-country-row');
+          const countrySelEl = document.getElementById('xu-country');
+          if (!viewByCol && _xuMode === 'daily') {
+            countryRowEl.style.display = 'block';
+            const forcedCountry = countrySelEl.value;
+            if (!forcedCountry) {
+              // Can't parse yet — wait for country selection
+              document.getElementById('xu-preview').style.display = 'none';
+              document.getElementById('xu-submit-btn').disabled = true;
+              document.getElementById('xu-warn').textContent = '⚠️ 국가 컬럼이 없습니다. 위에서 국가를 선택하면 자동으로 미리보기가 업데이트됩니다.';
+              document.getElementById('xu-warn').style.display = 'block';
+              return;
+            }
+          } else {
+            countryRowEl.style.display = 'none';
+          }
+          const forcedCountry = (!viewByCol && _xuMode === 'daily') ? (countrySelEl.value || null) : null;
+
           // Column detection — exact match first, then regex fallback
           const revCol    = col('Revenue', 'DailyGameRevenue', 'GameRevenue', 'Daily Revenue', 'Game Revenue')
                          || colRx('^revenue$', 'game.?rev', 'daily.?rev', 'rev.*usd');
@@ -3785,20 +3821,27 @@ ${dataStr}`;
           // Pre-scan: does this file have explicit Total rows per date?
           const hasTotalRows = viewByCol
             ? dataRows.some(r => !r[viewByCol] || String(r[viewByCol]).trim().toUpperCase() === 'TOTAL')
-            : true;
+            : !forcedCountry; // if forced country given, no Total rows exist
 
           dataRows.forEach(r => {
             const dateStr = String(r[dateCol]).slice(0, 10);
+            // If forced country (no viewByCol): treat rows as that country
+            if (forcedCountry) {
+              const ctry = forcedCountry === 'Total' ? 'Total' : forcedCountry;
+              if (ctry !== 'Total') {
+                accumulate(`${dateStr}|${ctry}`, dateStr, ctry, r);
+              }
+              // Always also accumulate as Total
+              accumulate(`${dateStr}|Total`, dateStr, 'Total', r);
+              return;
+            }
             const rawCtry = viewByCol ? String(r[viewByCol]).trim() : 'Total';
             const cu = rawCtry.toUpperCase();
             if (!rawCtry || cu === 'TOTAL') {
-              // Explicit Total row → always use
               accumulate(`${dateStr}|Total`, dateStr, 'Total', r);
             } else {
-              // Country row → map to SEA or "Others"
               const mappedCtry = mapCountry(rawCtry);
               accumulate(`${dateStr}|${mappedCtry}`, dateStr, mappedCtry, r);
-              // Synthesize Total only when file has no explicit Total rows
               if (!hasTotalRows) {
                 accumulate(`${dateStr}|Total`, dateStr, 'Total', r);
               }
