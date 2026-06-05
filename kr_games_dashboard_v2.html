@@ -1930,13 +1930,13 @@
         document.getElementById('page-data').classList.add('active');
         document.getElementById('topbar-title').textContent = 'Raw Data';
         setActiveNav('nav-data');
-        actions.innerHTML = `<button class="btn btn-primary" onclick="openModal('excel-monthly')" style="gap:6px">📊 Upload Monthly Excel</button>`;
+        actions.innerHTML = `<button class="btn btn-primary" onclick="openModal('excel-upload')" style="gap:6px">📂 Upload Excel</button>`;
         renderDataPage();
       } else if (page === 'monitor') {
         document.getElementById('page-monitor').classList.add('active');
         document.getElementById('topbar-title').textContent = 'Daily Monitor';
         setActiveNav('nav-monitor');
-        actions.innerHTML = `<button class="btn" onclick="exportMonitorPPTX()" style="background:var(--bg2);border:1px solid var(--border2);color:var(--text);margin-right:8px;"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> PPTX</button><button class="btn btn-primary" onclick="openModal('excel-daily')" style="gap:6px">📡 Upload Daily Excel</button>`;
+        actions.innerHTML = `<button class="btn" onclick="exportMonitorPPTX()" style="background:var(--bg2);border:1px solid var(--border2);color:var(--text);margin-right:8px;"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> PPTX</button><button class="btn btn-primary" onclick="openModal('excel-upload')" style="gap:6px">📂 Upload Excel</button>`;
         renderMonitor();
       }
     }
@@ -3104,20 +3104,12 @@ ${dataStr}`;
       if (type === 'deal') {
         document.getElementById('deal-error').style.display = 'none';
         document.getElementById('modal-deal').classList.add('open');
-      } else if (type === 'excel-monthly' || type === 'excel-daily') {
-        _xuMode = type === 'excel-monthly' ? 'monthly' : 'daily';
-        // Set modal copy based on mode
-        if (_xuMode === 'monthly') {
-          document.getElementById('xu-modal-title').textContent = '📊 Upload Monthly Excel';
-          document.getElementById('xu-modal-desc').innerHTML = 'Monthly Report 엑셀을 올려주세요.<br>월간 합계/평균으로 자동 집계해서 게임 대시보드에 업데이트됩니다.';
-          document.getElementById('xu-file-label').textContent = 'Excel File (Monthly Report)';
-          document.getElementById('xu-submit-btn').textContent = 'Save to Monthly DB';
-        } else {
-          document.getElementById('xu-modal-title').textContent = '📡 Upload Daily Excel';
-          document.getElementById('xu-modal-desc').innerHTML = 'Daily Report 엑셀을 올려주세요.<br>날짜별 데이터가 Daily Monitor와 게임 Daily 탭에 업데이트됩니다.';
-          document.getElementById('xu-file-label').textContent = 'Excel File (Daily Report)';
-          document.getElementById('xu-submit-btn').textContent = 'Save to Daily DB';
-        }
+      } else if (type === 'excel-upload') {
+        _xuMode = 'auto'; // will be detected after file parse
+        document.getElementById('xu-modal-title').textContent = '📂 Upload Excel';
+        document.getElementById('xu-modal-desc').innerHTML = 'Monthly 또는 Daily Report를 올려주세요. 파일 형식을 자동으로 감지합니다.';
+        document.getElementById('xu-file-label').textContent = 'Excel File';
+        document.getElementById('xu-submit-btn').textContent = 'Save to DB';
         // Reset
         const sel = document.getElementById('xu-game');
         sel.innerHTML = '<option value="">Select game...</option>' +
@@ -3591,7 +3583,7 @@ ${dataStr}`;
 
     // ===== EXCEL UPLOAD =====
     let _xuParsedRow = null;
-    let _xuMode = 'monthly'; // 'monthly' | 'daily'
+    let _xuMode = 'auto'; // 'monthly' | 'daily' | 'auto'
 
     function previewExcelUpload() {
       const errEl = document.getElementById('xu-error');
@@ -3663,6 +3655,17 @@ ${dataStr}`;
             document.getElementById('xu-warn').style.display = 'none';
           }
           const ym = months[months.length - 1]; // 최신 월 기준 (월간 aggregate용)
+
+          // Auto-detect: if any month has >3 rows → daily report
+          if (_xuMode === 'auto') {
+            const rowsPerMonth = {};
+            dataRows.forEach(r => { const m = String(r[dateCol]).slice(0,7); rowsPerMonth[m] = (rowsPerMonth[m]||0) + 1; });
+            const maxRPM = Math.max(...Object.values(rowsPerMonth));
+            _xuMode = maxRPM > 3 ? 'daily' : 'monthly';
+            document.getElementById('xu-modal-desc').innerHTML = _xuMode === 'daily'
+              ? `📡 <strong>Daily Report</strong> 감지됨 — daily_data + monthly_data 모두 저장`
+              : `📊 <strong>Monthly Report</strong> 감지됨 — monthly_data에 저장`;
+          }
           const monthRows = dataRows.filter(r => String(r[dateCol]).startsWith(ym));
 
           // Sort ascending by date (last day = last row)
@@ -4110,7 +4113,7 @@ ${dataStr}`;
           const { ym, revenue, dau, mau, nru, mpu, arppu, cr, mkt_cost } = _xuParsedRow;
           if (RAW.find(r => r.game === game && r.ym === ym)) {
             errEl.textContent = `${game} ${ym} 데이터가 이미 존재합니다. Raw Data에서 삭제 후 다시 업로드하세요.`;
-            btn.textContent = 'Save to Monthly DB'; btn.disabled = false; return;
+            btn.textContent = 'Save to DB'; btn.disabled = false; return;
           }
           const row = { game, ym, revenue, dau, mau, nru, mpu, arppu, cr, mkt_cost };
           const saved = await api('monthly_data', 'POST', row);
@@ -4122,7 +4125,7 @@ ${dataStr}`;
           const { _dailyRows } = _xuParsedRow;
           if (!_dailyRows || !_dailyRows.length) {
             errEl.textContent = '일별 데이터가 없어요.';
-            btn.textContent = 'Save to Daily DB'; btn.disabled = false; return;
+            btn.textContent = 'Save to DB'; btn.disabled = false; return;
           }
           // Probe table schema to only send columns that actually exist
           const dailyWithGame = _dailyRows.map(r => ({ ...r, game }));
@@ -4161,6 +4164,35 @@ ${dataStr}`;
           // Remove old in-memory rows for uploaded dates (handle both date and timestamp formats)
           DAILY = DAILY.filter(d => !(matchesGame(d.game, game) && uploadedDates.includes((d.date||'').slice(0,10))));
           DAILY.push(...newDaily);
+
+          // Also save monthly aggregates from daily data
+          for (const month of uploadedMonths) {
+            const monthRows = _dailyRows.filter(r => r.date.startsWith(month) && r.country === 'Total');
+            if (!monthRows.length) continue;
+            const sumM = k => { const vs = monthRows.filter(r => r[k] != null); return vs.length ? vs.reduce((s,r) => s + Number(r[k]), 0) : null; };
+            const avgM = k => { const vs = monthRows.filter(r => r[k] != null).map(r => Number(r[k])); return vs.length ? vs.reduce((a,b) => a+b,0)/vs.length : null; };
+            const lastDay = monthRows[monthRows.length - 1];
+            const monthRow = {
+              game, ym: month,
+              revenue:  sumM('revenue'),
+              dau:      avgM('dau'),
+              mau:      lastDay?.mau ?? null,
+              nru:      sumM('nru'),
+              mpu:      lastDay?.mpu ?? null,
+              arppu:    avgM('arppu'),
+              cr:       avgM('d1_ret'),
+              mkt_cost: sumM('mkt_cost'),
+            };
+            // Upsert monthly row (delete existing then insert)
+            try {
+              await api('monthly_data', 'DELETE', null, `game=eq.${encodeURIComponent(game)}&ym=eq.${month}`);
+              const savedMonth = await api('monthly_data', 'POST', monthRow);
+              const existing = RAW.findIndex(r => r.game === game && r.ym === month);
+              const newRow = Array.isArray(savedMonth) ? savedMonth[0] : savedMonth || monthRow;
+              if (existing >= 0) RAW[existing] = newRow; else RAW.push(newRow);
+            } catch(e) { console.warn('[monthly upsert]', month, e.message); }
+          }
+          RAW = enrichRAWData(RAW);
         }
 
         closeModal('excel-upload');
@@ -4176,7 +4208,7 @@ ${dataStr}`;
       } catch (err) {
         console.error('[upload error]', err.message);
         errEl.textContent = '저장 실패: ' + err.message;
-        btn.textContent = _xuMode === 'monthly' ? 'Save to Monthly DB' : 'Save to Daily DB';
+        btn.textContent = 'Save to DB';
         btn.disabled = false;
       }
     }
