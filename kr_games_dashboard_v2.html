@@ -1904,6 +1904,7 @@
         renderOverview();
       } else if (page === 'game') {
         currentGame = game;
+        _gameDailyInited = false; // reset date range when switching games
         document.getElementById('page-game').classList.add('active');
         document.getElementById('topbar-title').textContent = game;
         const slug = game.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
@@ -2793,6 +2794,9 @@ ${dataStr}`;
 
     let _currentDailyDays = 30;
     let _currentDailyCountry = 'Total';
+    let _gameDailyStart = null; // YYYY-MM-DD
+    let _gameDailyEnd   = null; // YYYY-MM-DD
+    let _gameDailyInited = false;
     let _currentMonitorCountry = 'Total';
 
     function switchGameTab(t) {
@@ -2815,6 +2819,25 @@ ${dataStr}`;
       _currentDailyCountry = country;
       renderGameDaily(currentGame, _currentDailyDays, country);
     }
+
+    window.setGameDailyRange = function(start, end) {
+      _gameDailyStart = start || null;
+      _gameDailyEnd   = end   || null;
+      renderGameDaily(currentGame, 0, _currentDailyCountry);
+    };
+
+    window.setGameDailyPreset = function(days) {
+      if (days === 0) {
+        _gameDailyStart = null;
+        _gameDailyEnd   = null;
+      } else {
+        const today = new Date().toISOString().slice(0,10);
+        _gameDailyEnd = today;
+        const d = new Date(today); d.setDate(d.getDate() - (days - 1));
+        _gameDailyStart = d.toISOString().slice(0,10);
+      }
+      renderGameDaily(currentGame, 0, _currentDailyCountry);
+    };
 
     function switchMonitorCountry(country) {
       _currentMonitorCountry = country;
@@ -3501,16 +3524,39 @@ ${dataStr}`;
     };
 
     function renderGameDaily(game, days, country) {
-      days = days || 30;
       country = country || _currentDailyCountry || 'Total';
-      const rows = getDailyData(game, days, country);
+
+      // Init date range on first call
+      if (!_gameDailyInited) {
+        _gameDailyInited = true;
+        const today = new Date().toISOString().slice(0,10);
+        _gameDailyEnd = today;
+        const d = new Date(today); d.setDate(d.getDate() - 29);
+        _gameDailyStart = d.toISOString().slice(0,10);
+      }
+
+      // Get rows filtered by date range
+      const allRows = getDailyData(game, 0, country); // 0 = no days limit
+      const rows = allRows.filter(r => {
+        const dt = (r.date||'').slice(0,10);
+        return (!_gameDailyStart || dt >= _gameDailyStart) && (!_gameDailyEnd || dt <= _gameDailyEnd);
+      });
+
       const container = document.getElementById('game-daily-area');
       if (!container) return;
 
       const color = getGameColor(game);
-      const rangeHtml = [7, 14, 30].map(d =>
-        `<button class="daily-range-tab ${d === days ? 'active' : ''}" onclick="switchDailyDays(${d})">Last ${d}d</button>`
-      ).join('');
+      const inpStyle = `background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:11px;padding:3px 7px;cursor:pointer;outline:none`;
+      const rangeHtml = `
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+          <input type="date" id="gdaily-start" value="${_gameDailyStart||''}" style="${inpStyle}" onchange="window.setGameDailyRange(this.value, document.getElementById('gdaily-end').value)">
+          <span style="font-size:11px;color:var(--text3)">~</span>
+          <input type="date" id="gdaily-end" value="${_gameDailyEnd||''}" style="${inpStyle}" onchange="window.setGameDailyRange(document.getElementById('gdaily-start').value, this.value)">
+          ${[7,14,30,90,0].map(d => {
+            const lbl = d===0?'전체':d+'d';
+            return `<button class="daily-range-tab" style="font-size:10px;padding:3px 8px" onclick="window.setGameDailyPreset(${d})">${lbl}</button>`;
+          }).join('')}
+        </div>`;
 
       const availableCountries = getAvailableCountries(game);
       const countryHtml = availableCountries.length > 1 ? `
@@ -3521,9 +3567,9 @@ ${dataStr}`;
       if (!rows.length) {
         container.innerHTML = `<div style="padding:20px 0">
           ${countryHtml}
-          <div class="daily-range-tabs">${rangeHtml}</div>
+          ${rangeHtml}
           <div style="text-align:center;padding:40px;color:var(--text3);font-size:13px">
-            일별 데이터가 없어요.<br>
+            선택 기간에 데이터 없음 (${_gameDailyStart||'처음'} ~ ${_gameDailyEnd||'끝'})<br>
             <span style="font-size:12px">📂 Upload Excel로 Daily Report를 업로드해주세요.</span>
           </div>
         </div>`;
@@ -3533,7 +3579,7 @@ ${dataStr}`;
       const labels = rows.map(r => r.date.slice(5));
       container.innerHTML = `<div style="padding-top:4px">
         ${countryHtml}
-        <div class="daily-range-tabs">${rangeHtml}</div>
+        ${rangeHtml}
         <div class="two-col" style="gap:16px">
           <div>
             <div style="font-size:11px;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">Revenue & DAU</div>
