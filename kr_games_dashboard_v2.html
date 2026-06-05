@@ -1878,8 +1878,9 @@
             <span style="color:var(--text3)">~</span>
             <select id="op-end" onchange="updateOverviewPeriod()" style="font-size:13px;padding:2px;border:none;background:transparent;color:var(--text2);cursor:pointer;outline:none">${opts}</select>
           </div>
-          <button class="btn" id="btn-pptx" onclick="exportPPTX()" style="background:var(--bg2);border:1px solid var(--border2);color:var(--text);margin-right:8px;"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> PPTX</button>`;
-          
+          <button class="btn" id="btn-pptx" onclick="exportPPTX()" style="background:var(--bg2);border:1px solid var(--border2);color:var(--text);margin-right:8px;"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> PPTX</button>
+          <button class="btn btn-primary" onclick="openModal('excel-upload')" style="gap:6px">📂 Upload Excel</button>`;
+
         setTimeout(() => {
           if (document.getElementById('op-start')) document.getElementById('op-start').value = overviewStartYM;
           if (document.getElementById('op-end')) document.getElementById('op-end').value = overviewEndYM;
@@ -1906,7 +1907,8 @@
             <span style="color:var(--text3)">~</span>
             <select id="op-end-game" onchange="updateGamePeriod()" style="font-size:13px;padding:2px;border:none;background:transparent;color:var(--text2);cursor:pointer;outline:none">${opts}</select>
           </div>
-          <button class="btn" id="btn-pptx" onclick="exportPPTX()" style="background:var(--bg2);border:1px solid var(--border2);color:var(--text);margin-right:8px;"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> PPTX</button>`;
+          <button class="btn" id="btn-pptx" onclick="exportPPTX()" style="background:var(--bg2);border:1px solid var(--border2);color:var(--text);margin-right:8px;"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> PPTX</button>
+          <button class="btn btn-primary" onclick="openModal('excel-upload')" style="gap:6px">📂 Upload Excel</button>`;
 
         setTimeout(() => {
           if (document.getElementById('op-start-game')) document.getElementById('op-start-game').value = gameStartYM;
@@ -1918,13 +1920,13 @@
         document.getElementById('page-deals').classList.add('active');
         document.getElementById('topbar-title').textContent = 'Deal Terms';
         setActiveNav('nav-deals');
-        actions.innerHTML = `<button class="btn btn-primary" onclick="openAddDeal()">+ Add deal</button>`;
+        actions.innerHTML = `<button class="btn btn-primary" onclick="openModal('excel-upload')" style="gap:6px;margin-right:8px">📂 Upload Excel</button><button class="btn btn-primary" onclick="openAddDeal()">+ Add deal</button>`;
         renderDeals();
       } else if (page === 'archive') {
         document.getElementById('page-archive').classList.add('active');
         document.getElementById('topbar-title').textContent = 'Archive';
         setActiveNav('nav-archive');
-        actions.innerHTML = '';
+        actions.innerHTML = `<button class="btn btn-primary" onclick="openModal('excel-upload')" style="gap:6px">📂 Upload Excel</button>`;
         renderArchive();
       } else if (page === 'data') {
         document.getElementById('page-data').classList.add('active');
