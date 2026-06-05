@@ -2688,10 +2688,9 @@ ${dataStr}`;
          if (ind) ind.textContent = currentGameRawSort === col ? (currentGameRawAsc ? ' ↑' : ' ↓') : '';
       });
 
-      // Daily tab visibility
+      // Daily tab — show for all games
       const dailyTabBtn = document.getElementById('game-tab-daily');
-      if (dailyTabBtn) dailyTabBtn.style.display = isNewGame(game) ? '' : 'none';
-      if (!isNewGame(game) && currentGameTab === 'daily') currentGameTab = 'revenue';
+      if (dailyTabBtn) dailyTabBtn.style.display = '';
 
       document.querySelectorAll('#game-tabs .tab').forEach(el => {
         const t = el.dataset.tab;
