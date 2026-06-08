@@ -3526,13 +3526,19 @@ ${dataStr}`;
     function renderGameDaily(game, days, country) {
       country = country || _currentDailyCountry || 'Total';
 
-      // Init date range on first call
+      // Init date range on first call — default to latest 90 days of actual data
       if (!_gameDailyInited) {
         _gameDailyInited = true;
-        const today = new Date().toISOString().slice(0,10);
-        _gameDailyEnd = today;
-        const d = new Date(today); d.setDate(d.getDate() - 29);
-        _gameDailyStart = d.toISOString().slice(0,10);
+        const allForGame = getDailyData(game, 0, country);
+        if (allForGame.length) {
+          const dates = allForGame.map(r => (r.date||'').slice(0,10)).filter(Boolean).sort();
+          _gameDailyEnd = dates[dates.length - 1];
+          const d = new Date(_gameDailyEnd); d.setDate(d.getDate() - 89);
+          _gameDailyStart = d.toISOString().slice(0,10);
+        } else {
+          _gameDailyStart = null;
+          _gameDailyEnd   = null;
+        }
       }
 
       // Get rows filtered by date range
