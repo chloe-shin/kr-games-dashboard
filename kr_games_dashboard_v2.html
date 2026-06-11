@@ -3604,6 +3604,7 @@ ${dataStr}`;
             <canvas id="daily-chart-d1ret" height="120"></canvas>
           </div>
         </div>
+        <div id="daily-country-table" style="margin-top:20px"></div>
       </div>`;
 
       if (dailyChart1) { dailyChart1.destroy(); dailyChart1 = null; }
@@ -3649,6 +3650,56 @@ ${dataStr}`;
         data: { labels, datasets: [{ label: 'D1 Retention', data: rows.map(r => r.d1_ret ?? null), borderColor: '#EC4899', borderWidth: 2, pointRadius: 2, tension: 0.3, fill: true, backgroundColor: 'rgba(236,72,153,.08)', spanGaps: true }] },
         options: { ...chartDefaults, scales: { x: { ticks: { color: '#555', font: { size: 9 } }, grid: { display: false } }, y: yTick(v => v.toFixed(1)+'%') } }
       });
+
+      // Country breakdown table
+      const cColors2 = { VN:'#4A9EF5', TH:'#2ECC9A', ID:'#E8A030', PH:'#E06090', MY:'#8B5CF6', SG:'#06B6D4', TWHK:'#F97316', Others:'#888' };
+      const ctryAgg = {};
+      DAILY.filter(d => {
+        const dt = (d.date||'').slice(0,10);
+        return matchesGame(d.game, game) && d.country !== 'Total'
+          && (!_gameDailyStart || dt >= _gameDailyStart) && (!_gameDailyEnd || dt <= _gameDailyEnd);
+      }).forEach(r => {
+        if (!ctryAgg[r.country]) ctryAgg[r.country] = { rev:null, nru:null, mkt:null, dau:[], d1:[] };
+        const a = ctryAgg[r.country];
+        if (r.revenue  != null) a.rev = (a.rev||0) + Number(r.revenue);
+        if (r.nru      != null) a.nru = (a.nru||0) + Number(r.nru);
+        if (r.mkt_cost != null) a.mkt = (a.mkt||0) + Number(r.mkt_cost);
+        if (r.dau      != null) a.dau.push(Number(r.dau));
+        if (r.d1_ret   != null) a.d1.push(Number(r.d1_ret));
+      });
+      const SEA_ORDER = ['VN','TH','ID','PH','MY','SG','TWHK','Others'];
+      const avgArr2 = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : null;
+      const fmtR2 = v => v==null ? '-' : '$'+Math.round(v).toLocaleString();
+      const fmtI2 = v => v==null ? '-' : Math.round(v).toLocaleString();
+      const fmtP2 = v => v==null ? '-' : (v*100).toFixed(1)+'%';
+      const ctryRows = SEA_ORDER.filter(c => ctryAgg[c]).map(c => {
+        const a = ctryAgg[c];
+        return `<tr style="border-bottom:1px solid rgba(255,255,255,.04)">
+          <td style="padding:4px 8px;font-size:12px"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${cColors2[c]||'#888'};margin-right:6px;vertical-align:middle"></span>${c}</td>
+          <td style="text-align:right;padding:4px 8px;font-family:monospace;font-size:12px">${fmtR2(a.rev)}</td>
+          <td style="text-align:right;padding:4px 8px;font-family:monospace;font-size:12px">${fmtI2(avgArr2(a.dau))}</td>
+          <td style="text-align:right;padding:4px 8px;font-family:monospace;font-size:12px">${fmtI2(a.nru)}</td>
+          <td style="text-align:right;padding:4px 8px;font-family:monospace;font-size:12px">${fmtR2(a.mkt)}</td>
+          <td style="text-align:right;padding:4px 8px;font-family:monospace;font-size:12px">${fmtP2(avgArr2(a.d1))}</td>
+        </tr>`;
+      }).join('');
+      const ctryTableEl = document.getElementById('daily-country-table');
+      if (ctryTableEl && ctryRows) {
+        const thS = 'text-align:right;padding:4px 8px;color:var(--text3);font-weight:500;font-size:11px';
+        const thL2 = 'text-align:left;padding:4px 8px;color:var(--text3);font-weight:500;font-size:11px';
+        ctryTableEl.innerHTML = `
+          <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">🌏 국가별 합계</div>
+          <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse">
+              <thead><tr style="border-bottom:1px solid var(--border)">
+                <th style="${thL2}">Country</th><th style="${thS}">Revenue</th><th style="${thS}">DAU(avg)</th><th style="${thS}">NRU</th><th style="${thS}">Mkt Cost</th><th style="${thS}">D1 Ret</th>
+              </tr></thead>
+              <tbody>${ctryRows}</tbody>
+            </table>
+          </div>`;
+      } else if (ctryTableEl) {
+        ctryTableEl.innerHTML = '';
+      }
     }
 
     // ===== EXCEL UPLOAD =====
@@ -4261,8 +4312,16 @@ ${dataStr}`;
           DAILY = DAILY.filter(d => !(matchesGame(d.game, game) && uploadedDates.includes((d.date||'').slice(0,10))));
           DAILY.push(...newDaily);
 
-          // Also save monthly aggregates from daily data
+          // Also save monthly aggregates — only for complete months (last day of month is in upload)
           for (const month of uploadedMonths) {
+            const [y, m] = month.split('-').map(Number);
+            const lastDayOfMonth = new Date(y, m, 0).getDate(); // last day number
+            const lastDayStr = `${month}-${String(lastDayOfMonth).padStart(2,'0')}`;
+            const hasLastDay = uploadedDates.some(d => d === lastDayStr);
+            if (!hasLastDay) {
+              console.log(`[monthly skip] ${month}: last day (${lastDayStr}) not in upload — skipping monthly update`);
+              continue; // skip incomplete months
+            }
             const monthRows = _dailyRows.filter(r => r.date.startsWith(month) && r.country === 'Total');
             if (!monthRows.length) continue;
             const sumM = k => { const vs = monthRows.filter(r => r[k] != null); return vs.length ? vs.reduce((s,r) => s + Number(r[k]), 0) : null; };
