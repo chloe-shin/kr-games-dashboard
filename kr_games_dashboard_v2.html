@@ -2397,19 +2397,41 @@
           data: labels.map((_,i) => { const pt = ds.data.find(d => d.x === i+1); return pt ? pt.y : null; })
         }));
       } else {
-        // Monthly mode: M+1, M+2... since launch month
+        // Monthly mode: M+1 = days 1-30 from launch, M+2 = days 31-60, etc.
+        // Uses daily_data aggregated into 30-day windows from actual launch date
+        const sumN = (arr, k) => { const vs=arr.filter(r=>r[k]!=null); return vs.length?vs.reduce((s,r)=>s+Number(r[k]),0):null; };
+        const avgN = (arr, k) => { const vs=arr.filter(r=>r[k]!=null).map(r=>Number(r[k])); return vs.length?vs.reduce((a,b)=>a+b,0)/vs.length:null; };
+        const aggFn = (arr, k) => ['dau','arppu','cr','d1_ret'].includes(k) ? avgN(arr,k) : sumN(arr,k);
+
         const datasets = _compareGames.map(game => {
           const deal = DEALS.find(d => matchesGame(d.title, game));
-          const launchYM = deal?.start_date ? deal.start_date.slice(0,7) : null;
-          const rows = RAW.filter(r => matchesGame(r.game, game)).sort((a,b) => a.ym.localeCompare(b.ym));
-          if (!rows.length) return null;
-          const data = launchYM
-            ? rows.map(r => { const [ly,lm]=launchYM.split('-').map(Number); const [ry,rm]=r.ym.split('-').map(Number); return { x:(ry-ly)*12+(rm-lm)+1, y:r[metric]??null }; }).filter(d=>d.x>0)
-            : rows.map((r,i) => ({ x:i+1, y:r[metric]??null }));
+          const launchDate = deal?.start_date ? new Date(deal.start_date) : null;
+          const dailyRows = DAILY.filter(d => matchesGame(d.game, game) && (d.country||'Total')==='Total')
+                                 .sort((a,b) => (a.date||'').localeCompare(b.date||''));
+          if (!dailyRows.length) return null;
+          const origin = launchDate || new Date((dailyRows[0].date||'').slice(0,10));
+
+          // Group into 30-day buckets
+          const buckets = {};
+          dailyRows.forEach(r => {
+            const dt = new Date((r.date||'').slice(0,10));
+            const dayNum = Math.round((dt - origin) / 86400000); // 0-based
+            if (dayNum < 0) return;
+            const bucket = Math.floor(dayNum / 30) + 1; // M+1, M+2, ...
+            if (!buckets[bucket]) buckets[bucket] = [];
+            buckets[bucket].push(r);
+          });
+
+          const data = Object.entries(buckets).map(([b, rows]) => ({
+            x: Number(b),
+            y: aggFn(rows, metric)
+          })).filter(d => d.y != null);
+
           maxPeriods = Math.max(maxPeriods, ...data.map(d => d.x));
           const c = getGameColor(game);
           return { label: game, data, borderColor: c, backgroundColor: c+'22', borderWidth: 2, pointRadius: 3, tension: 0.3, fill: false, spanGaps: true };
         }).filter(Boolean);
+
         labels = Array.from({length: maxPeriods}, (_,i) => `M+${i+1}`);
         alignedDatasets = datasets.map(ds => ({
           ...ds,
@@ -2445,36 +2467,46 @@
       if (!tableEl) return;
       const thS = 'text-align:right;padding:6px 12px;color:var(--text3);font-size:11px;font-weight:500';
       const thL3 = 'text-align:left;padding:6px 12px;color:var(--text3);font-size:11px;font-weight:500';
-      const peakMonth = game => {
+      const prefix = _compareMode === 'daily' ? 'D' : 'M';
+      const peakPeriod = game => {
         const ds = alignedDatasets.find(d => d.label === game);
         if (!ds) return '-';
         let max = -Infinity, idx = -1;
         ds.data.forEach((v,i) => { if (v != null && v > max) { max = v; idx = i; } });
-        return idx >= 0 ? `M+${idx+1} (${isDollar?'$'+Math.round(max).toLocaleString():Math.round(max).toLocaleString()})` : '-';
+        const fmt = v => isPercent ? (v*100).toFixed(1)+'%' : isDollar ? '$'+Math.round(v).toLocaleString() : Math.round(v).toLocaleString();
+        return idx >= 0 ? `${prefix}+${idx+1} (${fmt(max)})` : '-';
       };
       const totalVal = game => {
-        const rows = RAW.filter(r => matchesGame(r.game, game));
-        const sum = rows.reduce((s,r) => s + (r[metric]||0), 0);
-        const avg = rows.length ? sum/rows.length : 0;
-        return isPercent ? (avg*100).toFixed(2)+'%' : isDollar ? '$'+Math.round(metric==='arppu'?avg:sum).toLocaleString() : Math.round(metric==='dau'||metric==='mpu'?avg:sum).toLocaleString();
+        const ds = alignedDatasets.find(d => d.label === game);
+        if (!ds) return '-';
+        const vals = ds.data.filter(v => v != null);
+        if (!vals.length) return '-';
+        const isAvg = ['dau','arppu','cr','d1_ret','mpu'].includes(metric);
+        const val = isAvg ? vals.reduce((a,b)=>a+b,0)/vals.length : vals.reduce((a,b)=>a+b,0);
+        return isPercent ? (val*100).toFixed(2)+'%' : isDollar ? '$'+Math.round(val).toLocaleString() : Math.round(val).toLocaleString();
+      };
+      const periodCount = game => {
+        const ds = alignedDatasets.find(d => d.label === game);
+        return ds ? ds.data.filter(v => v != null).length : 0;
       };
       tableEl.innerHTML = `
         <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">📊 Summary</div>
         <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
           <thead><tr style="border-bottom:1px solid var(--border)">
             <th style="${thL3}">Game</th>
-            <th style="${thS}">Months of Data</th>
-            <th style="${thS}">${['dau','mpu','arppu','cr'].includes(metric)?'Avg':'Total'} ${metrics.find(m=>m.key===metric)?.label||metric}</th>
-            <th style="${thS}">Peak</th>
+            <th style="${thS}">${prefix === 'D' ? 'Days' : 'Months'} of Data</th>
+            <th style="${thS}">${['dau','arppu','cr','d1_ret','mpu'].includes(metric)?'Avg':'Total'} ${metrics.find(m=>m.key===metric)?.label||metric}</th>
+            <th style="${thS}">Peak ${prefix}</th>
           </tr></thead>
           <tbody>${_compareGames.map(g => {
-            const rows = RAW.filter(r => matchesGame(r.game, g));
             const c = getGameColor(g);
+            const deal = DEALS.find(d => matchesGame(d.title, g));
+            const launch = deal?.start_date ? deal.start_date.slice(0,10) : '-';
             return `<tr style="border-bottom:1px solid rgba(255,255,255,.04)">
-              <td style="padding:6px 12px;font-size:12px"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c};margin-right:6px;vertical-align:middle"></span>${g}</td>
-              <td style="text-align:right;padding:6px 12px;font-family:monospace;font-size:12px">${rows.length}</td>
+              <td style="padding:6px 12px;font-size:12px"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c};margin-right:6px;vertical-align:middle"></span>${g}<span style="font-size:10px;color:var(--text3);margin-left:6px">🚀${launch}</span></td>
+              <td style="text-align:right;padding:6px 12px;font-family:monospace;font-size:12px">${periodCount(g)}</td>
               <td style="text-align:right;padding:6px 12px;font-family:monospace;font-size:12px">${totalVal(g)}</td>
-              <td style="text-align:right;padding:6px 12px;font-family:monospace;font-size:12px">${peakMonth(g)}</td>
+              <td style="text-align:right;padding:6px 12px;font-family:monospace;font-size:12px">${peakPeriod(g)}</td>
             </tr>`;
           }).join('')}</tbody>
         </table></div>`;
