@@ -1087,6 +1087,12 @@
         </svg>
         <span>Archive</span>
       </div>
+      <div class="nav-item" id="nav-compare" onclick="showPage('compare')">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+        <span>Compare</span>
+      </div>
       <div class="nav-item" id="nav-data" onclick="showPage('data')">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <line x1="8" y1="6" x2="21" y2="6" />
@@ -1262,6 +1268,11 @@
             </table>
           </div>
         </div>
+      </div>
+
+      <!-- COMPARE -->
+      <div class="page" id="page-compare">
+        <div id="compare-content"></div>
       </div>
 
       <!-- DAILY MONITOR -->
@@ -1932,6 +1943,12 @@
         }, 0);
 
         renderGame(game);
+      } else if (page === 'compare') {
+        document.getElementById('page-compare').classList.add('active');
+        document.getElementById('topbar-title').textContent = 'Game Compare';
+        setActiveNav('nav-compare');
+        actions.innerHTML = `<button class="btn btn-primary" onclick="openModal('excel-upload')" style="gap:6px">📂 Upload Excel</button>`;
+        renderComparePage();
       } else if (page === 'deals') {
         document.getElementById('page-deals').classList.add('active');
         document.getElementById('topbar-title').textContent = 'Deal Terms';
@@ -2268,6 +2285,178 @@
       }
       await pptx.writeFile({ fileName: `Daily_Monitor_${today}.pptx` });
     }
+
+    // ===== COMPARE PAGE =====
+    let _compareGames = [];      // selected game names
+    let _compareMetric = 'revenue'; // current metric
+    let _compareChart = null;
+
+    function renderComparePage() {
+      const container = document.getElementById('compare-content');
+      if (!container) return;
+
+      const allGames = [...new Set(RAW.map(r => r.game))].sort();
+      const metrics = [
+        { key:'revenue',  label:'Revenue ($)' },
+        { key:'dau',      label:'DAU' },
+        { key:'nru',      label:'NRU' },
+        { key:'mpu',      label:'MPU' },
+        { key:'cr',       label:'CR (%)' },
+        { key:'arppu',    label:'ARPPU ($)' },
+        { key:'mkt_cost', label:'Mkt Cost ($)' },
+      ];
+
+      const btnBase = 'padding:4px 12px;border-radius:6px;font-size:11px;border:1px solid var(--border);cursor:pointer;transition:all .15s';
+      const gameButtons = allGames.map(g => {
+        const sel = _compareGames.includes(g);
+        const c = getGameColor(g);
+        return `<button style="${btnBase};background:${sel?c+'22':'transparent'};border-color:${sel?c:'var(--border)'};color:${sel?c:'var(--text3)'}"
+          onclick="window.toggleCompareGame('${g.replace(/'/g,"\\'")}')">
+          <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${c};margin-right:5px;vertical-align:middle"></span>${g}
+        </button>`;
+      }).join('');
+
+      const metricButtons = metrics.map(m =>
+        `<button style="${btnBase};background:${_compareMetric===m.key?'rgba(74,158,245,.15)':'transparent'};border-color:${_compareMetric===m.key?'var(--accent)':'var(--border)'};color:${_compareMetric===m.key?'var(--accent)':'var(--text3)'}"
+          onclick="window.setCompareMetric('${m.key}')">${m.label}</button>`
+      ).join('');
+
+      container.innerHTML = `
+        <div class="card" style="margin-bottom:20px">
+          <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">게임 선택 (최대 5개)</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">${gameButtons}</div>
+        </div>
+        <div class="card" style="margin-bottom:20px">
+          <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">지표</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">${metricButtons}</div>
+        </div>
+        <div class="card" id="compare-chart-card">
+          ${_compareGames.length < 2
+            ? `<div style="text-align:center;padding:60px;color:var(--text3);font-size:13px">게임을 2개 이상 선택하면 비교 차트가 나타납니다</div>`
+            : `<div style="font-size:12px;color:var(--text3);margin-bottom:12px">Launch 기준 월수 (M+1, M+2 ...) — 각 게임의 런칭 후 같은 성장 궤적을 비교</div>
+               <div style="height:360px"><canvas id="compare-chart"></canvas></div>`}
+        </div>
+        <div class="card" style="margin-top:20px" id="compare-table-card"></div>`;
+
+      if (_compareGames.length >= 2) _buildCompareChart();
+    }
+
+    function _buildCompareChart() {
+      if (_compareChart) { _compareChart.destroy(); _compareChart = null; }
+      const canvas = document.getElementById('compare-chart');
+      if (!canvas) return;
+
+      const metric = _compareMetric;
+      const isPercent = metric === 'cr';
+      const isDollar = ['revenue','arppu','mkt_cost'].includes(metric);
+
+      // Build datasets: x = months since launch (1-based)
+      let maxMonths = 0;
+      const datasets = _compareGames.map(game => {
+        const deal = DEALS.find(d => matchesGame(d.title, game));
+        const launchYM = deal?.start_date ? deal.start_date.slice(0,7) : null;
+        const rows = RAW.filter(r => matchesGame(r.game, game)).sort((a,b) => a.ym.localeCompare(b.ym));
+        if (!rows.length) return null;
+
+        // Align to months since launch
+        let data;
+        if (launchYM) {
+          data = rows.map(r => {
+            const [ly, lm] = launchYM.split('-').map(Number);
+            const [ry, rm] = r.ym.split('-').map(Number);
+            const monthNum = (ry - ly) * 12 + (rm - lm) + 1;
+            return { x: monthNum, y: r[metric] ?? null };
+          }).filter(d => d.x > 0);
+        } else {
+          data = rows.map((r, i) => ({ x: i + 1, y: r[metric] ?? null }));
+        }
+        maxMonths = Math.max(maxMonths, ...data.map(d => d.x));
+        const c = getGameColor(game);
+        return { label: game, data, borderColor: c, backgroundColor: c+'22',
+          borderWidth: 2, pointRadius: 3, tension: 0.3, fill: false, spanGaps: true };
+      }).filter(Boolean);
+
+      const labels = Array.from({length: maxMonths}, (_,i) => `M+${i+1}`);
+      const alignedDatasets = datasets.map(ds => ({
+        ...ds,
+        data: labels.map((_, i) => { const pt = ds.data.find(d => d.x === i+1); return pt ? pt.y : null; })
+      }));
+
+      _compareChart = new Chart(canvas, {
+        type: 'line',
+        data: { labels, datasets: alignedDatasets },
+        options: {
+          responsive: true, maintainAspectRatio: false, animation: false,
+          interaction: { mode: 'index' },
+          plugins: {
+            legend: { display: true, position: 'bottom', labels: { color:'#aaa', font:{size:10}, boxWidth:12, padding:12 } },
+            tooltip: { callbacks: { label: ctx => {
+              const v = ctx.parsed.y;
+              if (v == null) return null;
+              if (isPercent) return `${ctx.dataset.label}: ${(v*100).toFixed(2)}%`;
+              if (isDollar) return `${ctx.dataset.label}: $${Math.round(v).toLocaleString()}`;
+              return `${ctx.dataset.label}: ${Math.round(v).toLocaleString()}`;
+            }}}
+          },
+          scales: {
+            x: { ticks: { color:'#666', font:{size:9} }, grid: { color:'rgba(255,255,255,.04)' } },
+            y: { ticks: { color:'#666', font:{size:9}, callback: v => isPercent ? (v*100).toFixed(1)+'%' : isDollar ? '$'+(v>=1000?(v/1000).toFixed(0)+'k':v) : v>=1000?(v/1000).toFixed(0)+'k':v }, grid: { color:'rgba(255,255,255,.04)' } }
+          }
+        }
+      });
+
+      // Summary table
+      const tableEl = document.getElementById('compare-table-card');
+      if (!tableEl) return;
+      const thS = 'text-align:right;padding:6px 12px;color:var(--text3);font-size:11px;font-weight:500';
+      const thL3 = 'text-align:left;padding:6px 12px;color:var(--text3);font-size:11px;font-weight:500';
+      const peakMonth = game => {
+        const ds = alignedDatasets.find(d => d.label === game);
+        if (!ds) return '-';
+        let max = -Infinity, idx = -1;
+        ds.data.forEach((v,i) => { if (v != null && v > max) { max = v; idx = i; } });
+        return idx >= 0 ? `M+${idx+1} (${isDollar?'$'+Math.round(max).toLocaleString():Math.round(max).toLocaleString()})` : '-';
+      };
+      const totalVal = game => {
+        const rows = RAW.filter(r => matchesGame(r.game, game));
+        const sum = rows.reduce((s,r) => s + (r[metric]||0), 0);
+        const avg = rows.length ? sum/rows.length : 0;
+        return isPercent ? (avg*100).toFixed(2)+'%' : isDollar ? '$'+Math.round(metric==='arppu'?avg:sum).toLocaleString() : Math.round(metric==='dau'||metric==='mpu'?avg:sum).toLocaleString();
+      };
+      tableEl.innerHTML = `
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">📊 Summary</div>
+        <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
+          <thead><tr style="border-bottom:1px solid var(--border)">
+            <th style="${thL3}">Game</th>
+            <th style="${thS}">Months of Data</th>
+            <th style="${thS}">${['dau','mpu','arppu','cr'].includes(metric)?'Avg':'Total'} ${metrics.find(m=>m.key===metric)?.label||metric}</th>
+            <th style="${thS}">Peak</th>
+          </tr></thead>
+          <tbody>${_compareGames.map(g => {
+            const rows = RAW.filter(r => matchesGame(r.game, g));
+            const c = getGameColor(g);
+            return `<tr style="border-bottom:1px solid rgba(255,255,255,.04)">
+              <td style="padding:6px 12px;font-size:12px"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c};margin-right:6px;vertical-align:middle"></span>${g}</td>
+              <td style="text-align:right;padding:6px 12px;font-family:monospace;font-size:12px">${rows.length}</td>
+              <td style="text-align:right;padding:6px 12px;font-family:monospace;font-size:12px">${totalVal(g)}</td>
+              <td style="text-align:right;padding:6px 12px;font-family:monospace;font-size:12px">${peakMonth(g)}</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table></div>`;
+    }
+
+    window.toggleCompareGame = function(game) {
+      if (_compareGames.includes(game)) {
+        _compareGames = _compareGames.filter(g => g !== game);
+      } else if (_compareGames.length < 5) {
+        _compareGames.push(game);
+      }
+      renderComparePage();
+    };
+    window.setCompareMetric = function(metric) {
+      _compareMetric = metric;
+      renderComparePage();
+    };
 
     function switchRevTab(t) {
       currentRevTab = t;
