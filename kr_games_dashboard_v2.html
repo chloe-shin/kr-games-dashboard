@@ -2289,14 +2289,16 @@
     // ===== COMPARE PAGE =====
     let _compareGames = [];      // selected game names
     let _compareMetric = 'revenue'; // current metric
+    let _compareMode = 'monthly'; // 'monthly' | 'daily'
     let _compareChart = null;
 
     function renderComparePage() {
       const container = document.getElementById('compare-content');
       if (!container) return;
 
-      const allGames = [...new Set(RAW.map(r => r.game))].sort();
-      const metrics = [
+      const allGames = [...new Set([...RAW.map(r => r.game), ...DAILY.map(d => d.game)])].sort();
+
+      const monthlyMetrics = [
         { key:'revenue',  label:'Revenue ($)' },
         { key:'dau',      label:'DAU' },
         { key:'nru',      label:'NRU' },
@@ -2305,38 +2307,56 @@
         { key:'arppu',    label:'ARPPU ($)' },
         { key:'mkt_cost', label:'Mkt Cost ($)' },
       ];
+      const dailyMetrics = [
+        { key:'revenue',  label:'Revenue ($)' },
+        { key:'dau',      label:'DAU' },
+        { key:'nru',      label:'NRU' },
+        { key:'mkt_cost', label:'Mkt Cost ($)' },
+        { key:'arppu',    label:'ARPPU ($)' },
+        { key:'d1_ret',   label:'D1 Ret (%)' },
+      ];
+      const metrics = _compareMode === 'daily' ? dailyMetrics : monthlyMetrics;
+      // Reset metric if not available in current mode
+      if (!metrics.find(m => m.key === _compareMetric)) _compareMetric = 'revenue';
 
       const btnBase = 'padding:4px 12px;border-radius:6px;font-size:11px;border:1px solid var(--border);cursor:pointer;transition:all .15s';
+      const modeBtn = (mode, label) => `<button style="${btnBase};background:${_compareMode===mode?'rgba(74,158,245,.15)':'transparent'};border-color:${_compareMode===mode?'var(--accent)':'var(--border)'};color:${_compareMode===mode?'var(--accent)':'var(--text3)'};font-weight:${_compareMode===mode?'600':'400'}" onclick="window.setCompareMode('${mode}')">${label}</button>`;
+
       const gameButtons = allGames.map(g => {
         const sel = _compareGames.includes(g);
         const c = getGameColor(g);
-        return `<button style="${btnBase};background:${sel?c+'22':'transparent'};border-color:${sel?c:'var(--border)'};color:${sel?c:'var(--text3)'}"
-          onclick="window.toggleCompareGame('${g.replace(/'/g,"\\'")}')">
+        return `<button style="${btnBase};background:${sel?c+'22':'transparent'};border-color:${sel?c:'var(--border)'};color:${sel?c:'var(--text3)'}" onclick="window.toggleCompareGame('${g.replace(/'/g,"\\'")}')">
           <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${c};margin-right:5px;vertical-align:middle"></span>${g}
         </button>`;
       }).join('');
 
       const metricButtons = metrics.map(m =>
-        `<button style="${btnBase};background:${_compareMetric===m.key?'rgba(74,158,245,.15)':'transparent'};border-color:${_compareMetric===m.key?'var(--accent)':'var(--border)'};color:${_compareMetric===m.key?'var(--accent)':'var(--text3)'}"
-          onclick="window.setCompareMetric('${m.key}')">${m.label}</button>`
+        `<button style="${btnBase};background:${_compareMetric===m.key?'rgba(74,158,245,.15)':'transparent'};border-color:${_compareMetric===m.key?'var(--accent)':'var(--border)'};color:${_compareMetric===m.key?'var(--accent)':'var(--text3)'}" onclick="window.setCompareMetric('${m.key}')">${m.label}</button>`
       ).join('');
 
+      const xLabel = _compareMode === 'daily' ? 'D+1, D+2 ... (days since launch)' : 'M+1, M+2 ... (months since launch)';
+
       container.innerHTML = `
-        <div class="card" style="margin-bottom:20px">
+        <div class="card" style="margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">비교 기준</span>
+          ${modeBtn('monthly','📅 Monthly')}
+          ${modeBtn('daily','📡 Daily')}
+        </div>
+        <div class="card" style="margin-bottom:16px">
           <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">게임 선택 (최대 5개)</div>
           <div style="display:flex;flex-wrap:wrap;gap:6px">${gameButtons}</div>
         </div>
-        <div class="card" style="margin-bottom:20px">
+        <div class="card" style="margin-bottom:16px">
           <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">지표</div>
           <div style="display:flex;flex-wrap:wrap;gap:6px">${metricButtons}</div>
         </div>
         <div class="card" id="compare-chart-card">
           ${_compareGames.length < 2
             ? `<div style="text-align:center;padding:60px;color:var(--text3);font-size:13px">게임을 2개 이상 선택하면 비교 차트가 나타납니다</div>`
-            : `<div style="font-size:12px;color:var(--text3);margin-bottom:12px">Launch 기준 월수 (M+1, M+2 ...) — 각 게임의 런칭 후 같은 성장 궤적을 비교</div>
+            : `<div style="font-size:12px;color:var(--text3);margin-bottom:12px">Launch 기준 — ${xLabel}</div>
                <div style="height:360px"><canvas id="compare-chart"></canvas></div>`}
         </div>
-        <div class="card" style="margin-top:20px" id="compare-table-card"></div>`;
+        <div class="card" style="margin-top:16px" id="compare-table-card"></div>`;
 
       if (_compareGames.length >= 2) _buildCompareChart();
     }
@@ -2347,40 +2367,55 @@
       if (!canvas) return;
 
       const metric = _compareMetric;
-      const isPercent = metric === 'cr';
+      const isPercent = metric === 'cr' || metric === 'd1_ret';
       const isDollar = ['revenue','arppu','mkt_cost'].includes(metric);
 
-      // Build datasets: x = months since launch (1-based)
-      let maxMonths = 0;
-      const datasets = _compareGames.map(game => {
-        const deal = DEALS.find(d => matchesGame(d.title, game));
-        const launchYM = deal?.start_date ? deal.start_date.slice(0,7) : null;
-        const rows = RAW.filter(r => matchesGame(r.game, game)).sort((a,b) => a.ym.localeCompare(b.ym));
-        if (!rows.length) return null;
+      let maxPeriods = 0;
+      let labels, alignedDatasets;
 
-        // Align to months since launch
-        let data;
-        if (launchYM) {
-          data = rows.map(r => {
-            const [ly, lm] = launchYM.split('-').map(Number);
-            const [ry, rm] = r.ym.split('-').map(Number);
-            const monthNum = (ry - ly) * 12 + (rm - lm) + 1;
-            return { x: monthNum, y: r[metric] ?? null };
+      if (_compareMode === 'daily') {
+        // Daily mode: D+1, D+2... since launch date
+        const datasets = _compareGames.map(game => {
+          const deal = DEALS.find(d => matchesGame(d.title, game));
+          const launchDate = deal?.start_date ? new Date(deal.start_date) : null;
+          const rows = DAILY.filter(d => matchesGame(d.game, game) && (d.country||'Total') === 'Total')
+                            .sort((a,b) => (a.date||'').localeCompare(b.date||''));
+          if (!rows.length) return null;
+          const firstDate = launchDate || new Date(rows[0].date);
+          const data = rows.map(r => {
+            const dt = new Date((r.date||'').slice(0,10));
+            const dayNum = Math.round((dt - firstDate) / 86400000) + 1;
+            return { x: dayNum, y: r[metric] ?? null };
           }).filter(d => d.x > 0);
-        } else {
-          data = rows.map((r, i) => ({ x: i + 1, y: r[metric] ?? null }));
-        }
-        maxMonths = Math.max(maxMonths, ...data.map(d => d.x));
-        const c = getGameColor(game);
-        return { label: game, data, borderColor: c, backgroundColor: c+'22',
-          borderWidth: 2, pointRadius: 3, tension: 0.3, fill: false, spanGaps: true };
-      }).filter(Boolean);
-
-      const labels = Array.from({length: maxMonths}, (_,i) => `M+${i+1}`);
-      const alignedDatasets = datasets.map(ds => ({
-        ...ds,
-        data: labels.map((_, i) => { const pt = ds.data.find(d => d.x === i+1); return pt ? pt.y : null; })
-      }));
+          maxPeriods = Math.max(maxPeriods, ...data.map(d => d.x));
+          const c = getGameColor(game);
+          return { label: game, data, borderColor: c, backgroundColor: c+'22', borderWidth: 2, pointRadius: 1, tension: 0.3, fill: false, spanGaps: true };
+        }).filter(Boolean);
+        labels = Array.from({length: maxPeriods}, (_,i) => `D+${i+1}`);
+        alignedDatasets = datasets.map(ds => ({
+          ...ds,
+          data: labels.map((_,i) => { const pt = ds.data.find(d => d.x === i+1); return pt ? pt.y : null; })
+        }));
+      } else {
+        // Monthly mode: M+1, M+2... since launch month
+        const datasets = _compareGames.map(game => {
+          const deal = DEALS.find(d => matchesGame(d.title, game));
+          const launchYM = deal?.start_date ? deal.start_date.slice(0,7) : null;
+          const rows = RAW.filter(r => matchesGame(r.game, game)).sort((a,b) => a.ym.localeCompare(b.ym));
+          if (!rows.length) return null;
+          const data = launchYM
+            ? rows.map(r => { const [ly,lm]=launchYM.split('-').map(Number); const [ry,rm]=r.ym.split('-').map(Number); return { x:(ry-ly)*12+(rm-lm)+1, y:r[metric]??null }; }).filter(d=>d.x>0)
+            : rows.map((r,i) => ({ x:i+1, y:r[metric]??null }));
+          maxPeriods = Math.max(maxPeriods, ...data.map(d => d.x));
+          const c = getGameColor(game);
+          return { label: game, data, borderColor: c, backgroundColor: c+'22', borderWidth: 2, pointRadius: 3, tension: 0.3, fill: false, spanGaps: true };
+        }).filter(Boolean);
+        labels = Array.from({length: maxPeriods}, (_,i) => `M+${i+1}`);
+        alignedDatasets = datasets.map(ds => ({
+          ...ds,
+          data: labels.map((_,i) => { const pt = ds.data.find(d => d.x === i+1); return pt ? pt.y : null; })
+        }));
+      }
 
       _compareChart = new Chart(canvas, {
         type: 'line',
@@ -2445,6 +2480,11 @@
         </table></div>`;
     }
 
+    window.setCompareMode = function(mode) {
+      _compareMode = mode;
+      _compareMetric = 'revenue';
+      renderComparePage();
+    };
     window.toggleCompareGame = function(game) {
       if (_compareGames.includes(game)) {
         _compareGames = _compareGames.filter(g => g !== game);
