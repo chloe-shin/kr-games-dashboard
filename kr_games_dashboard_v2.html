@@ -2796,19 +2796,20 @@
       btn.disabled = true;
 
       try {
-        const dataToUse = getFilteredRAW();
-        // Active 게임만 AI 인사이트 대상 (Terminated 제외)
-        const games = getActiveGames();
-        const allYMs = [...new Set(dataToUse.map(r => r.ym))].sort();
+        // Use ALL RAW data (not filtered by overview dates) so all games are included
+        const allRaw = RAW;
+        const games = getAllGames(); // includes terminated games with data
+        const allYMs = [...new Set(allRaw.map(r => r.ym))].sort();
         const latestYM = allYMs.length > 0 ? allYMs.slice(-1)[0] : '-';
         const prevYM = allYMs.length > 1 ? allYMs.slice(-2, -1)[0] : '-';
-        const latestTotal = dataToUse.filter(r => r.ym === latestYM).reduce((s, r) => s + (r.revenue || 0), 0);
-        const prevTotal = dataToUse.filter(r => r.ym === prevYM).reduce((s, r) => s + (r.revenue || 0), 0);
+        const latestTotal = allRaw.filter(r => r.ym === latestYM).reduce((s, r) => s + (r.revenue || 0), 0);
+        const prevTotal = allRaw.filter(r => r.ym === prevYM).reduce((s, r) => s + (r.revenue || 0), 0);
         const portfolioMoM = prevTotal > 0 ? ((latestTotal - prevTotal) / prevTotal * 100).toFixed(1) : null;
 
         const gameSummary = {};
         games.forEach(g => {
-          const rows = dataToUse.filter(r => r.game === g).sort((a, b) => a.ym.localeCompare(b.ym));
+          // Use matchesGame for fuzzy name matching
+          const rows = allRaw.filter(r => matchesGame(r.game, g)).sort((a, b) => a.ym.localeCompare(b.ym));
           if (!rows.length) return;
           const recent = rows.slice(-3);
           const latest = rows.slice(-1)[0];
