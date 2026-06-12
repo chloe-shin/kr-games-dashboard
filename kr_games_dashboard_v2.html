@@ -2750,8 +2750,22 @@
           const latest = rows.slice(-1)[0];
           const prev = rows.slice(-2, -1)[0];
           const mom = prev && prev.revenue ? ((latest.revenue - prev.revenue) / prev.revenue * 100).toFixed(1) : null;
-          const rs = getRs(g);
+          const deal = DEALS.find(d => matchesGame(d.title, g));
+          const launchDate = deal?.start_date || null;
+          // Days into the launch month (partial month flag)
+          let launchMonthNote = null;
+          if (launchDate) {
+            const ld = new Date(launchDate);
+            const daysInLaunchMonth = new Date(ld.getFullYear(), ld.getMonth() + 1, 0).getDate();
+            const daysLive = daysInLaunchMonth - ld.getDate() + 1;
+            if (daysLive < daysInLaunchMonth - 3) {
+              launchMonthNote = `Launched on day ${ld.getDate()} of ${launchDate.slice(0,7)} — only ${daysLive}/${daysInLaunchMonth} days of data in launch month. Revenue for that month is partial.`;
+            }
+          }
           gameSummary[g] = {
+            launch_date: launchDate,
+            months_since_launch: launchDate ? Math.floor((new Date() - new Date(launchDate)) / (30.44 * 86400000)) : null,
+            launch_month_note: launchMonthNote,
             total_revenue: Math.round(rows.reduce((s, r) => s + (r.revenue || 0), 0)),
             latest_revenue: Math.round(latest.revenue || 0),
             latest_ym: latest.ym,
@@ -2824,6 +2838,13 @@ Write in BOTH Korean and English using the section tags below.
 - ALWAYS name specific games, not "some games"
 - If data is insufficient, say so explicitly
 - Max 200 words per language total
+
+## Launch Timing Rules (CRITICAL)
+Each game's data includes `launch_date`, `months_since_launch`, and `launch_month_note`.
+- A game's LAUNCH MONTH contains PARTIAL data (e.g. launched April 20 → only 11 days of April data). Revenue in the launch month is naturally lower — do NOT treat it as a weak period.
+- The month AFTER launch is the FIRST FULL MONTH — a revenue increase from launch month to month+1 is expected and NOT "remarkable growth". Only comment on MoM growth AFTER the first full month.
+- For games < 3 months old, frame analysis around "early traction" not trend extrapolation.
+- If `launch_month_note` is present, use it to contextualize any MoM comparisons involving the launch month.
 
 Data:
 ${dataStr}`;
