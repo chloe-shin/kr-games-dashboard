@@ -1892,9 +1892,16 @@
         setActiveNav('nav-overview');
         
         const allYMs = getYMs();
-        if (!overviewEndYM && allYMs.length > 0) overviewEndYM = allYMs[allYMs.length - 1];
+        if (!overviewEndYM && allYMs.length > 0) {
+          // Default end: latest complete month (skip current month if it's today's month)
+          const currentYM = new Date().toISOString().slice(0, 7);
+          const completeYMs = allYMs.filter(ym => ym < currentYM);
+          overviewEndYM = completeYMs.length > 0 ? completeYMs[completeYMs.length - 1] : allYMs[allYMs.length - 1];
+        }
         if (!overviewStartYM && allYMs.length > 0) {
-            overviewStartYM = allYMs.length > 12 ? allYMs[allYMs.length - 12] : allYMs[0];
+          const endIdx = allYMs.indexOf(overviewEndYM);
+          const startIdx = endIdx >= 12 ? endIdx - 11 : 0;
+          overviewStartYM = allYMs[startIdx];
         }
         
         const opts = allYMs.map(ym => `<option value="${ym}">${ym}</option>`).join('');
