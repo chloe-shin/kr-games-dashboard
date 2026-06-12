@@ -2677,11 +2677,12 @@
     function buildMGBars() {
       // MG recoup always uses all-time data regardless of date filter
       const allData = RAW;
-      document.getElementById('mg-bars').innerHTML = GAMES.map(g => {
+      const mgGames = getAllGames().filter(g => getMg(g) > 0 || allData.some(r => matchesGame(r.game, g)));
+      document.getElementById('mg-bars').innerHTML = mgGames.map(g => {
         const recoupPct = mgRecoupPct(g, allData);
         const barW = Math.min(recoupPct, 100);
         const c = recoupPct > 100 ? '#2ECC9A' : recoupPct > 50 ? '#E8A030' : '#E05555';
-        const devShare = allData.filter(r => r.game === g).reduce((s, r) => s + (r.devShare || 0), 0);
+        const devShare = allData.filter(r => matchesGame(r.game, g)).reduce((s, r) => s + (r.devShare || 0), 0);
         const mg = getMg(g);
         return `<div style="margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px">
@@ -2698,8 +2699,9 @@
       if (roiChart) { roiChart.destroy(); roiChart = null; }
       const dataToUse = RAW; // Always all-time regardless of date filter
       const ctx = document.getElementById('roiChart').getContext('2d');
-      const vals = GAMES.map(g => +gameRoi(g, dataToUse).toFixed(2));
-      roiChart = new Chart(ctx, { type: 'bar', data: { labels: GAMES.map(g => g.split(' ').slice(0, 2).join(' ')), datasets: [{ data: vals, backgroundColor: GAMES.map(g => clr(g) + 'cc'), borderWidth: 0 }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `ROI: ${c.raw}%` } } }, scales: { x: { ticks: { callback: v => v + '%', font: { size: 10 }, color: '#666' }, grid: { color: 'rgba(255,255,255,.04)' } }, y: { ticks: { font: { size: 11 }, color: '#aaa' }, grid: { display: false } } } } });
+      const roiGames = getAllGames().filter(g => dataToUse.some(r => matchesGame(r.game, g)));
+      const vals = roiGames.map(g => +gameRoi(g, dataToUse).toFixed(2));
+      roiChart = new Chart(ctx, { type: 'bar', data: { labels: roiGames.map(g => g.split(' ').slice(0, 2).join(' ')), datasets: [{ data: vals, backgroundColor: roiGames.map(g => clr(g) + 'cc'), borderWidth: 0 }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `ROI: ${c.raw}%` } } }, scales: { x: { ticks: { callback: v => v + '%', font: { size: 10 }, color: '#666' }, grid: { color: 'rgba(255,255,255,.04)' } }, y: { ticks: { font: { size: 11 }, color: '#aaa' }, grid: { display: false } } } } });
     }
 
     function parseInsightSection(content, marker) {
