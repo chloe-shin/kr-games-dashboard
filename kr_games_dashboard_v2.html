@@ -2288,6 +2288,7 @@
 
     // ===== COMPARE PAGE =====
     let _compareGames = [];      // selected game names
+    let _compareMaxPeriods = null; // null = show all
     let _compareMetric = 'revenue'; // current metric
     let _compareMode = 'monthly'; // 'monthly' | 'daily'
     let _compareChart = null;
@@ -2334,7 +2335,11 @@
         `<button style="${btnBase};background:${_compareMetric===m.key?'rgba(74,158,245,.15)':'transparent'};border-color:${_compareMetric===m.key?'var(--accent)':'var(--border)'};color:${_compareMetric===m.key?'var(--accent)':'var(--text3)'}" onclick="window.setCompareMetric('${m.key}')">${m.label}</button>`
       ).join('');
 
-      const xLabel = _compareMode === 'daily' ? 'D+1, D+2 ... (days since launch)' : 'M+1, M+2 ... (months since launch)';
+      const xLabel = _compareMode === 'daily' ? 'D+1, D+2 ... (days since launch)' : 'M+1, M+2 ... (months since launch, 30-day windows)';
+      const inpStyle = `background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:11px;padding:3px 8px;width:70px;outline:none`;
+      const presets = _compareMode === 'daily'
+        ? [30, 60, 90, 180, 365]
+        : [3, 6, 12, 24];
 
       container.innerHTML = `
         <div class="card" style="margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
@@ -2350,10 +2355,20 @@
           <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">지표</div>
           <div style="display:flex;flex-wrap:wrap;gap:6px">${metricButtons}</div>
         </div>
+        <div class="card" style="margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">기간 범위</span>
+          <input type="number" id="compare-max-input" value="${_compareMaxPeriods||''}" placeholder="전체" min="1" style="${inpStyle}"
+            onchange="window.setCompareMax(this.value ? parseInt(this.value) : null)">
+          <span style="font-size:11px;color:var(--text3)">${_compareMode==='daily'?'일':'개월'} (비워두면 전체)</span>
+          <div style="display:flex;gap:4px">
+            ${presets.map(p => `<button class="daily-range-tab${_compareMaxPeriods===p?' active':''}" style="font-size:10px;padding:2px 8px" onclick="window.setCompareMax(${p})">${p}${_compareMode==='daily'?'d':'M'}</button>`).join('')}
+            <button class="daily-range-tab${!_compareMaxPeriods?' active':''}" style="font-size:10px;padding:2px 8px" onclick="window.setCompareMax(null)">전체</button>
+          </div>
+        </div>
         <div class="card" id="compare-chart-card">
           ${_compareGames.length < 2
             ? `<div style="text-align:center;padding:60px;color:var(--text3);font-size:13px">게임을 2개 이상 선택하면 비교 차트가 나타납니다</div>`
-            : `<div style="font-size:12px;color:var(--text3);margin-bottom:12px">Launch 기준 — ${xLabel}</div>
+            : `<div style="font-size:12px;color:var(--text3);margin-bottom:12px">Launch 기준 — ${xLabel}${_compareMaxPeriods ? ` · 최대 ${_compareMaxPeriods}${_compareMode==='daily'?'일':'개월'}` : ''}</div>
                <div style="height:360px"><canvas id="compare-chart"></canvas></div>`}
         </div>
         <div class="card" style="margin-top:16px" id="compare-table-card"></div>`;
@@ -2391,7 +2406,8 @@
           const c = getGameColor(game);
           return { label: game, data, borderColor: c, backgroundColor: c+'22', borderWidth: 2, pointRadius: 1, tension: 0.3, fill: false, spanGaps: true };
         }).filter(Boolean);
-        labels = Array.from({length: maxPeriods}, (_,i) => `D+${i+1}`);
+        const cappedD = _compareMaxPeriods ? Math.min(maxPeriods, _compareMaxPeriods) : maxPeriods;
+        labels = Array.from({length: cappedD}, (_,i) => `D+${i+1}`);
         alignedDatasets = datasets.map(ds => ({
           ...ds,
           data: labels.map((_,i) => { const pt = ds.data.find(d => d.x === i+1); return pt ? pt.y : null; })
@@ -2432,7 +2448,8 @@
           return { label: game, data, borderColor: c, backgroundColor: c+'22', borderWidth: 2, pointRadius: 3, tension: 0.3, fill: false, spanGaps: true };
         }).filter(Boolean);
 
-        labels = Array.from({length: maxPeriods}, (_,i) => `M+${i+1}`);
+        const cappedM = _compareMaxPeriods ? Math.min(maxPeriods, _compareMaxPeriods) : maxPeriods;
+        labels = Array.from({length: cappedM}, (_,i) => `M+${i+1}`);
         alignedDatasets = datasets.map(ds => ({
           ...ds,
           data: labels.map((_,i) => { const pt = ds.data.find(d => d.x === i+1); return pt ? pt.y : null; })
@@ -2512,6 +2529,10 @@
         </table></div>`;
     }
 
+    window.setCompareMax = function(val) {
+      _compareMaxPeriods = val || null;
+      renderComparePage();
+    };
     window.setCompareMode = function(mode) {
       _compareMode = mode;
       _compareMetric = 'revenue';
