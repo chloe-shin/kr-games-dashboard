@@ -2343,7 +2343,9 @@
     let _compareGames = [];      // selected game names
     let _compareMaxPeriods = null; // null = show all
     let _compareMetric = 'revenue'; // current metric
-    let _compareMode = 'monthly'; // 'monthly' | 'daily'
+    let _compareMode = 'monthly'; // 'monthly' | 'daily' | 'cal-monthly' | 'cal-daily'
+    let _compareCalStart = null; // calendar mode start date
+    let _compareCalEnd   = null; // calendar mode end date
     let _compareChart = null;
 
     function renderComparePage() {
@@ -2369,8 +2371,9 @@
         { key:'arppu',    label:'ARPPU ($)' },
         { key:'d1_ret',   label:'D1 Ret (%)' },
       ];
-      const metrics = _compareMode === 'daily' ? dailyMetrics : monthlyMetrics;
-      // Reset metric if not available in current mode
+      const isCalendar = _compareMode.startsWith('cal-');
+      const isDaily = _compareMode === 'daily' || _compareMode === 'cal-daily';
+      const metrics = isDaily ? dailyMetrics : monthlyMetrics;
       if (!metrics.find(m => m.key === _compareMetric)) _compareMetric = 'revenue';
 
       const btnBase = 'padding:4px 12px;border-radius:6px;font-size:11px;border:1px solid var(--border);cursor:pointer;transition:all .15s';
@@ -2388,17 +2391,45 @@
         `<button style="${btnBase};background:${_compareMetric===m.key?'rgba(74,158,245,.15)':'transparent'};border-color:${_compareMetric===m.key?'var(--accent)':'var(--border)'};color:${_compareMetric===m.key?'var(--accent)':'var(--text3)'}" onclick="window.setCompareMetric('${m.key}')">${m.label}</button>`
       ).join('');
 
-      const xLabel = _compareMode === 'daily' ? 'D+1, D+2 ... (days since launch)' : 'M+1, M+2 ... (months since launch, 30-day windows)';
-      const inpStyle = `background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:11px;padding:3px 8px;width:70px;outline:none`;
-      const presets = _compareMode === 'daily'
-        ? [30, 60, 90, 180, 365]
-        : [3, 6, 12, 24];
+      const inpStyle = `background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:11px;padding:3px 8px;outline:none`;
+      const xLabel = _compareMode === 'daily' ? 'D+1, D+2 ... (days since launch)' :
+                     _compareMode === 'monthly' ? 'M+1, M+2 ... (months since launch, 30-day windows)' :
+                     _compareMode === 'cal-daily' ? '날짜 기준 (같은 날짜로 비교)' :
+                     '월 기준 (같은 달로 비교)';
+      const presets = isDaily ? [30, 60, 90, 180, 365] : [3, 6, 12, 24];
+
+      // Calendar date range filter
+      const calFilter = isCalendar ? `
+        <div class="card" style="margin-bottom:16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">날짜 범위</span>
+          <input type="${isDaily?'date':'month'}" id="cal-start" value="${_compareCalStart||''}" style="${inpStyle}"
+            onchange="window.setCompareCalRange(this.value, document.getElementById('cal-end').value)">
+          <span style="font-size:11px;color:var(--text3)">~</span>
+          <input type="${isDaily?'date':'month'}" id="cal-end" value="${_compareCalEnd||''}" style="${inpStyle}"
+            onchange="window.setCompareCalRange(document.getElementById('cal-start').value, this.value)">
+          <button class="daily-range-tab" style="font-size:10px;padding:2px 8px" onclick="window.setCompareCalRange(null,null)">전체</button>
+        </div>` : '';
+
+      // Period range filter (launch-relative modes only)
+      const periodFilter = !isCalendar ? `
+        <div class="card" style="margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">기간 범위</span>
+          <input type="number" id="compare-max-input" value="${_compareMaxPeriods||''}" placeholder="전체" min="1" style="${inpStyle};width:70px"
+            onchange="window.setCompareMax(this.value ? parseInt(this.value) : null)">
+          <span style="font-size:11px;color:var(--text3)">${isDaily?'일':'개월'} (비워두면 전체)</span>
+          <div style="display:flex;gap:4px">
+            ${presets.map(p => `<button class="daily-range-tab${_compareMaxPeriods===p?' active':''}" style="font-size:10px;padding:2px 8px" onclick="window.setCompareMax(${p})">${p}${isDaily?'d':'M'}</button>`).join('')}
+            <button class="daily-range-tab${!_compareMaxPeriods?' active':''}" style="font-size:10px;padding:2px 8px" onclick="window.setCompareMax(null)">전체</button>
+          </div>
+        </div>` : '';
 
       container.innerHTML = `
-        <div class="card" style="margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">비교 기준</span>
-          ${modeBtn('monthly','📅 Monthly')}
-          ${modeBtn('daily','📡 Daily')}
+        <div class="card" style="margin-bottom:16px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-right:4px">비교 기준</span>
+          ${modeBtn('monthly','📅 런칭 후 Monthly')}
+          ${modeBtn('daily','📡 런칭 후 Daily')}
+          ${modeBtn('cal-monthly','🗓 같은 달 Monthly')}
+          ${modeBtn('cal-daily','🗓 같은 날 Daily')}
         </div>
         <div class="card" style="margin-bottom:16px">
           <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">게임 선택 (최대 5개)</div>
@@ -2408,20 +2439,12 @@
           <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">지표</div>
           <div style="display:flex;flex-wrap:wrap;gap:6px">${metricButtons}</div>
         </div>
-        <div class="card" style="margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">기간 범위</span>
-          <input type="number" id="compare-max-input" value="${_compareMaxPeriods||''}" placeholder="전체" min="1" style="${inpStyle}"
-            onchange="window.setCompareMax(this.value ? parseInt(this.value) : null)">
-          <span style="font-size:11px;color:var(--text3)">${_compareMode==='daily'?'일':'개월'} (비워두면 전체)</span>
-          <div style="display:flex;gap:4px">
-            ${presets.map(p => `<button class="daily-range-tab${_compareMaxPeriods===p?' active':''}" style="font-size:10px;padding:2px 8px" onclick="window.setCompareMax(${p})">${p}${_compareMode==='daily'?'d':'M'}</button>`).join('')}
-            <button class="daily-range-tab${!_compareMaxPeriods?' active':''}" style="font-size:10px;padding:2px 8px" onclick="window.setCompareMax(null)">전체</button>
-          </div>
-        </div>
+        ${calFilter}
+        ${periodFilter}
         <div class="card" id="compare-chart-card">
           ${_compareGames.length < 2
             ? `<div style="text-align:center;padding:60px;color:var(--text3);font-size:13px">게임을 2개 이상 선택하면 비교 차트가 나타납니다</div>`
-            : `<div style="font-size:12px;color:var(--text3);margin-bottom:12px">Launch 기준 — ${xLabel}${_compareMaxPeriods ? ` · 최대 ${_compareMaxPeriods}${_compareMode==='daily'?'일':'개월'}` : ''}</div>
+            : `<div style="font-size:12px;color:var(--text3);margin-bottom:12px">${xLabel}</div>
                <div style="height:360px"><canvas id="compare-chart"></canvas></div>`}
         </div>
         <div class="card" style="margin-top:16px" id="compare-table-card"></div>`;
@@ -2441,7 +2464,43 @@
       let maxPeriods = 0;
       let labels, alignedDatasets;
 
-      if (_compareMode === 'daily') {
+      if (_compareMode === 'cal-daily') {
+        // Calendar daily: same actual dates on X-axis
+        const allDailyRows = _compareGames.flatMap(game =>
+          DAILY.filter(d => matchesGame(d.game, game) && (d.country||'Total') === 'Total')
+               .map(r => (r.date||'').slice(0,10))
+        );
+        let allDates = [...new Set(allDailyRows)].sort();
+        if (_compareCalStart) allDates = allDates.filter(d => d >= _compareCalStart);
+        if (_compareCalEnd)   allDates = allDates.filter(d => d <= _compareCalEnd);
+        labels = allDates.map(d => d.slice(5)); // MM-DD
+        alignedDatasets = _compareGames.map(game => {
+          const rows = DAILY.filter(d => matchesGame(d.game, game) && (d.country||'Total') === 'Total');
+          const byDate = {};
+          rows.forEach(r => { byDate[(r.date||'').slice(0,10)] = r[metric] ?? null; });
+          const c = getGameColor(game);
+          return { label: game, data: allDates.map(d => byDate[d] ?? null),
+            borderColor: c, backgroundColor: c+'22', borderWidth: 1.5, pointRadius: 1, tension: 0.3, fill: false, spanGaps: true };
+        });
+      } else if (_compareMode === 'cal-monthly') {
+        // Calendar monthly: same YM on X-axis
+        const allYMs = [...new Set(_compareGames.flatMap(game =>
+          RAW.filter(r => matchesGame(r.game, game)).map(r => r.ym)
+        ))].sort();
+        const filtered = allYMs.filter(ym =>
+          (!_compareCalStart || ym >= _compareCalStart.slice(0,7)) &&
+          (!_compareCalEnd   || ym <= _compareCalEnd.slice(0,7))
+        );
+        labels = filtered;
+        const avgFn2 = (arr, k) => ['dau','arppu','cr','d1_ret','mpu'].includes(k) ? arr.filter(r=>r[k]!=null).reduce((s,r,_,a)=>s+r[k]/a.length,0)||null : arr.reduce((s,r)=>s+(r[k]||0),0)||null;
+        alignedDatasets = _compareGames.map(game => {
+          const rows = RAW.filter(r => matchesGame(r.game, game));
+          const byYM = {}; rows.forEach(r => { byYM[r.ym] = r[metric] ?? null; });
+          const c = getGameColor(game);
+          return { label: game, data: filtered.map(ym => byYM[ym] ?? null),
+            borderColor: c, backgroundColor: c+'22', borderWidth: 2, pointRadius: 2, tension: 0.3, fill: false, spanGaps: true };
+        });
+      } else if (_compareMode === 'daily') {
         // Daily mode: D+1, D+2... since launch date
         const datasets = _compareGames.map(game => {
           const deal = DEALS.find(d => matchesGame(d.title, game));
@@ -2584,6 +2643,11 @@
 
     window.setCompareMax = function(val) {
       _compareMaxPeriods = val || null;
+      renderComparePage();
+    };
+    window.setCompareCalRange = function(start, end) {
+      _compareCalStart = start || null;
+      _compareCalEnd   = end   || null;
       renderComparePage();
     };
     window.setCompareMode = function(mode) {
