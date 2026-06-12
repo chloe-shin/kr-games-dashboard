@@ -2839,8 +2839,8 @@
             mom_pct: mom ? parseFloat(mom) : null,
             avg_arppu: parseFloat((recent.filter(r => r.arppu).reduce((s, r, _, a) => s + r.arppu / a.length, 0) || 0).toFixed(1)),
             avg_cr_pct: parseFloat(((recent.filter(r => r.cr).reduce((s, r, _, a) => s + r.cr / a.length, 0) || 0) * 100).toFixed(2)),
-            roi: parseFloat(gameRoi(g, dataToUse).toFixed(2)),
-            mg_recoup_pct: parseFloat(mgRecoupPct(g, dataToUse).toFixed(1)),
+            roi: parseFloat(gameRoi(g, allRaw).toFixed(2)),
+            mg_recoup_pct: parseFloat(mgRecoupPct(g, allRaw).toFixed(1)),
             months_live: rows.length
           };
         });
