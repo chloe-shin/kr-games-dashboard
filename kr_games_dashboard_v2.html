@@ -1163,7 +1163,7 @@
   <div class="main">
     <div class="topbar">
       <div style="display:flex;align-items:center;gap:10px">
-        <button class="hamburger" id="hamburger-btn" onclick="toggleMobileSidebar()" aria-label="메뉴">
+        <button class="hamburger" id="hamburger-btn" onclick="toggleMobileSidebar()" aria-label="Menu">
           <span></span><span></span><span></span>
         </button>
         <div class="topbar-title" id="topbar-title">Overview</div>
@@ -1289,7 +1289,7 @@
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
             <div>
               <div style="font-size:15px;font-weight:600">Terminated Games</div>
-              <div style="font-size:12px;color:var(--text2);margin-top:3px">과거 계약 종료 게임 목록. Restore 버튼으로 재계약 시 복원 가능.</div>
+              <div style="font-size:12px;color:var(--text2);margin-top:3px">List of previously terminated games. Use Restore to reinstate.</div>
             </div>
           </div>
           <div class="table-wrap">
@@ -1346,20 +1346,20 @@
   <div class="modal-overlay" id="modal-status-confirm">
     <div class="modal" style="width:460px">
       <div class="modal-header">
-        <h2 id="status-confirm-title">Status 변경 확인</h2>
+        <h2 id="status-confirm-title">Confirm Status Change</h2>
         <button class="modal-close" onclick="closeModal('status-confirm')">×</button>
       </div>
       <div class="modal-body">
         <p id="status-confirm-msg" style="font-size:13px;color:var(--text2);line-height:1.7"></p>
         <div id="status-confirm-note-wrap" style="margin-top:16px;display:none">
-          <label style="display:block;margin-bottom:6px">종료 사유 메모 <span style="color:var(--text3);font-weight:400;text-transform:none">(선택)</span></label>
-          <textarea id="status-confirm-note" placeholder="계약 종료 이유, 협상 결렬 원인, 향후 참고사항 등..." style="width:100%"></textarea>
+          <label style="display:block;margin-bottom:6px">Termination note <span style="color:var(--text3);font-weight:400;text-transform:none">(optional)</span></label>
+          <textarea id="status-confirm-note" placeholder="Reason for termination, negotiation breakdown, notes for future reference..." style="width:100%"></textarea>
         </div>
         <div class="form-error" id="status-confirm-error"></div>
       </div>
       <div class="modal-footer">
-        <button class="btn" onclick="closeModal('status-confirm')">취소</button>
-        <button class="btn btn-primary" id="status-confirm-ok" onclick="confirmStatusChange()">확인</button>
+        <button class="btn" onclick="closeModal('status-confirm')">Cancel</button>
+        <button class="btn btn-primary" id="status-confirm-ok" onclick="confirmStatusChange()">Confirm</button>
       </div>
     </div>
   </div>
@@ -1385,7 +1385,7 @@
           <input type="file" id="xu-file" accept=".xlsx,.xls" class="form-input" style="cursor:pointer" onchange="previewExcelUpload()">
         </div>
         <div id="xu-country-row" style="display:none">
-          <label class="form-label">Country <span style="color:var(--red)">*</span> <span style="font-size:11px;color:var(--text3);font-weight:400">— 이 파일에 국가 컬럼이 없어요. 어느 국가 데이터인지 선택해주세요.</span></label>
+          <label class="form-label">Country <span style="color:var(--red)">*</span> <span style="font-size:11px;color:var(--text3);font-weight:400">— No country column detected. Please select which country this data belongs to.</span></label>
           <select id="xu-country" class="form-input" onchange="previewExcelUpload()">
             <option value="">Select country...</option>
             <option value="Total">🌏 Total (all countries combined)</option>
@@ -1453,7 +1453,7 @@
           <div class="form-group">
             <label>RS (%)</label>
             <input type="number" id="d-rs" placeholder="e.g. 42" step="0.1">
-            <span class="form-hint">퍼센트로 입력 (42 = 42%)</span>
+            <span class="form-hint">Enter as percentage (42 = 42%)</span>
           </div>
           <div class="form-group">
             <label>Start date</label>
@@ -1470,7 +1470,7 @@
           </div>
           <div class="form-group full">
             <label>Special conditions</label>
-            <textarea id="d-special" placeholder="특이 계약 조건 입력..."></textarea>
+            <textarea id="d-special" placeholder="Enter special contract terms..."></textarea>
           </div>
         </div>
         <div class="form-error" id="deal-error"></div>
@@ -2394,56 +2394,56 @@
       const inpStyle = `background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:11px;padding:3px 8px;outline:none`;
       const xLabel = _compareMode === 'daily' ? 'D+1, D+2 ... (days since launch)' :
                      _compareMode === 'monthly' ? 'M+1, M+2 ... (months since launch, 30-day windows)' :
-                     _compareMode === 'cal-daily' ? '날짜 기준 (같은 날짜로 비교)' :
-                     '월 기준 (같은 달로 비교)';
+                     _compareMode === 'cal-daily' ? 'Same calendar date' :
+                     'Same calendar month';
       const presets = isDaily ? [30, 60, 90, 180, 365] : [3, 6, 12, 24];
 
       // Calendar date range filter
       const calFilter = isCalendar ? `
         <div class="card" style="margin-bottom:16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">날짜 범위</span>
+          <span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Date Range</span>
           <input type="${isDaily?'date':'month'}" id="cal-start" value="${_compareCalStart||''}" style="${inpStyle}"
             onchange="window.setCompareCalRange(this.value, document.getElementById('cal-end').value)">
           <span style="font-size:11px;color:var(--text3)">~</span>
           <input type="${isDaily?'date':'month'}" id="cal-end" value="${_compareCalEnd||''}" style="${inpStyle}"
             onchange="window.setCompareCalRange(document.getElementById('cal-start').value, this.value)">
-          <button class="daily-range-tab" style="font-size:10px;padding:2px 8px" onclick="window.setCompareCalRange(null,null)">전체</button>
+          <button class="daily-range-tab" style="font-size:10px;padding:2px 8px" onclick="window.setCompareCalRange(null,null)">All</button>
         </div>` : '';
 
       // Period range filter (launch-relative modes only)
       const periodFilter = !isCalendar ? `
         <div class="card" style="margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">기간 범위</span>
-          <input type="number" id="compare-max-input" value="${_compareMaxPeriods||''}" placeholder="전체" min="1" style="${inpStyle};width:70px"
+          <span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Period Range</span>
+          <input type="number" id="compare-max-input" value="${_compareMaxPeriods||''}" placeholder="All" min="1" style="${inpStyle};width:70px"
             onchange="window.setCompareMax(this.value ? parseInt(this.value) : null)">
-          <span style="font-size:11px;color:var(--text3)">${isDaily?'일':'개월'} (비워두면 전체)</span>
+          <span style="font-size:11px;color:var(--text3)">${isDaily?'days':'months'} (leave blank for all)</span>
           <div style="display:flex;gap:4px">
             ${presets.map(p => `<button class="daily-range-tab${_compareMaxPeriods===p?' active':''}" style="font-size:10px;padding:2px 8px" onclick="window.setCompareMax(${p})">${p}${isDaily?'d':'M'}</button>`).join('')}
-            <button class="daily-range-tab${!_compareMaxPeriods?' active':''}" style="font-size:10px;padding:2px 8px" onclick="window.setCompareMax(null)">전체</button>
+            <button class="daily-range-tab${!_compareMaxPeriods?' active':''}" style="font-size:10px;padding:2px 8px" onclick="window.setCompareMax(null)">All</button>
           </div>
         </div>` : '';
 
       container.innerHTML = `
         <div class="card" style="margin-bottom:16px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-          <span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-right:4px">비교 기준</span>
-          ${modeBtn('monthly','📅 런칭 후 Monthly')}
-          ${modeBtn('daily','📡 런칭 후 Daily')}
-          ${modeBtn('cal-monthly','🗓 같은 달 Monthly')}
-          ${modeBtn('cal-daily','🗓 같은 날 Daily')}
+          <span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-right:4px">Compare Mode</span>
+          ${modeBtn('monthly','📅 Post-Launch Monthly')}
+          ${modeBtn('daily','📡 Post-Launch Daily')}
+          ${modeBtn('cal-monthly','🗓 Calendar Monthly')}
+          ${modeBtn('cal-daily','🗓 Calendar Daily')}
         </div>
         <div class="card" style="margin-bottom:16px">
-          <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">게임 선택 (최대 5개)</div>
+          <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Select Games (max 5)</div>
           <div style="display:flex;flex-wrap:wrap;gap:6px">${gameButtons}</div>
         </div>
         <div class="card" style="margin-bottom:16px">
-          <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">지표</div>
+          <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Metric</div>
           <div style="display:flex;flex-wrap:wrap;gap:6px">${metricButtons}</div>
         </div>
         ${calFilter}
         ${periodFilter}
         <div class="card" id="compare-chart-card">
           ${_compareGames.length < 2
-            ? `<div style="text-align:center;padding:60px;color:var(--text3);font-size:13px">게임을 2개 이상 선택하면 비교 차트가 나타납니다</div>`
+            ? `<div style="text-align:center;padding:60px;color:var(--text3);font-size:13px">Select 2 or more games to show comparison chart</div>`
             : `<div style="font-size:12px;color:var(--text3);margin-bottom:12px">${xLabel}</div>
                <div style="height:360px"><canvas id="compare-chart"></canvas></div>`}
         </div>
@@ -3390,7 +3390,7 @@ ${dataStr}`;
         const launchedGames = DEALS.filter(x => x.status === 'Launched').map(x => x.title);
         const gs = document.getElementById('f-game');
         if (gs) gs.innerHTML = '<option value="">Select game</option>' + launchedGames.map(t => `<option value="${t}">${t}</option>`).join('');
-        showToast(`"${d.title}" 복원 완료. 사이드바에서 확인하세요.`);
+        showToast(`"${d.title}" restored. Check the sidebar.`);
         updateLastUpdated();
       } catch(e) {
         alert('복원 실패: ' + e.message);
@@ -3619,7 +3619,7 @@ ${dataStr}`;
         container.innerHTML = `<div class="monitor-empty">
           <div style="font-size:32px;margin-bottom:12px">📡</div>
           <div style="font-weight:500;margin-bottom:6px">No new games</div>
-          <div style="font-size:12px">출시 3개월 미만 게임이 없어요</div>
+          <div style="font-size:12px">No games launched in the last 3 months</div>
         </div>`;
         return;
       }
@@ -3700,8 +3700,8 @@ ${dataStr}`;
 
         if (!totalRows.length) {
           const availMsg = allTotalRows.length
-            ? `DB 데이터: ${(allTotalRows[0].date||'').slice(0,10)} ~ ${(allTotalRows[allTotalRows.length-1].date||'').slice(0,10)} (${allTotalRows.length}일)`
-            : 'DB에 Total 행 없음 — 파일 재업로드 필요';
+            ? `DB data: ${(allTotalRows[0].date||'').slice(0,10)} ~ ${(allTotalRows[allTotalRows.length-1].date||'').slice(0,10)} (${allTotalRows.length} days)`
+            : 'No Total rows in DB — please re-upload file';
           return `<div class="monitor-card" style="margin-bottom:20px">
             <div class="monitor-card-header">
               <div class="monitor-card-title">
@@ -3712,7 +3712,7 @@ ${dataStr}`;
               <span class="monitor-days-badge">${daysSince != null ? `D+${daysSince}` : ''}</span>
             </div>
             <div style="text-align:center;padding:32px;color:var(--text3);font-size:13px">
-              선택 기간에 데이터 없음 (${cutoffDate||'처음'} ~ ${endDate||'끝'})<br>
+              No data for selected period (${cutoffDate||'Start'} ~ ${endDate||'End'})<br>
               <span style="font-size:11px">${availMsg}</span>
             </div>
           </div>`;
@@ -3723,7 +3723,7 @@ ${dataStr}`;
         const sumOf = key => { const vs = totalRows.filter(r => r[key] != null); return vs.length ? vs.reduce((s,r) => s + Number(r[key]), 0) : null; };
         const avgOf = key => { const vs = totalRows.filter(r => r[key] != null).map(r => Number(r[key])); return vs.length ? vs.reduce((a,b)=>a+b,0)/vs.length : null; };
         const periodDays = totalRows.length;
-        const periodLabel = `${cutoffDate||'처음'} ~ ${endDate||'끝'} (${periodDays}일)`;
+        const periodLabel = `${cutoffDate||'Start'} ~ ${endDate||'End'} (${periodDays} days)`;
         // prev period for delta: same length window immediately before cutoff
         const prevEnd = cutoffDate ? (() => { const d=new Date(cutoffDate); d.setDate(d.getDate()-1); return d.toISOString().slice(0,10); })() : null;
         const prevStart = (prevEnd && periodDays > 0) ? (() => { const d=new Date(prevEnd); d.setDate(d.getDate()-(periodDays-1)); return d.toISOString().slice(0,10); })() : null;
@@ -3745,19 +3745,19 @@ ${dataStr}`;
                 <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">${label}</div>
                 <div style="font-size:16px;font-weight:600">${val}${chg}</div>
               </div>`).join('')}
-            <div style="margin-left:4px;color:var(--text3);font-size:11px;align-self:flex-end;padding-bottom:2px">${periodLabel} 누적</div>
+            <div style="margin-left:4px;color:var(--text3);font-size:11px;align-self:flex-end;padding-bottom:2px">${periodLabel} Cumulative</div>
           </div>`;
 
         // Date table (filtered by date range)
         const dateTableHtml = `
           <div>
-            <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">📅 날짜별 (${totalRows.length}일)</div>
+            <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">📅 By Date (${totalRows.length} days)</div>
             <div style="overflow-x:auto">
               <div style="max-height:320px;overflow-y:auto;will-change:scroll-position;-webkit-overflow-scrolling:touch">
                 <table style="width:100%;border-collapse:collapse;table-layout:fixed;min-width:560px">
                   <colgroup><col style="width:60px"><col style="width:90px"><col style="width:72px"><col style="width:72px"><col style="width:90px"><col style="width:72px"><col style="width:60px"><col style="width:68px"></colgroup>
                   <thead style="position:sticky;top:0;z-index:2;background:#1a1a1e;box-shadow:0 2px 6px rgba(0,0,0,.8)">
-                    <tr style="border-bottom:1px solid var(--border)">${thL('날짜')}${th('Revenue')}${th('DAU')}${th('NRU')}${th('Mkt Cost')}${th('ARPPU')}${th('DPU')}${th('D1 Ret')}</tr>
+                    <tr style="border-bottom:1px solid var(--border)">${thL('Date')}${th('Revenue')}${th('DAU')}${th('NRU')}${th('Mkt Cost')}${th('ARPPU')}${th('DPU')}${th('D1 Ret')}</tr>
                   </thead>
                   <tbody>
                     ${totalRows.map(r => `<tr style="border-bottom:1px solid rgba(255,255,255,.04);height:28px">
@@ -3791,7 +3791,7 @@ ${dataStr}`;
         }).join('');
         const countryTableHtml = ctryRows ? `
           <div>
-            <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">🌏 국가별 합계</div>
+            <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">🌏 Country Breakdown</div>
             <div style="overflow-x:auto">
               <table style="width:100%;border-collapse:collapse">
                 <thead><tr style="border-bottom:1px solid var(--border)">${thL('Country')}${th('Revenue')}${th('DAU(avg)')}${th('NRU')}${th('Mkt Cost')}${th('D1 Ret')}</tr></thead>
@@ -3836,14 +3836,14 @@ ${dataStr}`;
           </div>
           <div style="width:1px;height:20px;background:var(--border);flex-shrink:0"></div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap">기간</span>
+            <span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap">Period</span>
             <input type="date" id="monitor-date-start" value="${_monitorStartDate||''}" style="${inputStyle}" onchange="window.setMonitorDateRange(this.value, document.getElementById('monitor-date-end').value)">
             <span style="font-size:11px;color:var(--text3)">~</span>
             <input type="date" id="monitor-date-end" value="${_monitorEndDate||''}" style="${inputStyle}" onchange="window.setMonitorDateRange(document.getElementById('monitor-date-start').value, this.value)">
             <div style="display:flex;gap:4px">
-              ${[7,14,30,60,'전체'].map(d => {
-                const isActive = d === '전체' ? (!_monitorStartDate && !_monitorEndDate) : false;
-                return `<button class="daily-range-tab${isActive?' active':''}" onclick="window.switchMonitorPreset(${d==='전체'?0:d})" style="font-size:10px;padding:3px 8px">${d==='전체'?'전체':d+'d'}</button>`;
+              ${[7,14,30,60,'All'].map(d => {
+                const isActive = d === 'All' ? (!_monitorStartDate && !_monitorEndDate) : false;
+                return `<button class="daily-range-tab${isActive?' active':''}" onclick="window.switchMonitorPreset(${d==='All'?0:d})" style="font-size:10px;padding:3px 8px">${d==='All'?'All':d+'d'}</button>`;
               }).join('')}
             </div>
           </div>
@@ -3992,7 +3992,7 @@ ${dataStr}`;
           <span style="font-size:11px;color:var(--text3)">~</span>
           <input type="date" id="gdaily-end" value="${_gameDailyEnd||''}" style="${inpStyle}" onchange="window.setGameDailyRange(document.getElementById('gdaily-start').value, this.value)">
           ${[7,14,30,90,0].map(d => {
-            const lbl = d===0?'전체':d+'d';
+            const lbl = d==='All'?'All':d+'d';
             return `<button class="daily-range-tab" style="font-size:10px;padding:3px 8px" onclick="window.setGameDailyPreset(${d})">${lbl}</button>`;
           }).join('')}
         </div>`;
@@ -4008,8 +4008,8 @@ ${dataStr}`;
           ${countryHtml}
           ${rangeHtml}
           <div style="text-align:center;padding:40px;color:var(--text3);font-size:13px">
-            선택 기간에 데이터 없음 (${_gameDailyStart||'처음'} ~ ${_gameDailyEnd||'끝'})<br>
-            <span style="font-size:12px">📂 Upload Excel로 Daily Report를 업로드해주세요.</span>
+            No data for selected period (${_gameDailyStart||'Start'} ~ ${_gameDailyEnd||'End'})<br>
+            <span style="font-size:12px">📂 Please upload a Daily Report via Upload Excel.</span>
           </div>
         </div>`;
         return;
@@ -4121,7 +4121,7 @@ ${dataStr}`;
         const thS = 'text-align:right;padding:4px 8px;color:var(--text3);font-weight:500;font-size:11px';
         const thL2 = 'text-align:left;padding:4px 8px;color:var(--text3);font-weight:500;font-size:11px';
         ctryTableEl.innerHTML = `
-          <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">🌏 국가별 합계</div>
+          <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">🌏 Country Breakdown</div>
           <div style="overflow-x:auto">
             <table style="width:100%;border-collapse:collapse">
               <thead><tr style="border-bottom:1px solid var(--border)">
@@ -4150,7 +4150,7 @@ ${dataStr}`;
 
       const file = document.getElementById('xu-file').files[0];
       if (!file) return;
-      if (typeof XLSX === 'undefined') { errEl.textContent = 'SheetJS 라이브러리 로드 실패. 인터넷 연결을 확인해주세요.'; return; }
+      if (typeof XLSX === 'undefined') { errEl.textContent = 'SheetJS library failed to load. Please check your internet connection.'; return; }
 
       const reader = new FileReader();
       reader.onload = e => {
@@ -4167,7 +4167,7 @@ ${dataStr}`;
             });
           });
 
-          if (!rows.length) { errEl.textContent = '파일에 데이터가 없어요.'; return; }
+          if (!rows.length) { errEl.textContent = 'No data found in file.'; return; }
 
           // Detect header — find the date column
           // Supports: 'report_date', 'KPI Metrics', or any column with 'date'/'day' in name
@@ -4198,7 +4198,7 @@ ${dataStr}`;
             if (/grand.?total|total|summary/i.test(s)) return false;
             return !isNaN(Date.parse(s));
           });
-          if (!dataRows.length) { errEl.textContent = '날짜 데이터를 찾을 수 없어요. report_date 또는 KPI Metrics 컬럼을 확인해주세요.'; return; }
+          if (!dataRows.length) { errEl.textContent = 'No date column found. Please check report_date or KPI Metrics column.'; return; }
 
           // Detect the year-month — sort so [last] is always the most recent
           const months = [...new Set(dataRows.map(r => String(r[dateCol]).slice(0, 7)))].sort();
@@ -4208,7 +4208,7 @@ ${dataStr}`;
           } else {
             document.getElementById('xu-warn').style.display = 'none';
           }
-          const ym = months[months.length - 1]; // 최신 월 기준 (월간 aggregate용)
+          const ym = months[months.length - 1]; // latest month (for monthly aggregate)
 
           // Auto-detect: if any month has >3 rows → daily report
           if (_xuMode === 'auto') {
@@ -4217,8 +4217,8 @@ ${dataStr}`;
             const maxRPM = Math.max(...Object.values(rowsPerMonth));
             _xuMode = maxRPM > 3 ? 'daily' : 'monthly';
             document.getElementById('xu-modal-desc').innerHTML = _xuMode === 'daily'
-              ? `📡 <strong>Daily Report</strong> 감지됨 — daily_data + monthly_data 모두 저장`
-              : `📊 <strong>Monthly Report</strong> 감지됨 — monthly_data에 저장`;
+              ? `📡 <strong>Daily Report</strong> detected — saves to daily_data + monthly_data`
+              : `📊 <strong>Monthly Report</strong> detected — saves to monthly_data`;
           }
           const monthRows = dataRows.filter(r => String(r[dateCol]).startsWith(ym));
 
@@ -4409,7 +4409,7 @@ ${dataStr}`;
             .join(' &nbsp;');
           const countriesStr = detectedCountries.length > 0
             ? `<span style="color:var(--green)">${detectedCountries.join(', ')}</span>`
-            : '<span style="color:var(--text3)">없음 (Total only)</span>';
+            : '<span style="color:var(--text3)">None (Total only)</span>';
 
           const td = (label, val) => `<tr><td style="padding:5px 8px;color:var(--text2)">${label}</td><td style="text-align:right;padding:5px 8px;font-family:monospace">${val}</td></tr>`;
 
@@ -4417,14 +4417,14 @@ ${dataStr}`;
           if (_xuMode === 'monthly') {
             tableRows = [
               td('Year-Month', ym),
-              td('Revenue (합계)', `$${fmtP(revenue, 2)}`),
-              td('DAU (평균)', fmtP(dau)),
-              td('MAU / A30 (말일)', fmtP(mau)),
-              td('NRU (합계)', fmtP(nru)),
-              td('MPU / PU30 (말일)', fmtP(mpu)),
-              td('ARPPU (계산값)', `$${fmtP(arppu, 2)}`),
-              td('CR (계산값)', cr != null ? (cr*100).toFixed(2)+'%' : '-'),
-              td('Marketing Cost (합계)', `$${fmtP(mkt_cost, 2)}`),
+              td('Revenue (total)', `$${fmtP(revenue, 2)}`),
+              td('DAU (avg)', fmtP(dau)),
+              td('MAU / A30 (last day)', fmtP(mau)),
+              td('NRU (total)', fmtP(nru)),
+              td('MPU / PU30 (last day)', fmtP(mpu)),
+              td('ARPPU (calculated)', `$${fmtP(arppu, 2)}`),
+              td('CR (calculated)', cr != null ? (cr*100).toFixed(2)+'%' : '-'),
+              td('Marketing Cost (total)', `$${fmtP(mkt_cost, 2)}`),
             ].join('');
           } else {
             const n = v => v != null ? Math.round(v).toLocaleString() : '-';
@@ -4433,10 +4433,10 @@ ${dataStr}`;
             const thStyle = 'text-align:right;padding:3px 8px;color:var(--text3);font-weight:500;white-space:nowrap';
             const tdR = v => `<td style="text-align:right;padding:2px 8px;font-family:monospace">${v}</td>`;
 
-            // Section 1: 날짜별 Total rows (ascending)
+            // Section 1: Date별 Total rows (ascending)
             const totalOnly = [...dailyRows].filter(r => r.country === 'Total').sort((a,b) => a.date.localeCompare(b.date));
 
-            // Section 2: 국가별 집계 (sum/avg per metric)
+            // Section 2: Country breakdown (sum/avg per metric)
             const countryAgg = {};
             dailyRows.filter(r => r.country !== 'Total').forEach(r => {
               if (!countryAgg[r.country]) countryAgg[r.country] = { revenue:0, nru:0, mkt_cost:0, dau:[], arppu:[], dpu:[], d1_ret:[] };
@@ -4460,7 +4460,7 @@ ${dataStr}`;
                 <tbody>${bodyRows}</tbody>
               </table></div>`;
 
-            const headers = `<th style="text-align:left;padding:3px 8px;color:var(--text3);font-weight:500">날짜</th>
+            const headers = `<th style="text-align:left;padding:3px 8px;color:var(--text3);font-weight:500">Date</th>
               <th style="${thStyle}">Revenue</th><th style="${thStyle}">DAU</th>
               <th style="${thStyle}">NRU</th><th style="${thStyle}">Mkt Cost</th>
               <th style="${thStyle}">ARPPU</th><th style="${thStyle}">DPU</th><th style="${thStyle}">D1 Ret</th>`;
@@ -4490,16 +4490,16 @@ ${dataStr}`;
             tableRows = `
               <tr><td colspan="2" style="padding:4px 0 2px">
                 <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:4px">
-                  📅 날짜별 (${totalOnly.length}일 · ${dailyMonths[0]}${dailyMonths.length>1?' ~ '+dailyMonths[dailyMonths.length-1]:''})
+                  📅 By Date (${totalOnly.length} days · ${dailyMonths[0]}${dailyMonths.length>1?' ~ '+dailyMonths[dailyMonths.length-1]:''})
                 </div>
                 ${miniTable(headers, dateRows)}
               </td></tr>
               <tr><td colspan="2" style="padding:10px 0 2px">
-                <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:4px">🌏 국가별 합계</div>
+                <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:4px">🌏 Country Breakdown</div>
                 ${miniTable(cHeaders, cRows)}
               </td></tr>
               <tr><td colspan="2" style="padding:8px 0 2px;border-top:1px solid var(--border)">
-                <div style="font-size:10px;color:var(--text3);margin-bottom:4px">컬럼 매핑</div>
+                <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Column Mapping</div>
                 <div style="font-size:10px;line-height:1.8;font-family:monospace">${colDebug}</div>
               </td></tr>`;
           }
@@ -4507,8 +4507,8 @@ ${dataStr}`;
           document.getElementById('xu-preview-table').innerHTML = `
             <table style="width:100%;font-size:12px;border-collapse:collapse">
               <tr style="border-bottom:1px solid var(--border)">
-                <th style="text-align:left;padding:6px 8px;color:var(--text3);font-weight:500">항목</th>
-                <th style="text-align:right;padding:6px 8px;color:var(--text3);font-weight:500">값</th>
+                <th style="text-align:left;padding:6px 8px;color:var(--text3);font-weight:500">Item</th>
+                <th style="text-align:right;padding:6px 8px;color:var(--text3);font-weight:500">Value</th>
               </tr>
               ${tableRows}
             </table>`;
@@ -4540,13 +4540,13 @@ ${dataStr}`;
                     >${m.label}</button>`).join('')}
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-                  <span style="font-size:10px;color:var(--text3)">기간</span>
+                  <span style="font-size:10px;color:var(--text3)">Period</span>
                   ${[7,14,30].map(d => `<button onclick="xuSetRange(${d})" id="xu-rb-${d}"
                     style="font-size:10px;padding:2px 9px;border-radius:20px;border:1px solid var(--border2);
-                    background:transparent;color:var(--text3);cursor:pointer">최근 ${d}일</button>`).join('')}
+                    background:transparent;color:var(--text3);cursor:pointer">Last ${d}d</button>`).join('')}
                   <button onclick="xuSetRange(0)" id="xu-rb-0"
                     style="font-size:10px;padding:2px 9px;border-radius:20px;border:1px solid var(--accent);
-                    background:var(--accent)22;color:var(--accent);cursor:pointer">전체</button>
+                    background:var(--accent)22;color:var(--accent);cursor:pointer">All</button>
                   <input type="date" id="xu-date-from" value="${minDate}" min="${minDate}" max="${maxDate}"
                     onchange="xuSetRange(-1)"
                     style="font-size:10px;padding:2px 6px;border-radius:6px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);cursor:pointer">
@@ -4672,7 +4672,7 @@ ${dataStr}`;
           previewDiv.style.display = 'block';
           submitBtn.disabled = false;
         } catch (err) {
-          errEl.textContent = '파일 파싱 오류: ' + err.message;
+          errEl.textContent = 'File parsing error: ' + err.message;
         }
       };
       reader.readAsArrayBuffer(file);
@@ -4681,8 +4681,8 @@ ${dataStr}`;
     async function submitExcelUpload() {
       const errEl = document.getElementById('xu-error');
       const game = document.getElementById('xu-game').value;
-      if (!game) { errEl.textContent = 'Game을 선택해주세요.'; return; }
-      if (!_xuParsedRow) { errEl.textContent = '파일을 먼저 업로드해주세요.'; return; }
+      if (!game) { errEl.textContent = 'Please select a game.'; return; }
+      if (!_xuParsedRow) { errEl.textContent = 'Please upload a file first.'; return; }
 
       const btn = document.getElementById('xu-submit-btn');
       btn.textContent = 'Saving...'; btn.disabled = true;
@@ -4847,7 +4847,7 @@ ${dataStr}`;
             noteWrap.style.display = 'block';
             noteEl.value = '';
           } else {
-            titleEl.textContent = 'Status 변경 확인';
+            titleEl.textContent = 'Confirm Status Change';
             msgEl.innerHTML = `<strong>${title}</strong>의 Status를 <span style="color:var(--amber)">Not Launched</span>로 변경합니다.<br><br>
               이 게임은 사이드바에서 제거됩니다. 다시 Launched로 변경하면 복원됩니다.`;
             noteWrap.style.display = 'none';
