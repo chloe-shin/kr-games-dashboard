@@ -3070,6 +3070,17 @@ ${dataStr}`;
       const gStartYM = gYMs.length > 0 ? gYMs[0] : '-';
       const gLatestYM = gYMs.length > 0 ? gYMs.slice(-1)[0] : '-';
       const gamePeriodStr = gStartYM !== '-' ? `${gStartYM.slice(2)} ~ ${gLatestYM.slice(2)}` : 'No data';
+
+      // Launch date from deal_terms
+      const deal = DEALS.find(d => matchesGame(d.title, game));
+      const launchDate = deal?.start_date ? deal.start_date.slice(0,10) : null;
+      const today = new Date();
+      const daysLive = launchDate ? Math.floor((today - new Date(launchDate)) / 86400000) : null;
+      // Update topbar title to include launch info
+      const titleEl = document.getElementById('topbar-title');
+      if (titleEl) {
+        titleEl.innerHTML = `${game}${launchDate ? `<span style="font-size:11px;color:var(--text3);font-weight:400;margin-left:10px">🚀 ${launchDate}</span><span style="font-size:11px;color:var(--text3);font-weight:400;margin-left:6px">D+${daysLive}</span>` : ''}`;
+      }
       
       let gameAnomalyBadge = '';
       if (gameMoM != null && parseFloat(gameMoM) <= -20) {
@@ -3077,6 +3088,11 @@ ${dataStr}`;
       }
 
       document.getElementById('game-kpis').innerHTML = `
+    ${launchDate ? `<div class="game-kpi" style="border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03)">
+      <div class="game-kpi-label" style="color:var(--text2);font-weight:700">Launch Date</div>
+      <div class="game-kpi-val" style="font-size:1.4rem">${launchDate}</div>
+      <div class="game-kpi-sub">D+${daysLive} since launch</div>
+    </div>` : ''}
     <div class="game-kpi" style="border:1px solid rgba(74,158,245,0.4);background:rgba(74,158,245,0.05)">
       <div class="game-kpi-label" style="color:#4A9EF5;font-weight:700">Accum revenue</div>
       <div class="game-kpi-val">${fmt(totalRev)}</div>
