@@ -2262,7 +2262,7 @@
       const BG = '1a1a1e', ACC = '4A9EF5', TEXT = 'E0E0E0', SUB = '888888';
       const fmtV = v => v == null ? '-' : '$' + Math.round(v).toLocaleString();
       const fmtI = v => v == null ? '-' : Math.round(v).toLocaleString();
-      const fmtP = v => v == null ? '-' : (v * 100).toFixed(1) + '%';
+      const fmtP = v => v == null ? '-' : v.toFixed(1) + '%'; // d1_ret stored as percentage
 
       const visibleGames = _monitorGame
         ? getActiveGames().filter(g => g === _monitorGame)
@@ -2584,14 +2584,14 @@
             tooltip: { callbacks: { label: ctx => {
               const v = ctx.parsed.y;
               if (v == null) return null;
-              if (isPercent) return `${ctx.dataset.label}: ${(v*100).toFixed(2)}%`;
+              if (isPercent) return `${ctx.dataset.label}: ${metric==='d1_ret'?v.toFixed(1):(v*100).toFixed(2)}%`;
               if (isDollar) return `${ctx.dataset.label}: $${Math.round(v).toLocaleString()}`;
               return `${ctx.dataset.label}: ${Math.round(v).toLocaleString()}`;
             }}}
           },
           scales: {
             x: { ticks: { color:'#666', font:{size:9} }, grid: { color:'rgba(255,255,255,.04)' } },
-            y: { ticks: { color:'#666', font:{size:9}, callback: v => isPercent ? (v*100).toFixed(1)+'%' : isDollar ? '$'+(v>=1000?(v/1000).toFixed(0)+'k':v) : v>=1000?(v/1000).toFixed(0)+'k':v }, grid: { color:'rgba(255,255,255,.04)' } }
+            y: { ticks: { color:'#666', font:{size:9}, callback: v => isPercent ? (metric==='d1_ret'?v.toFixed(1):(v*100).toFixed(1))+'%' : isDollar ? '$'+(v>=1000?(v/1000).toFixed(0)+'k':v) : v>=1000?(v/1000).toFixed(0)+'k':v }, grid: { color:'rgba(255,255,255,.04)' } }
           }
         }
       });
@@ -2607,7 +2607,7 @@
         if (!ds) return '-';
         let max = -Infinity, idx = -1;
         ds.data.forEach((v,i) => { if (v != null && v > max) { max = v; idx = i; } });
-        const fmt = v => isPercent ? (v*100).toFixed(1)+'%' : isDollar ? '$'+Math.round(v).toLocaleString() : Math.round(v).toLocaleString();
+        const fmt = v => isPercent ? (metric==='d1_ret'?v.toFixed(1):(v*100).toFixed(1))+'%' : isDollar ? '$'+Math.round(v).toLocaleString() : Math.round(v).toLocaleString();
         return idx >= 0 ? `${prefix}+${idx+1} (${fmt(max)})` : '-';
       };
       const totalVal = game => {
@@ -3651,7 +3651,7 @@ ${dataStr}`;
       const cColors = { VN:'#4A9EF5', TH:'#2ECC9A', ID:'#E8A030', PH:'#E06090', MY:'#8B5CF6', SG:'#06B6D4', TWHK:'#F97316', Others:'#888' };
       const fmtR = v => v == null ? '-' : '$' + Math.round(v).toLocaleString();
       const fmtI = v => v == null ? '-' : Math.round(v).toLocaleString();
-      const fmtPct = v => v == null ? '-' : (v * 100).toFixed(1) + '%';
+      const fmtPct = v => v == null ? '-' : v.toFixed(1) + '%'; // d1_ret stored as percentage (e.g. 34.1)
 
       // Use today as the reference for all presets and defaults
       const today = new Date().toISOString().slice(0,10);
