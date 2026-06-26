@@ -1655,7 +1655,7 @@
           api('monthly_data', 'GET', null, 'order=ym.asc'),
           api('deal_terms', 'GET', null, 'order=created_at.asc'),
           api('insights', 'GET', null, 'order=year_month.desc'),
-          fetchAll('daily_data', 'order=date.asc')
+          fetchAll('daily_data', 'order=date.asc,id.asc')
         ]);
         DEALS = deals || [];
         RAW = enrichRAWData(monthly || []);
@@ -4037,6 +4037,35 @@ ${dataStr}`;
       }
 
       const labels = rows.map(r => r.date.slice(5));
+
+      // 📅 By Date table (like the Daily Monitor page) — newest first
+      const dnumH = 'text-align:right;padding:4px 8px;color:var(--text3);font-weight:500;font-size:11px';
+      const dlblH = 'text-align:left;padding:4px 8px;color:var(--text3);font-weight:500;font-size:11px';
+      const dnum  = 'text-align:right;padding:4px 8px;font-family:monospace;font-size:12px';
+      const fmtRev = v => v==null ? '-' : '$'+Math.round(v).toLocaleString();
+      const fmtInt = v => v==null ? '-' : Math.round(v).toLocaleString();
+      const fmtArp = v => v==null ? '-' : '$'+(Math.round(Number(v)*100)/100).toLocaleString();
+      const fmtD1  = v => v==null ? '-' : Number(v).toFixed(1)+'%';
+      const dateTableHtml = `
+        <div style="margin-top:20px">
+          <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">📅 By Date (${rows.length} days)</div>
+          <div style="overflow-x:auto"><div style="max-height:340px;overflow-y:auto;-webkit-overflow-scrolling:touch">
+            <table style="width:100%;border-collapse:collapse;min-width:620px">
+              <thead style="position:sticky;top:0;z-index:2;background:var(--bg2);box-shadow:0 2px 6px rgba(0,0,0,.6)">
+                <tr style="border-bottom:1px solid var(--border)">
+                  <th style="${dlblH}">Date</th><th style="${dnumH}">Revenue</th><th style="${dnumH}">DAU</th><th style="${dnumH}">NRU</th><th style="${dnumH}">Mkt Cost</th><th style="${dnumH}">ARPPU</th><th style="${dnumH}">DPU</th><th style="${dnumH}">D1 Ret</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${[...rows].reverse().map(r => `<tr style="border-bottom:1px solid rgba(255,255,255,.04);height:28px">
+                  <td style="text-align:left;padding:4px 8px;font-size:12px;color:var(--text2)">${(r.date||'').slice(5)}</td>
+                  <td style="${dnum}">${fmtRev(r.revenue)}</td><td style="${dnum}">${fmtInt(r.dau)}</td><td style="${dnum}">${fmtInt(r.nru)}</td><td style="${dnum}">${fmtRev(r.mkt_cost)}</td><td style="${dnum}">${fmtArp(r.arppu)}</td><td style="${dnum}">${fmtInt(r.dpu)}</td><td style="${dnum}">${fmtD1(r.d1_ret)}</td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div></div>
+        </div>`;
+
       container.innerHTML = `<div style="padding-top:4px">
         ${countryHtml}
         ${rangeHtml}
@@ -4058,6 +4087,7 @@ ${dataStr}`;
             <canvas id="daily-chart-d1ret" height="120"></canvas>
           </div>
         </div>
+        ${dateTableHtml}
         <div id="daily-country-table" style="margin-top:20px"></div>
       </div>`;
 
