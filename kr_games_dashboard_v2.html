@@ -1235,6 +1235,7 @@
               <button class="tab" data-tab="dau_mau" onclick="switchGameTab('dau_mau')">DAU / MAU</button>
               <button class="tab" data-tab="mkt" onclick="switchGameTab('mkt')">Mkt cost</button>
               <button class="tab" data-tab="daily" id="game-tab-daily" onclick="switchGameTab('daily')" style="display:none;color:#2ECC9A">📡 Daily</button>
+              <button class="tab" data-tab="sea" id="game-tab-sea" onclick="switchGameTab('sea')" style="display:none;color:#E8A030">🌏 SEA Launch</button>
             </div>
             <div style="display:flex; gap: 4px; background:var(--bg3); padding:4px; border-radius:8px">
                <button id="game-format-monthly" onclick="setGameTimeFormat('monthly')" class="btn" style="padding:4px 10px; font-size:12px; background:var(--bg); border:1px solid var(--border2); color:var(--text)">Monthly</button>
@@ -1243,6 +1244,7 @@
           </div>
           <div id="game-chart-area"></div>
           <div id="game-daily-area" style="display:none"></div>
+          <div id="game-sea-area" style="display:none"></div>
         </div>
         <div class="card" style="margin-top:20px; overflow-x:auto;">
           <div class="section-title" style="margin-bottom:12px">Monthly Raw Data (Filtered)</div>
@@ -3147,13 +3149,21 @@ ${dataStr}`;
       const dailyTabBtn = document.getElementById('game-tab-daily');
       if (dailyTabBtn) dailyTabBtn.style.display = '';
 
+      // SEA Launch tab — show only for games that have SEA country rows (currently Play Together's TH/PH/ID launch)
+      const seaTabBtn = document.getElementById('game-tab-sea');
+      const hasSEA = getSEALaunchRows(game).length > 0;
+      if (seaTabBtn) seaTabBtn.style.display = hasSEA ? '' : 'none';
+      if (!hasSEA && currentGameTab === 'sea') currentGameTab = 'revenue';
+
       document.querySelectorAll('#game-tabs .tab').forEach(el => {
         const t = el.dataset.tab;
         if (t) el.classList.toggle('active', t === currentGameTab);
       });
-      document.getElementById('game-chart-area').style.display = currentGameTab === 'daily' ? 'none' : '';
+      document.getElementById('game-chart-area').style.display = (currentGameTab === 'daily' || currentGameTab === 'sea') ? 'none' : '';
       document.getElementById('game-daily-area').style.display = currentGameTab === 'daily' ? 'block' : 'none';
+      document.getElementById('game-sea-area').style.display = currentGameTab === 'sea' ? 'block' : 'none';
       if (currentGameTab === 'daily') renderGameDaily(game, _currentDailyDays);
+      else if (currentGameTab === 'sea') renderGameSEA(game);
       else buildGameChart(game, currentGameTab);
     }
 
@@ -3258,9 +3268,11 @@ ${dataStr}`;
       document.querySelectorAll('#game-tabs .tab').forEach(el => {
         if (el.dataset.tab) el.classList.toggle('active', el.dataset.tab === t);
       });
-      document.getElementById('game-chart-area').style.display = t === 'daily' ? 'none' : '';
+      document.getElementById('game-chart-area').style.display = (t === 'daily' || t === 'sea') ? 'none' : '';
       document.getElementById('game-daily-area').style.display = t === 'daily' ? 'block' : 'none';
+      document.getElementById('game-sea-area').style.display = t === 'sea' ? 'block' : 'none';
       if (t === 'daily') renderGameDaily(currentGame, _currentDailyDays);
+      else if (t === 'sea') renderGameSEA(currentGame);
       else buildGameChart(currentGame, t);
     }
 
@@ -3976,6 +3988,153 @@ ${dataStr}`;
       _monitorGame = (game === _monitorGame) ? null : game;
       renderMonitor();
     };
+
+    // ── SEA Launch (Play Together TH/PH/ID) ───────────────────────────────
+    const SEA_LAUNCH = {
+      game: 'Play Together',
+      countries: ['TH', 'ID', 'PH'],
+      start: '2026-07-08',
+      colors: { TH: '#2ECC9A', ID: '#E8A030', PH: '#E06090' },
+      names: { TH: '🇹🇭 Thailand', ID: '🇮🇩 Indonesia', PH: '🇵🇭 Philippines' },
+      // Launch-cohort D1 retention (ruser01/nru of the launch-day cohort — not in daily_data, which stores prev-day-based d1)
+      launchD1: { ID: 67.6, TH: 60.0, PH: 56.4 }
+    };
+    function getSEALaunchRows(game) {
+      if (game !== SEA_LAUNCH.game) return [];
+      return DAILY.filter(d => matchesGame(d.game, game)
+        && SEA_LAUNCH.countries.includes(d.country)
+        && (d.date || '').slice(0, 10) >= SEA_LAUNCH.start)
+        .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    }
+
+    let seaCharts = [];
+    function renderGameSEA(game) {
+      const container = document.getElementById('game-sea-area');
+      if (!container) return;
+      seaCharts.forEach(c => { try { c.destroy(); } catch (e) {} });
+      seaCharts = [];
+
+      const rows = getSEALaunchRows(game);
+      if (!rows.length) { container.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text3)">No SEA launch data.</div>`; return; }
+
+      const dates = [...new Set(rows.map(r => (r.date || '').slice(0, 10)))].sort();
+      const labels = dates.map(d => d.slice(5));
+      const byC = {}; // byC[country][date] = row
+      SEA_LAUNCH.countries.forEach(c => { byC[c] = {}; });
+      rows.forEach(r => { if (byC[r.country]) byC[r.country][(r.date || '').slice(0, 10)] = r; });
+
+      const fmtD = v => v == null ? '$0' : '$' + Math.round(v).toLocaleString();
+      const fmtI = v => v == null ? '0' : Math.round(v).toLocaleString();
+
+      // Per-country aggregates
+      const agg = {};
+      SEA_LAUNCH.countries.forEach(c => {
+        const rs = dates.map(d => byC[c][d]).filter(Boolean);
+        const cumRev = rs.reduce((s, r) => s + (r.revenue || 0), 0);
+        const totNru = rs.reduce((s, r) => s + (r.nru || 0), 0);
+        const dpuSum = rs.reduce((s, r) => s + (r.dpu || 0), 0);
+        const launchDau = rs.length ? (rs[0].dau || 0) : 0;
+        const latestDau = rs.length ? (rs[rs.length - 1].dau || 0) : 0;
+        const peakDau = rs.reduce((m, r) => Math.max(m, r.dau || 0), 0);
+        agg[c] = { cumRev, totNru, dpuSum, launchDau, latestDau, peakDau,
+          arppu: dpuSum > 0 ? cumRev / dpuSum : null,
+          retain: launchDau > 0 ? latestDau / launchDau * 100 : null };
+      });
+      const seaRev = SEA_LAUNCH.countries.reduce((s, c) => s + agg[c].cumRev, 0);
+      const seaNru = SEA_LAUNCH.countries.reduce((s, c) => s + agg[c].totNru, 0);
+      const seaDauLatest = SEA_LAUNCH.countries.reduce((s, c) => s + agg[c].latestDau, 0);
+
+      // KPI cards
+      const kpiCards = `
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px">
+          <div class="game-kpi" style="border:1px solid rgba(232,160,48,.4);background:rgba(232,160,48,.05)">
+            <div class="game-kpi-label" style="color:#E8A030;font-weight:700">SEA Revenue (cum.)</div>
+            <div class="game-kpi-val">${fmtD(seaRev)}</div>
+            <div class="game-kpi-sub">TH + ID + PH · since ${SEA_LAUNCH.start.slice(5)}</div>
+          </div>
+          <div class="game-kpi" style="border:1px solid rgba(74,158,245,.4);background:rgba(74,158,245,.05)">
+            <div class="game-kpi-label" style="color:#4A9EF5;font-weight:700">New Users (cum.)</div>
+            <div class="game-kpi-val">${fmtI(seaNru)}</div>
+            <div class="game-kpi-sub">Total NRU across SEA</div>
+          </div>
+          <div class="game-kpi" style="border:1px solid rgba(46,204,154,.4);background:rgba(46,204,154,.05)">
+            <div class="game-kpi-label" style="color:#2ECC9A;font-weight:700">Latest SEA DAU</div>
+            <div class="game-kpi-val">${fmtI(seaDauLatest)}</div>
+            <div class="game-kpi-sub">${dates[dates.length - 1].slice(5)}</div>
+          </div>
+          <div class="game-kpi" style="border:1px solid rgba(236,72,153,.4);background:rgba(236,72,153,.05)">
+            <div class="game-kpi-label" style="color:#EC4899;font-weight:700">Launch D1 Retention</div>
+            <div class="game-kpi-val" style="font-size:1.05rem;line-height:1.4">ID ${SEA_LAUNCH.launchD1.ID}% · TH ${SEA_LAUNCH.launchD1.TH}%<br>PH ${SEA_LAUNCH.launchD1.PH}%</div>
+            <div class="game-kpi-sub">launch-day cohort</div>
+          </div>
+        </div>`;
+
+      // Per-country summary table
+      const sumTable = `
+        <div style="overflow-x:auto;margin-bottom:20px">
+          <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:640px">
+            <thead><tr style="border-bottom:1px solid var(--border);color:var(--text2);text-align:right">
+              <th style="text-align:left;padding:8px">Country</th><th style="padding:8px">Cum. Revenue</th><th style="padding:8px">New Users</th><th style="padding:8px">Peak DAU</th><th style="padding:8px">Latest DAU</th><th style="padding:8px">DAU retained</th><th style="padding:8px">ARPPU</th><th style="padding:8px">Launch D1</th>
+            </tr></thead>
+            <tbody>
+              ${SEA_LAUNCH.countries.map(c => `<tr style="border-bottom:1px solid var(--border2)">
+                <td style="padding:8px;color:${SEA_LAUNCH.colors[c]};font-weight:600">${SEA_LAUNCH.names[c]}</td>
+                <td style="padding:8px;text-align:right;font-family:monospace">${fmtD(agg[c].cumRev)}</td>
+                <td style="padding:8px;text-align:right;font-family:monospace">${fmtI(agg[c].totNru)}</td>
+                <td style="padding:8px;text-align:right;font-family:monospace">${fmtI(agg[c].peakDau)}</td>
+                <td style="padding:8px;text-align:right;font-family:monospace">${fmtI(agg[c].latestDau)}</td>
+                <td style="padding:8px;text-align:right;font-family:monospace">${agg[c].retain != null ? agg[c].retain.toFixed(0) + '%' : '-'}</td>
+                <td style="padding:8px;text-align:right;font-family:monospace">${agg[c].arppu != null ? '$' + agg[c].arppu.toFixed(2) : '-'}</td>
+                <td style="padding:8px;text-align:right;font-family:monospace;color:#EC4899">${SEA_LAUNCH.launchD1[c] != null ? SEA_LAUNCH.launchD1[c] + '%' : '-'}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`;
+
+      container.innerHTML = `<div style="padding-top:4px">
+        <div style="font-size:13px;color:var(--text2);margin-bottom:14px">🌏 <b>Play Together — SEA Launch</b> · Thailand · Indonesia · Philippines <span style="color:var(--text3)">(launched ${SEA_LAUNCH.start})</span></div>
+        ${kpiCards}
+        ${sumTable}
+        <div class="two-col" style="gap:16px">
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">DAU by country</div><canvas id="sea-chart-dau" height="140"></canvas></div>
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">Revenue by country ($)</div><canvas id="sea-chart-rev" height="140"></canvas></div>
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">New Users (NRU) by country</div><canvas id="sea-chart-nru" height="140"></canvas></div>
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">Marketing Cost by country ($)</div><canvas id="sea-chart-mkt" height="140"></canvas></div>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:14px;line-height:1.5">
+          Source: daily_data country rows (auto-updates with the daily sync). ARPPU = cumulative revenue ÷ cumulative paying users.
+          Launch D1 = launch-day cohort retention (ruser01 ÷ same-day NRU); the daily "D1 Ret" column elsewhere is prev-day-based and understates launch cohorts.
+        </div>
+      </div>`;
+
+      const mkLine = (canvasId, key) => {
+        const ctx = document.getElementById(canvasId);
+        if (!ctx) return;
+        const ch = new Chart(ctx, {
+          type: 'line',
+          data: { labels, datasets: SEA_LAUNCH.countries.map(c => ({
+            label: c,
+            data: dates.map(d => byC[c][d] ? (byC[c][d][key] ?? null) : null),
+            borderColor: SEA_LAUNCH.colors[c],
+            backgroundColor: SEA_LAUNCH.colors[c] + '20',
+            borderWidth: 2, pointRadius: 0, tension: 0.3, spanGaps: true
+          })) },
+          options: {
+            animation: false, responsive: true, interaction: { mode: 'index', intersect: false },
+            plugins: { legend: { display: true, labels: { color: '#888', font: { size: 10 }, boxWidth: 10 } } },
+            scales: {
+              x: { ticks: { color: '#555', font: { size: 9 } }, grid: { display: false } },
+              y: { ticks: { color: '#555', font: { size: 9 }, callback: v => key === 'revenue' || key === 'mkt_cost' ? '$' + (v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v) : fmtN(v) }, grid: { color: 'rgba(255,255,255,.04)' } }
+            }
+          }
+        });
+        seaCharts.push(ch);
+      };
+      mkLine('sea-chart-dau', 'dau');
+      mkLine('sea-chart-rev', 'revenue');
+      mkLine('sea-chart-nru', 'nru');
+      mkLine('sea-chart-mkt', 'mkt_cost');
+    }
 
     function renderGameDaily(game, days, country) {
       country = country || _currentDailyCountry || 'Total';
