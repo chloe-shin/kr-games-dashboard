@@ -1576,7 +1576,9 @@
     }
 
     function getNewGames() {
-      return getActiveGames().filter(g => isNewGame(g));
+      const list = getActiveGames().filter(g => isNewGame(g));
+      if (typeof SEA_MON_GAME !== 'undefined' && DAILY.some(d => d.game === SEA_MON_GAME)) list.push(SEA_MON_GAME);
+      return list;
     }
 
     function getDailyData(game, days, country) {
@@ -1663,6 +1665,7 @@
         RAW = enrichRAWData(monthly || []);
         INSIGHTS = insightsRes || [];
         DAILY = dailyRes || [];
+        buildSEAMonitorRows(); // synthesize the Play Together SEA (TH+ID+PH) monitor rows
         // LATEST_INSIGHT will be set in renderOverview
 
         // Populate Overview Game Select
@@ -3644,6 +3647,7 @@ ${dataStr}`;
 
     // ===== DAILY MONITOR =====
     function renderMonitor() {
+      buildSEAMonitorRows(); // keep Play Together SEA rows fresh (e.g. after an upload)
       const newGames = getNewGames();
       const container = document.getElementById('monitor-content');
       if (!container) return;
@@ -3689,7 +3693,7 @@ ${dataStr}`;
       const sections = visibleGames.map(game => {
         const color = getGameColor(game);
         const deal = DEALS.find(d => matchesGame(d.title, game));
-        const launchDate = deal?.start_date ? new Date(deal.start_date) : null;
+        const launchDate = game === SEA_MON_GAME ? new Date(SEA_LAUNCH.start) : (deal?.start_date ? new Date(deal.start_date) : null);
         const launchDateStr = launchDate ? launchDate.toISOString().slice(0,10) : null;
         const daysSince = launchDate ? Math.floor((new Date(today) - launchDate) / 86400000) : null;
         const slug = game.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
@@ -4005,6 +4009,31 @@ ${dataStr}`;
         && SEA_LAUNCH.countries.includes(d.country)
         && (d.date || '').slice(0, 10) >= SEA_LAUNCH.start)
         .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    }
+
+    // Synthetic "game" for the Daily Monitor: Play Together SEA = TH+ID+PH combined (excludes VN).
+    // Name must NOT start with "Play Together" (matchesGame uses startsWith → would collide with the real game).
+    const SEA_MON_GAME = 'PTG SEA (TH+ID+PH)';
+    function buildSEAMonitorRows() {
+      DAILY = DAILY.filter(d => d.game !== SEA_MON_GAME); // drop any previous synthetic rows (idempotent)
+      const src = DAILY.filter(d => d.game === SEA_LAUNCH.game
+        && SEA_LAUNCH.countries.includes(d.country)
+        && (d.date || '').slice(0, 10) >= SEA_LAUNCH.start);
+      if (!src.length) return;
+      const byDate = {};
+      src.forEach(r => { const dt = (r.date || '').slice(0, 10); (byDate[dt] = byDate[dt] || []).push(r); });
+      const out = [];
+      Object.entries(byDate).forEach(([dt, rs]) => {
+        rs.forEach(r => out.push({ ...r, game: SEA_MON_GAME }));          // per-country rows (re-tagged)
+        const sum = k => { const v = rs.filter(r => r[k] != null); return v.length ? v.reduce((s, r) => s + Number(r[k]), 0) : null; };
+        const wavg = (k, wk) => { let n = 0, d = 0; rs.forEach(r => { if (r[k] != null && r[wk] != null) { n += Number(r[k]) * Number(r[wk]); d += Number(r[wk]); } }); return d > 0 ? n / d : null; };
+        const rev = sum('revenue'), dpu = sum('dpu');
+        out.push({ game: SEA_MON_GAME, date: dt, country: 'Total',           // combined SEA total (3-country sum)
+          revenue: rev, dau: sum('dau'), nru: sum('nru'), mkt_cost: sum('mkt_cost'), dpu,
+          arppu: (rev != null && dpu) ? rev / dpu : null,
+          d1_ret: wavg('d1_ret', 'nru') });
+      });
+      DAILY.push(...out);
     }
 
     let seaCharts = [];
