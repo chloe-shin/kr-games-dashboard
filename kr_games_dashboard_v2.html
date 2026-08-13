@@ -1760,8 +1760,8 @@
         .map(d => d.title);
       const isExcluded = g => excludedTitles.some(t => matchesGame(t, g));
 
-      // 1. RAW game names (not excluded)
-      const rawGames = [...new Set(RAW.map(r => r.game))].filter(g => !isExcluded(g));
+      // 1. RAW game names (not excluded; segment pseudo-games handled separately in the sidebar)
+      const rawGames = [...new Set(RAW.map(r => r.game))].filter(g => !isExcluded(g) && !(typeof SEGMENT_GAMES !== 'undefined' && SEGMENT_GAMES.includes(g)));
 
       // 2. DEALS Launched games with no matching RAW entry yet
       const launchedDealNames = DEALS
@@ -1776,7 +1776,7 @@
       // All games with data (including Terminated) — used for Overview totals
       const notLaunched = DEALS.filter(d => d.status === 'Not Launched').map(d => d.title);
       const isNotLaunched = g => notLaunched.some(t => matchesGame(t, g));
-      const rawGames = [...new Set(RAW.map(r => r.game))].filter(g => !isNotLaunched(g));
+      const rawGames = [...new Set(RAW.map(r => r.game))].filter(g => !isNotLaunched(g) && !(typeof SEGMENT_GAMES !== 'undefined' && SEGMENT_GAMES.includes(g)));
       const allDealNames = DEALS
         .filter(d => d.status !== 'Not Launched')
         .map(d => d.title)
@@ -1801,12 +1801,23 @@
         const color = getGameColor(d.title);
         const slug = d.title.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
         const isNew = d.start_date && new Date(d.start_date) >= threeMonthsAgo;
-        return `<div class="nav-item" id="nav-game-${slug}" draggable="true" data-idx="${idx}" onclick='showPage("game",${JSON.stringify(d.title)})'>
+        const mainItem = `<div class="nav-item" id="nav-game-${slug}" draggable="true" data-idx="${idx}" onclick='showPage("game",${JSON.stringify(d.title)})'>
           <span class="nav-drag-handle">⠿</span>
           <span class="nav-dot" style="background:${color}"></span>
           <span>${d.title}</span>
           ${isNew ? '<span class="nav-new-badge">NEW</span>' : ''}
         </div>`;
+        // Play Together: segment sub-nav (전체 = the main item above; VN / 인태필 below)
+        let subNav = '';
+        if (d.title === SEA_LAUNCH.game) {
+          const sub = (name, label, dot) => `<div class="nav-item" style="padding-top:3px;padding-bottom:3px;font-size:12px;color:var(--text2)" onclick='event.stopPropagation();showPage("game",${JSON.stringify(name)})'>
+            <span style="width:14px"></span><span class="nav-dot" style="background:${dot};width:6px;height:6px"></span><span>${label}</span></div>`;
+          subNav = `<div style="margin:1px 0 4px 20px;border-left:1px solid var(--border2);padding-left:4px">
+            ${sub(SEG_VN_GAME, '🇻🇳 Vietnam', '#4A9EF5')}
+            ${sub(SEA_MON_GAME, '🌏 인태필 (ID+TH+PH)', '#E8A030')}
+          </div>`;
+        }
+        return mainItem + subNav;
       }).join('');
 
       container.querySelectorAll('.nav-item[data-idx]').forEach(el => {
@@ -1874,7 +1885,7 @@
     let insightDetailsOpen = false;
 
     function getFilteredRAW() {
-      let data = RAW;
+      let data = RAW.filter(r => !(typeof SEGMENT_GAMES !== 'undefined' && SEGMENT_GAMES.includes(r.game)));
       if (currentOverViewGame !== 'All') {
         data = data.filter(r => r.game === currentOverViewGame || r.game.startsWith(currentOverViewGame));
       }
@@ -2362,7 +2373,7 @@
       const container = document.getElementById('compare-content');
       if (!container) return;
 
-      const allGames = [...new Set([...RAW.map(r => r.game), ...DAILY.map(d => d.game)])].sort();
+      const allGames = [...new Set([...RAW.map(r => r.game), ...DAILY.map(d => d.game)])].filter(g => !SEGMENT_GAMES.includes(g)).sort();
 
       const monthlyMetrics = [
         { key:'revenue',  label:'Revenue ($)' },
@@ -2809,7 +2820,7 @@
 
       try {
         // Use ALL RAW data (not filtered by overview dates) so all games are included
-        const allRaw = RAW;
+        const allRaw = RAW.filter(r => !SEGMENT_GAMES.includes(r.game)); // exclude segment pseudo-games
         const games = getAllGames(); // includes terminated games with data
         const allYMs = [...new Set(allRaw.map(r => r.ym))].sort();
         const latestYM = allYMs.length > 0 ? allYMs.slice(-1)[0] : '-';
@@ -2858,7 +2869,7 @@
         const dataStr = JSON.stringify({
           report_month: latestYM,
           portfolio: {
-            total_revenue: Math.round(RAW.reduce((s, r) => s + (r.revenue || 0), 0)),
+            total_revenue: Math.round(allRaw.reduce((s, r) => s + (r.revenue || 0), 0)),
             latest_month_revenue: Math.round(latestTotal),
             mom_pct: portfolioMoM ? parseFloat(portfolioMoM) : null
           },
@@ -3560,7 +3571,7 @@ ${dataStr}`;
     function switchDataGame(g) { currentDataGame = g; renderDataPage(); }
 
     function renderDataTable(g) {
-      const filtered = g === 'All' ? RAW : RAW.filter(r => r.game === g);
+      const filtered = (g === 'All' ? RAW : RAW.filter(r => r.game === g)).filter(r => !SEGMENT_GAMES.includes(r.game));
       const sorted = [...filtered].sort((a, b) => b.ym.localeCompare(a.ym) || a.game.localeCompare(b.game));
       const showGame = g === 'All';
       document.getElementById('data-thead').innerHTML = `<tr>
@@ -4011,29 +4022,52 @@ ${dataStr}`;
         .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
     }
 
-    // Synthetic "game" for the Daily Monitor: Play Together SEA = TH+ID+PH combined (excludes VN).
-    // Name must NOT start with "Play Together" (matchesGame uses startsWith → would collide with the real game).
+    // Play Together tracked as two segments (plus the real combined "Play Together"):
+    //   VN  = Vietnam only            → game "PTG Vietnam"
+    //   SEA = 인태필 (ID+TH+PH)        → game "PTG SEA (TH+ID+PH)"  (also the Daily Monitor SEA card)
+    // Names must NOT start with "Play Together" (matchesGame uses startsWith → would collide with the real game).
+    // Built in-memory from the real Play Together daily country rows: daily (Total + country) + a monthly
+    // roll-up pushed into RAW. Excluded from Overview/getActiveGames/getAllGames so totals never double-count.
+    const SEG_VN_GAME  = 'PTG Vietnam';
     const SEA_MON_GAME = 'PTG SEA (TH+ID+PH)';
+    const SEGMENT_GAMES = [SEG_VN_GAME, SEA_MON_GAME];
     function buildSEAMonitorRows() {
-      DAILY = DAILY.filter(d => d.game !== SEA_MON_GAME); // drop any previous synthetic rows (idempotent)
-      const src = DAILY.filter(d => d.game === SEA_LAUNCH.game
-        && SEA_LAUNCH.countries.includes(d.country)
-        && (d.date || '').slice(0, 10) >= SEA_LAUNCH.start);
-      if (!src.length) return;
-      const byDate = {};
-      src.forEach(r => { const dt = (r.date || '').slice(0, 10); (byDate[dt] = byDate[dt] || []).push(r); });
-      const out = [];
-      Object.entries(byDate).forEach(([dt, rs]) => {
-        rs.forEach(r => out.push({ ...r, game: SEA_MON_GAME }));          // per-country rows (re-tagged)
-        const sum = k => { const v = rs.filter(r => r[k] != null); return v.length ? v.reduce((s, r) => s + Number(r[k]), 0) : null; };
-        const wavg = (k, wk) => { let n = 0, d = 0; rs.forEach(r => { if (r[k] != null && r[wk] != null) { n += Number(r[k]) * Number(r[wk]); d += Number(r[wk]); } }); return d > 0 ? n / d : null; };
-        const rev = sum('revenue'), dpu = sum('dpu');
-        out.push({ game: SEA_MON_GAME, date: dt, country: 'Total',           // combined SEA total (3-country sum)
-          revenue: rev, dau: sum('dau'), nru: sum('nru'), mkt_cost: sum('mkt_cost'), dpu,
-          arppu: (rev != null && dpu) ? rev / dpu : null,
-          d1_ret: wavg('d1_ret', 'nru') });
+      DAILY = DAILY.filter(d => !SEGMENT_GAMES.includes(d.game)); // idempotent
+      RAW   = RAW.filter(r => !SEGMENT_GAMES.includes(r.game));
+      const base = DAILY.filter(d => d.game === SEA_LAUNCH.game && d.country && d.country !== 'Total');
+      const sum  = (rs,k) => { const v = rs.filter(r => r[k] != null); return v.length ? v.reduce((s,r)=>s+Number(r[k]),0) : null; };
+      const wavg = (rs,k,wk) => { let n=0,d=0; rs.forEach(r=>{ if(r[k]!=null&&r[wk]!=null){ n+=Number(r[k])*Number(r[wk]); d+=Number(r[wk]); } }); return d>0?n/d:null; };
+      const dailyOut = [];
+      const emit = (segGame, countries, startDate) => {
+        const src = base.filter(d => countries.includes(d.country) && (!startDate || (d.date||'').slice(0,10) >= startDate));
+        if (!src.length) return;
+        const byDate = {};
+        src.forEach(r => { const dt=(r.date||'').slice(0,10); (byDate[dt]=byDate[dt]||[]).push(r); });
+        Object.entries(byDate).forEach(([dt, rs]) => {
+          rs.forEach(r => dailyOut.push({ ...r, game: segGame }));            // per-country rows (re-tagged)
+          const rev = sum(rs,'revenue'), dpu = sum(rs,'dpu');
+          dailyOut.push({ game: segGame, date: dt, country: 'Total',           // segment total (country sum)
+            revenue: rev, dau: sum(rs,'dau'), nru: sum(rs,'nru'), mkt_cost: sum(rs,'mkt_cost'), dpu,
+            arppu: (rev!=null && dpu) ? rev/dpu : null, d1_ret: wavg(rs,'d1_ret','nru') });
+        });
+      };
+      emit(SEG_VN_GAME, ['VN'], null);
+      emit(SEA_MON_GAME, SEA_LAUNCH.countries, SEA_LAUNCH.start);
+      DAILY.push(...dailyOut);
+      // Monthly roll-up (from each segment's Total daily rows) → RAW, so the game page's monthly view works.
+      const rawOut = [];
+      SEGMENT_GAMES.forEach(segGame => {
+        const totals = dailyOut.filter(d => d.game===segGame && d.country==='Total');
+        const byM = {};
+        totals.forEach(r => { const ym=(r.date||'').slice(0,7); (byM[ym]=byM[ym]||[]).push(r); });
+        Object.entries(byM).forEach(([ym, rs]) => {
+          const avg = k => { const v=rs.filter(r=>r[k]!=null).map(r=>Number(r[k])); return v.length?v.reduce((a,b)=>a+b,0)/v.length:null; };
+          const rev = sum(rs,'revenue'), d1 = avg('d1_ret');
+          rawOut.push({ game: segGame, ym, revenue: rev, dau: avg('dau'), mau: null, nru: sum(rs,'nru'),
+            mpu: null, arppu: null, cr: d1!=null ? d1/100 : null, mkt_cost: sum(rs,'mkt_cost') });
+        });
       });
-      DAILY.push(...out);
+      RAW.push(...rawOut);
     }
 
     let seaCharts = [];
