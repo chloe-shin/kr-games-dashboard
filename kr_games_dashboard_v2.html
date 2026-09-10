@@ -4035,7 +4035,7 @@ ${dataStr}`;
     const SEGMENT_GAMES = [SEG_VN_GAME, SEA_MON_GAME];
     // Non-KR games tracked for reference only — never counted in Overview portfolio totals/ROI,
     // but still viewable via sidebar/game page/Daily Monitor.
-    const REFERENCE_ONLY_GAMES = ['PUBG Mobile', 'Crossfire Legends'];
+    const REFERENCE_ONLY_GAMES = ['PUBG Mobile', 'Crossfire Legends', 'Total Football'];
     const isReferenceOnly = g => typeof REFERENCE_ONLY_GAMES !== 'undefined' && REFERENCE_ONLY_GAMES.some(t => matchesGame(t, g));
     function buildSEAMonitorRows() {
       DAILY = DAILY.filter(d => !SEGMENT_GAMES.includes(d.game)); // idempotent
