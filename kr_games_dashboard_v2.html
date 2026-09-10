@@ -1776,11 +1776,11 @@
       // All games with data (including Terminated) — used for Overview totals
       const notLaunched = DEALS.filter(d => d.status === 'Not Launched').map(d => d.title);
       const isNotLaunched = g => notLaunched.some(t => matchesGame(t, g));
-      const rawGames = [...new Set(RAW.map(r => r.game))].filter(g => !isNotLaunched(g) && !(typeof SEGMENT_GAMES !== 'undefined' && SEGMENT_GAMES.includes(g)));
+      const rawGames = [...new Set(RAW.map(r => r.game))].filter(g => !isNotLaunched(g) && !(typeof SEGMENT_GAMES !== 'undefined' && SEGMENT_GAMES.includes(g)) && !isReferenceOnly(g));
       const allDealNames = DEALS
         .filter(d => d.status !== 'Not Launched')
         .map(d => d.title)
-        .filter(t => !rawGames.some(g => matchesGame(g, t)));
+        .filter(t => !rawGames.some(g => matchesGame(g, t)) && !isReferenceOnly(t));
       return [...rawGames, ...allDealNames];
     }
 
@@ -1801,10 +1801,12 @@
         const color = getGameColor(d.title);
         const slug = d.title.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
         const isNew = d.start_date && new Date(d.start_date) >= threeMonthsAgo;
+        const refOnly = isReferenceOnly(d.title);
         const mainItem = `<div class="nav-item" id="nav-game-${slug}" draggable="true" data-idx="${idx}" onclick='showPage("game",${JSON.stringify(d.title)})'>
           <span class="nav-drag-handle">⠿</span>
           <span class="nav-dot" style="background:${color}"></span>
           <span>${d.title}</span>
+          ${refOnly ? '<span class="nav-new-badge has-tooltip" style="color:#9090A0;background:rgba(144,144,160,.12);border-color:rgba(144,144,160,.3)" data-tooltip="한국게임 아님 — Overview 포트폴리오 집계에서 제외, 데이터 확인용">📎 참고용</span>' : ''}
           ${isNew ? '<span class="nav-new-badge">NEW</span>' : ''}
         </div>`;
         // Play Together: segment sub-nav (전체 = the main item above; VN / 인태필 below)
@@ -1885,7 +1887,7 @@
     let insightDetailsOpen = false;
 
     function getFilteredRAW() {
-      let data = RAW.filter(r => !(typeof SEGMENT_GAMES !== 'undefined' && SEGMENT_GAMES.includes(r.game)));
+      let data = RAW.filter(r => !(typeof SEGMENT_GAMES !== 'undefined' && SEGMENT_GAMES.includes(r.game)) && !isReferenceOnly(r.game));
       if (currentOverViewGame !== 'All') {
         data = data.filter(r => r.game === currentOverViewGame || r.game.startsWith(currentOverViewGame));
       }
@@ -2697,7 +2699,7 @@
 
     function buildMGBars() {
       // MG recoup always uses all-time data regardless of date filter
-      const allData = RAW;
+      const allData = RAW.filter(r => !isReferenceOnly(r.game));
       const mgGames = getAllGames().filter(g => getMg(g) > 0 || allData.some(r => matchesGame(r.game, g)));
       document.getElementById('mg-bars').innerHTML = mgGames.map(g => {
         const recoupPct = mgRecoupPct(g, allData);
@@ -2718,7 +2720,7 @@
 
     function buildROIChart() {
       if (roiChart) { roiChart.destroy(); roiChart = null; }
-      const dataToUse = RAW; // Always all-time regardless of date filter
+      const dataToUse = RAW.filter(r => !isReferenceOnly(r.game)); // Always all-time regardless of date filter
       const ctx = document.getElementById('roiChart').getContext('2d');
       const roiGames = getAllGames().filter(g => dataToUse.some(r => matchesGame(r.game, g)));
       const vals = roiGames.map(g => +gameRoi(g, dataToUse).toFixed(2));
@@ -2820,7 +2822,7 @@
 
       try {
         // Use ALL RAW data (not filtered by overview dates) so all games are included
-        const allRaw = RAW.filter(r => !SEGMENT_GAMES.includes(r.game)); // exclude segment pseudo-games
+        const allRaw = RAW.filter(r => !SEGMENT_GAMES.includes(r.game) && !isReferenceOnly(r.game)); // exclude segment pseudo-games + reference-only games
         const games = getAllGames(); // includes terminated games with data
         const allYMs = [...new Set(allRaw.map(r => r.ym))].sort();
         const latestYM = allYMs.length > 0 ? allYMs.slice(-1)[0] : '-';
@@ -4031,6 +4033,10 @@ ${dataStr}`;
     const SEG_VN_GAME  = 'PTG Vietnam';
     const SEA_MON_GAME = 'PTG SEA (TH+ID+PH)';
     const SEGMENT_GAMES = [SEG_VN_GAME, SEA_MON_GAME];
+    // Non-KR games tracked for reference only — never counted in Overview portfolio totals/ROI,
+    // but still viewable via sidebar/game page/Daily Monitor.
+    const REFERENCE_ONLY_GAMES = ['PUBG Mobile', 'Crossfire Legends'];
+    const isReferenceOnly = g => typeof REFERENCE_ONLY_GAMES !== 'undefined' && REFERENCE_ONLY_GAMES.some(t => matchesGame(t, g));
     function buildSEAMonitorRows() {
       DAILY = DAILY.filter(d => !SEGMENT_GAMES.includes(d.game)); // idempotent
       RAW   = RAW.filter(r => !SEGMENT_GAMES.includes(r.game));
