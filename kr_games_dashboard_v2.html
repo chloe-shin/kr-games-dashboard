@@ -5258,9 +5258,9 @@ ${dataStr}`;
     async function confirmStatusChange() {
       if (!_pendingDealRow) return;
       const note = document.getElementById('status-confirm-note').value.trim();
+      const row = _pendingDealRow;
       closeModal('status-confirm');
-      await _executeDealSave(_pendingDealRow, note);
-      _pendingDealRow = null;
+      await _executeDealSave(row, note);
     }
 
     async function _executeDealSave(row, terminationNote) {
