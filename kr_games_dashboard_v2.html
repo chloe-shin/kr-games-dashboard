@@ -478,6 +478,26 @@
       font-size: 11px;
     }
 
+    .inline-edit {
+      display: inline-block;
+      min-width: 40px;
+      padding: 2px 5px;
+      border-radius: 4px;
+      cursor: text;
+      outline: none;
+    }
+    .inline-edit:hover {
+      background: var(--bg3);
+    }
+    .inline-edit:focus {
+      background: var(--bg3);
+      box-shadow: 0 0 0 1px var(--accent);
+    }
+    .inline-edit:empty::before {
+      content: '—';
+      color: var(--text3);
+    }
+
     .badge {
       display: inline-block;
       font-size: 10px;
@@ -505,6 +525,24 @@
       background: rgba(144, 144, 160, .15);
       color: var(--rem);
     }
+
+    .badge-select {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 500;
+      padding: 2px 6px;
+      border-radius: 20px;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    .badge-select.badge-green { background: rgba(46, 204, 154, .15); color: var(--green); }
+    .badge-select.badge-amber { background: rgba(232, 160, 48, .15); color: var(--amber); }
+    .badge-select.badge-red { background: rgba(224, 85, 85, .15); color: var(--red); }
+    .badge-select.badge-gray { background: rgba(144, 144, 160, .15); color: var(--rem); }
+    .badge-select option { background: var(--bg2); color: var(--text); }
 
     .bar-bg {
       background: rgba(255, 255, 255, .06);
@@ -1365,7 +1403,7 @@
         <div class="form-error" id="status-confirm-error"></div>
       </div>
       <div class="modal-footer">
-        <button class="btn" onclick="closeModal('status-confirm')">Cancel</button>
+        <button class="btn" onclick="closeModal('status-confirm'); renderDeals();">Cancel</button>
         <button class="btn btn-primary" id="status-confirm-ok" onclick="confirmStatusChange()">Confirm</button>
       </div>
     </div>
@@ -1598,7 +1636,7 @@
       const url = `${SUPABASE_URL}/rest/v1/${table}${filter ? '?' + filter : ''}`;
       const hdrs = { ...HDRS };
       if (upsert) hdrs['Prefer'] = 'resolution=merge-duplicates,return=representation';
-      else if (method === 'POST') hdrs['Prefer'] = 'return=representation';
+      else if (method === 'POST' || method === 'PATCH') hdrs['Prefer'] = 'return=representation';
       const opts = { method, headers: hdrs };
       if (body) opts.body = JSON.stringify(body);
       const res = await fetch(url, opts);
@@ -1821,6 +1859,20 @@
         }
         return mainItem + subNav;
       }).join('');
+
+      // Terminated games: shown grayed-out at the bottom with a "Terminated" badge, still clickable for historical view
+      const terminatedDeals = DEALS.filter(d => d.status === 'Terminated' && !launched.some(l => matchesGame(l.title, d.title)));
+      if (terminatedDeals.length > 0) {
+        container.innerHTML += terminatedDeals.map(d => {
+          const slug = d.title.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
+          return `<div class="nav-item" id="nav-game-${slug}" style="opacity:.55" onclick='showPage("game",${JSON.stringify(d.title)})'>
+          <span style="width:14px"></span>
+          <span class="nav-dot" style="background:${getGameColor(d.title)}"></span>
+          <span>${d.title}</span>
+          <span class="nav-new-badge" style="color:var(--rem);background:rgba(144,144,160,.12);border-color:rgba(144,144,160,.3)">Terminated</span>
+        </div>`;
+        }).join('');
+      }
 
       container.querySelectorAll('.nav-item[data-idx]').forEach(el => {
         const idx = +el.dataset.idx;
@@ -3369,19 +3421,23 @@ ${dataStr}`;
     }
 
     function renderDeals() {
-      const sc = s => s === 'Launched' ? 'badge-green' : s === 'Terminated' ? 'badge-red' : s === 'Not Launched' ? 'badge-amber' : 'badge-gray';
+      const sc = s => s === 'Launched' ? 'badge-green' : s === 'Terminated' ? 'badge-gray' : s === 'Not Launched' ? 'badge-amber' : 'badge-gray';
       document.getElementById('deals-tbody').innerHTML = DEALS.map((d, idx) => {
         const key = d.id || idx;
         return `<tr>
       <td><span class="gdot" style="background:${clr(d.title)}"></span>${d.title}</td>
       <td style="color:var(--text2)">${d.developer || '-'}</td>
       <td style="color:var(--text2)">${d.region || '-'}</td>
-      <td class="mono">${fmt(d.lf)}</td>
-      <td class="mono">${fmt(d.mg)}</td>
-      <td class="mono">${d.rs != null ? (d.rs * 100).toFixed(0) + '%' : '-'}</td>
+      <td class="mono"><span class="inline-edit" contenteditable="true" data-key='${JSON.stringify(key)}' data-field="lf" onblur="commitInlineDeal(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">${d.lf != null ? d.lf : ''}</span></td>
+      <td class="mono"><span class="inline-edit" contenteditable="true" data-key='${JSON.stringify(key)}' data-field="mg" onblur="commitInlineDeal(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">${d.mg != null ? d.mg : ''}</span></td>
+      <td class="mono"><span class="inline-edit" contenteditable="true" data-key='${JSON.stringify(key)}' data-field="rs" onblur="commitInlineDeal(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">${d.rs != null ? (d.rs * 100).toFixed(0) : ''}</span>${d.rs != null ? '%' : ''}</td>
       <td class="mono" style="color:var(--text2)">${d.start_date || '-'}</td>
       <td class="mono" style="color:var(--text2)">${d.end_date || '-'}</td>
-      <td><span class="badge ${sc(d.status)}">${d.status}</span></td>
+      <td>
+        <select class="badge-select ${sc(d.status)}" data-key='${JSON.stringify(key)}' onchange="handleInlineStatusChange(this)">
+          ${['Launched', 'Not Launched', 'Terminated'].map(s => `<option value="${s}" ${d.status === s ? 'selected' : ''}>${s}</option>`).join('')}
+        </select>
+      </td>
       <td style="font-size:11px;color:var(--text2);max-width:220px;line-height:1.5">${d.special_condition || '-'}</td>
       <td style="display:flex;gap:6px;white-space:nowrap">
         <button class="btn" style="font-size:11px;padding:3px 10px" onclick='editDeal(${JSON.stringify(key)})'>Edit</button>
@@ -3389,6 +3445,66 @@ ${dataStr}`;
       </td>
     </tr>`;
       }).join('');
+    }
+
+    async function commitInlineDeal(el) {
+      const key = JSON.parse(el.dataset.key);
+      const field = el.dataset.field;
+      const d = typeof key === 'number' ? DEALS[key] : DEALS.find(x => x.id === key);
+      if (!d) return;
+      const raw = el.textContent.trim();
+      let value = raw === '' ? null : parseFloat(raw.replace(/,/g, ''));
+      if (raw !== '' && isNaN(value)) { showToast('숫자만 입력해주세요'); renderDeals(); return; }
+      if (field === 'rs' && value != null) value = value / 100; // stored as fraction
+      if ((d[field] ?? null) === value) return; // no change
+      d[field] = value;
+      try {
+        if (d.id) await api('deal_terms', 'PATCH', { [field]: value }, `id=eq.${d.id}`);
+        showToast(`${d.title} ${field.toUpperCase()} 업데이트됨`);
+      } catch (e) {
+        alert('저장 실패: ' + e.message);
+      }
+      renderDeals();
+      if (typeof buildMGBars === 'function') buildMGBars();
+      if (typeof buildROIChart === 'function') buildROIChart();
+    }
+
+    function handleInlineStatusChange(selectEl) {
+      const key = JSON.parse(selectEl.dataset.key);
+      const d = typeof key === 'number' ? DEALS[key] : DEALS.find(x => x.id === key);
+      if (!d) return;
+      const newStatus = selectEl.value;
+      const origStatus = d.status;
+      if (newStatus === origStatus) return;
+      const row = { status: newStatus };
+      editingDealId = d.id !== undefined ? d.id : key;
+      _editingDealOrigStatus = origStatus;
+      const isTerminating = newStatus === 'Terminated';
+      const isDeactivating = origStatus === 'Launched' && newStatus === 'Not Launched';
+      if (isTerminating || isDeactivating) {
+        _pendingDealRow = row;
+        const msgEl = document.getElementById('status-confirm-msg');
+        const noteWrap = document.getElementById('status-confirm-note-wrap');
+        const noteEl = document.getElementById('status-confirm-note');
+        const titleEl = document.getElementById('status-confirm-title');
+        if (isTerminating) {
+          titleEl.textContent = '⚠️ 게임 종료 확인';
+          msgEl.innerHTML = `<strong>${d.title}</strong>의 Status를 <span style="color:var(--red)">Terminated</span>로 변경합니다.<br><br>
+            이 게임은 사이드바에서 제거되고 Archive로 이동합니다.<br>
+            과거 데이터는 보존되며, Archive에서 복원할 수 있습니다.`;
+          noteWrap.style.display = 'block';
+          noteEl.value = '';
+        } else {
+          titleEl.textContent = 'Confirm Status Change';
+          msgEl.innerHTML = `<strong>${d.title}</strong>의 Status를 <span style="color:var(--amber)">Not Launched</span>로 변경합니다.<br><br>
+            이 게임은 사이드바에서 제거됩니다. 다시 Launched로 변경하면 복원됩니다.`;
+          noteWrap.style.display = 'none';
+        }
+        document.getElementById('status-confirm-error').style.display = 'none';
+        openModal('status-confirm');
+      } else {
+        _executeDealSave(row, '');
+      }
     }
 
     function renderArchive() {
@@ -5157,8 +5273,8 @@ ${dataStr}`;
           if (typeof editingDealId === 'string' || (typeof editingDealId === 'number' && DEALS[editingDealId]?.id)) {
             const realId = typeof editingDealId === 'number' ? DEALS[editingDealId].id : editingDealId;
             const saved = await api('deal_terms', 'PATCH', row, `id=eq.${realId}`);
-            const updated = Array.isArray(saved) ? saved[0] : { ...row, id: realId };
-            DEALS = DEALS.map(d => d.id === realId ? updated : d);
+            const serverRow = Array.isArray(saved) ? saved[0] : null;
+            DEALS = DEALS.map(d => d.id === realId ? { ...d, ...row, ...(serverRow || {}) } : d);
           } else if (typeof editingDealId === 'number') {
             DEALS[editingDealId] = { ...DEALS[editingDealId], ...row };
           }
@@ -5170,6 +5286,7 @@ ${dataStr}`;
         updateLastUpdated();
         renderDeals();
         renderSidebar();
+        renderArchive();
         // Refresh monthly modal game select
         const gs = document.getElementById('f-game');
         if (gs) gs.innerHTML = '<option value="">Select game</option>' + getActiveGames().map(t => `<option value="${t}">${t}</option>`).join('');
