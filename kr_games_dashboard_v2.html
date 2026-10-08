@@ -4151,9 +4151,12 @@ ${dataStr}`;
     const SEGMENT_GAMES = [SEG_VN_GAME, SEA_MON_GAME];
     // Non-KR games tracked for reference only — never counted in Overview portfolio totals/ROI,
     // but still viewable via sidebar/game page/Daily Monitor.
-    const REFERENCE_ONLY_GAMES = ['PUBG Mobile', 'Crossfire Legends', 'Total Football'];
+    const REFERENCE_ONLY_GAMES = ['PUBG Mobile', 'Crossfire Legends', 'Total Football', 'Valorant'];
     const isReferenceOnly = g => typeof REFERENCE_ONLY_GAMES !== 'undefined' && REFERENCE_ONLY_GAMES.some(t => matchesGame(t, g));
     function buildSEAMonitorRows() {
+      // monthly_data rows stored for the segments carry GDS-derived mau/arppu (not derivable from daily)
+      const storedSeg = {};
+      RAW.filter(r => SEGMENT_GAMES.includes(r.game) && r.mau != null).forEach(r => { storedSeg[r.game + '|' + r.ym] = r; });
       DAILY = DAILY.filter(d => !SEGMENT_GAMES.includes(d.game)); // idempotent
       RAW   = RAW.filter(r => !SEGMENT_GAMES.includes(r.game));
       const base = DAILY.filter(d => d.game === SEA_LAUNCH.game && d.country && d.country !== 'Total');
@@ -4185,8 +4188,9 @@ ${dataStr}`;
         Object.entries(byM).forEach(([ym, rs]) => {
           const avg = k => { const v=rs.filter(r=>r[k]!=null).map(r=>Number(r[k])); return v.length?v.reduce((a,b)=>a+b,0)/v.length:null; };
           const rev = sum(rs,'revenue'), d1 = avg('d1_ret');
-          rawOut.push({ game: segGame, ym, revenue: rev, dau: avg('dau'), mau: null, nru: sum(rs,'nru'),
-            mpu: null, arppu: null, cr: d1!=null ? d1/100 : null, mkt_cost: sum(rs,'mkt_cost') });
+          const st = storedSeg[segGame + '|' + ym];
+          rawOut.push({ game: segGame, ym, revenue: rev, dau: avg('dau'), mau: st ? st.mau : null, nru: sum(rs,'nru'),
+            mpu: null, arppu: st ? st.arppu : null, cr: d1!=null ? d1/100 : null, mkt_cost: sum(rs,'mkt_cost') });
         });
       });
       RAW.push(...rawOut);
